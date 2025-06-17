@@ -22,7 +22,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 initializeAppCheck(app, {
-  provider: new ReCaptchaV3Provider('6LfSaFkrAAAAAG9CNfz-6ZqTfxwvyZmLANjOoM8t'),
+  // sitekey
+  provider: new ReCaptchaV3Provider('6LdEn2MrAAAAAC2zzYz_CHrg9f3wPpuVHi0Wa18Y'),
   isTokenAutoRefreshEnabled: true,
 });
 

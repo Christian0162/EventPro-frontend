@@ -151,9 +151,7 @@ export default function SupplierVerification({ userData }) {
                 {/* additional information */}
                 <div className="flex flex-col w-full">
                     <label htmlFor="addtional_information">Additional Information (Optional)</label>
-                    <textarea onChange={(e) => setAdditional_information(e.target.value)} name="addtional_information" id="addtional_information" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-38 py-2 ring-black"
-                        required
-                    ></textarea>
+                    <textarea onChange={(e) => setAdditional_information(e.target.value)} name="addtional_information" id="addtional_information" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-38 py-2 ring-black"></textarea>
                 </div>
 
                 <div className="flex flex-col">

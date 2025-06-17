@@ -19,6 +19,7 @@ export default function Event({ userData }) {
     const [loading, setLoading] = useState(true)
     const [applications, setApplications] = useState([])
     const [supplierData, setSupplierData] = useState({})
+    const [gettingShop, setGettingShop] = useState(false)
     const navigate = useNavigate()
     const { deleteEvent } = useEvents()
 
@@ -65,7 +66,7 @@ export default function Event({ userData }) {
         deleteEvent(id, setUserEvents)
     }
 
-    const handleApply = async (event_id) => {
+    const handleApply = async (event_id, user_id) => {
 
         Swal.fire({
             title: 'Confirm Application',
@@ -85,6 +86,15 @@ export default function Event({ userData }) {
                         status: 'Pending'
                     })
 
+                    await addDoc(collection(db, "Notifications"), {
+                        avatar: auth.currentUser.uid.charAt(0).toUpperCase(),
+                        message: `The supplier "${supplierData.supplier_name}" applied to your event.`,
+                        timestamp: serverTimestamp(),
+                        title: 'You have a new application for your event.',
+                        unread: true,
+                        user_id: user_id
+                    })
+
                     Swal.fire('Applied!', 'Your application has been submitted.', 'success');
                 }
                 catch (e) {
@@ -97,11 +107,16 @@ export default function Event({ userData }) {
     }
 
     useEffect(() => {
+        setGettingShop(true)
         const fetchData = async () => {
             const fetchShop = await getDoc(doc(db, "Shops", auth.currentUser.uid))
 
             if (fetchShop.exists()) {
                 setSupplierData({ ...fetchShop.data(), id: fetchShop.id })
+                setGettingShop(false)
+            }
+            else {
+                setGettingShop(false)
             }
 
         }
@@ -146,7 +161,7 @@ export default function Event({ userData }) {
         }
     }
 
-    console.log(userEvents)
+    console.log(gettingShop)
     return (
         <>
             <Title>Event</Title>
@@ -245,10 +260,27 @@ export default function Event({ userData }) {
                                         )}
 
                                         {userData.role === "Supplier" && (
-                                            <button onClick={() => handleApply(events.id)} disabled={applications.find(app => app.event_id === events.id)?.status === "Pending" || applications.find(app => app.event_id === events.id)?.status === "Approved"} className={`block text-center mt-5 py-3 w-full ${applications.find(app => app.event_id === events.id)?.status === "Pending" || applications.find(app => app.event_id === events.id)?.status === "Approved" ? 'bg-blue-300' : 'bg-blue-600 hover:bg-blue-700'} text-white font-bold rounded-lg`}>
-                                                {applications.find(app => app.event_id === events.id)?.status === "Pending" ? 'Pending' : applications.find(app => app.event_id === events.id)?.status === "Approved" ? 'Approved' : 'Apply'}
-                                            </button>
+                                            <>
+                                                {gettingShop && (
+                                                    <div className="flex justify-center">
+                                                        <div className="w-10 h-10 rounded-full border border-t-2 animate-spin border-blue-600"></div>
+                                                    </div>
+                                                )}
+
+                                                {!gettingShop && supplierData?.supplier_name?.length > 0 && (
+                                                    <button onClick={() => handleApply(events.id, events.user_id)} disabled={applications.find(app => app.event_id === events.id)?.status === "Pending" || applications.find(app => app.event_id === events.id)?.status === "Approved"} className={`block text-center mt-5 py-3 w-full ${applications.find(app => app.event_id === events.id)?.status === "Pending" || applications.find(app => app.event_id === events.id)?.status === "Approved" ? 'bg-blue-300' : 'bg-blue-600 hover:bg-blue-700'} text-white font-bold rounded-lg`}>
+                                                        {applications.find(app => app.event_id === events.id)?.status === "Pending" ? 'Pending' : applications.find(app => app.event_id === events.id)?.status === "Approved" ? 'Approved' : 'Apply'}
+                                                    </button>
+                                                )}
+
+                                                {!gettingShop && !supplierData.supplier_name?.length > 0 &&  (
+                                                    <span className="block text-center bg-gray-200 py-2 relative top-5 rounded-md text-gray-600">
+                                                        Need shop to apply
+                                                    </span>
+                                                )}
+                                            </>
                                         )}
+
                                     </div>
                                 </div>
                             </div>

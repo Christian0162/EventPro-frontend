@@ -21,16 +21,21 @@ export default function Register({ user }) {
 
     const { register } = useAuth()
 
+    console.log(isLoading)
+
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setIsLoading(true)
+
+        setError(null);
+        setErrorEmail('');
+        setErrorPassword('');
 
         if (password.length < 5) {
-           return setErrorPassword('Password must be at least 6 characters long.')
+            setIsLoading(false)
+            return setErrorPassword('Password must be at least 6 characters long.')
         }
-        else {
-            setErrorPassword('')
-        }
+
+        setIsLoading(true)
 
         await register(auth, email, password, firstName, lastName, role, setErrorEmail)
 
@@ -96,8 +101,8 @@ export default function Register({ user }) {
 
                     {/* Step 1: Role Selection */}
                     <div className={`absolute inset-0 transition-all duration-500 ease-in-out ${currentStep === 1
-                            ? 'opacity-100 translate-x-0 pointer-events-auto'
-                            : 'opacity-0 -translate-x-8 pointer-events-none'
+                        ? 'opacity-100 translate-x-0 pointer-events-auto'
+                        : 'opacity-0 -translate-x-8 pointer-events-none'
                         }`}>
                         <div className="flex flex-col items-center text-center px-15">
                             <h1 className="font-bold text-3xl mb-3">Create an Account</h1>
@@ -113,10 +118,10 @@ export default function Register({ user }) {
                                         <button
                                             key={index}
                                             className={`w-full p-4 border-2 rounded-lg transition-all duration-200 hover:border-blue-500 hover:shadow-md ${role === option.name
-                                                    ? 'border-blue-600 bg-blue-50'
-                                                    : error
-                                                        ? 'border-red-300'
-                                                        : 'border-gray-200 bg-white'
+                                                ? 'border-blue-600 bg-blue-50'
+                                                : error
+                                                    ? 'border-red-300'
+                                                    : 'border-gray-200 bg-white'
                                                 }`}
                                             onClick={() => {
                                                 setRole(option.name);
@@ -153,8 +158,8 @@ export default function Register({ user }) {
 
                     {/* Step 2: Registration Form */}
                     <div className={`absolute inset-0 transition-all duration-500 ease-in-out ${currentStep === 2
-                            ? 'opacity-100 translate-x-0 pointer-events-auto'
-                            : 'opacity-0 translate-x-8 pointer-events-none'
+                        ? 'opacity-100 translate-x-0 pointer-events-auto'
+                        : 'opacity-0 translate-x-8 pointer-events-none'
                         }`}>
                         <div className="flex flex-col items-center">
                             <div className="text-center mb-8">
@@ -165,100 +170,104 @@ export default function Register({ user }) {
                             </div>
 
                             <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-200 w-full max-w-lg">
-                                <div className="space-y-6">
-                                    {/* Name Fields */}
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label htmlFor="firstName" className="block font-semibold mb-2">
-                                                First Name
-                                            </label>
-                                            <input
-                                                type="text"
-                                                id="firstName"
-                                                className="w-full py-2 px-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
-                                                placeholder="John"
-                                                required
-                                                value={firstName}
-                                                onChange={(e) => setFirstName(e.target.value)}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label htmlFor="lastName" className="block font-semibold mb-2">
-                                                Last Name
-                                            </label>
-                                            <input
-                                                type="text"
-                                                id="lastName"
-                                                className="w-full py-2 px-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
-                                                placeholder="Doe"
-                                                required
-                                                value={lastName}
-                                                onChange={(e) => setLastName(e.target.value)}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Email Field */}
-                                    <div>
-                                        <label htmlFor="email" className="block font-semibold mb-2">
-                                            Email
-                                        </label>
-                                        <input
-                                            type="email"
-                                            id="email"
-                                            className="w-full py-2 px-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
-                                            placeholder="email@example.com"
-                                            required
-                                            value={email}
-                                            onChange={(e) => setEmail(e.target.value)}
-                                        />
-                                        {errorEmail && (
-                                            <p className="text-red-500 text-sm mt-1">{errorEmail}</p>
-                                        )}
-                                    </div>
-
-                                    {/* Password Field */}
-                                    <div>
-                                        <label htmlFor="password" className="block font-semibold mb-2">
-                                            Password
-                                        </label>
-                                        <input
-                                            type="password"
-                                            id="password"
-                                            minLength={6}
-                                            className="w-full py-2 px-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
-                                            placeholder="••••••••"
-                                            required
-                                            value={password}
-                                            onChange={(e) => setPassword(e.target.value)}
-                                        />
-
-                                        {errorPassword && (
-                                            <p className="text-red-500 text-sm mt-1">{errorPassword}</p>
-                                        )}
-                                    </div>
-
-                                    {/* Role Display and Change */}
-                                    <div className="bg-gray-50 p-3 rounded-md">
-                                        <div className="flex items-center justify-between">
+                                <form onSubmit={handleSubmit}>
+                                    <div className="space-y-6">
+                                        {/* Name Fields */}
+                                        <div className="grid grid-cols-2 gap-4">
                                             <div>
-                                                <span className="text-gray-600 text-sm">Account type:</span>
-                                                <span className="font-semibold ml-2">{role}</span>
+                                                <label htmlFor="firstName" className="block font-semibold mb-2">
+                                                    First Name
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    id="firstName"
+                                                    className="w-full py-2 px-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+                                                    placeholder="John"
+                                                    required
+                                                    value={firstName}
+                                                    onChange={(e) => setFirstName(e.target.value)}
+                                                />
                                             </div>
-                                            <button
-                                                type="button"
-                                                className="text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors"
-                                                onClick={goToPreviousStep}
-                                            >
-                                                Change
-                                            </button>
+                                            <div>
+                                                <label htmlFor="lastName" className="block font-semibold mb-2">
+                                                    Last Name
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    id="lastName"
+                                                    className="w-full py-2 px-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+                                                    placeholder="Doe"
+                                                    required
+                                                    value={lastName}
+                                                    onChange={(e) => setLastName(e.target.value)}
+                                                />
+                                            </div>
                                         </div>
-                                    </div>
 
-                                    <PrimaryButton onClick={handleSubmit} disabled={isLoading}>
-                                        {isLoading ? "Creating account..." : "Create account"}
-                                    </PrimaryButton>
-                                </div>
+                                        {/* Email Field */}
+                                        <div>
+                                            <label htmlFor="email" className="block font-semibold mb-2">
+                                                Email
+                                            </label>
+                                            <input
+                                                type="email"
+                                                id="email"
+                                                className="w-full py-2 px-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+                                                placeholder="email@example.com"
+                                                required
+                                                value={email}
+                                                onChange={(e) => setEmail(e.target.value)}
+                                            />
+                                            {errorEmail && (
+                                                <p className="text-red-500 text-sm mt-1">{errorEmail}</p>
+                                            )}
+                                        </div>
+
+                                        {/* Password Field */}
+                                        <div>
+                                            <label htmlFor="password" className="block font-semibold mb-2">
+                                                Password
+                                            </label>
+                                            <input
+                                                type="password"
+                                                id="password"
+                                                minLength={6}
+                                                className="w-full py-2 px-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+                                                placeholder="••••••••"
+                                                required
+                                                value={password}
+                                                onChange={(e) => setPassword(e.target.value)}
+                                            />
+
+                                            {errorPassword && (
+                                                <p className="text-red-500 text-sm mt-1">{errorPassword}</p>
+                                            )}
+                                        </div>
+
+                                        {/* Role Display and Change */}
+                                        <div className="bg-gray-50 p-3 rounded-md">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <span className="text-gray-600 text-sm">Account type:</span>
+                                                    <span className="font-semibold ml-2">{role}</span>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    className="text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors"
+                                                    onClick={goToPreviousStep}
+                                                >
+                                                    Change
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <button className={`transition-divall duration-100 w-full py-2 rounded-md text-white ${isLoading ? 'bg-blue-300' : 'bg-blue-600 hover:bg-blue-700'}`} disabled={isLoading}>
+                                            {isLoading ? <div className="flex justify-center">
+                                                <div className="w-6 h-6 text-center border border-t-2 border-blue-600 rounded-full animate-spin"></div>
+                                            </div> : "Create account"}
+                                        </button>
+                                    </div>
+                                </form>
                             </div>
                         </div>
                     </div>

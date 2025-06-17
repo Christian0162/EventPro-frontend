@@ -7,7 +7,7 @@ import PrimaryButton from "../../components/PrimaryButton";
 import { Link } from "react-router-dom";
 import useEvents from "../../hooks/useEvents";
 import Loading from "../../components/Loading";
-import { addDoc, collection, doc, getDocs, onSnapshot, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getDocs, onSnapshot, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
 import { auth, db } from "../../firebase/firebase";
 import Swal from "sweetalert2";
 import SupplierModal from "../../components/SupplierModal";
@@ -32,7 +32,7 @@ export default function EditEvent({ userData }) {
     const [suppliers, setSuppliers] = useState([])
     const [reviews, setReviews] = useState([])
     const [eventUser, setEventUser] = useState([])
-
+    const [isGettingData, setIsGettingData] = useState(false)
     const { updateEvent, getEvent } = useEvents()
 
     const categoriesOptions = [
@@ -88,14 +88,32 @@ export default function EditEvent({ userData }) {
     }, [])
 
     useEffect(() => {
-        const fetchData = async () => {
-            const snapShotShops = await getDocs(collection(db, "Shops"))
-            const shops = snapShotShops.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+
+        setIsGettingData(true)
+
+
+        let allReviews = {}
+
+        const unsubscribe = onSnapshot(collection(db, "Shops"), async (snapshot) => {
+            const shops = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
             const filteredShops = shops.filter(shop => applications.some(app => app.user_id === shop.id))
 
+            for (const reviews of filteredShops) {
+                const snapShotReview = await getDocs(collection(db, "Shops", reviews.id, "Reviews"));
+                const review = snapShotReview.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+
+                allReviews[reviews.id] = review
+
+            }
+            setReviews(allReviews)
             setSuppliers(filteredShops)
-        }
-        fetchData()
+            setIsGettingData(false)
+        })
+
+
+
+
+        return () => unsubscribe()
     }, [applications])
 
 
@@ -104,10 +122,6 @@ export default function EditEvent({ userData }) {
             try {
                 setIsLoading(true)
                 const data = await getEvent(id);
-                const snapShotReview = await getDocs(collection(db, "Shops", auth.currentUser.uid, "Reviews"));
-                const review = snapShotReview.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-
-                setReviews(review)
 
                 if (data) {
                     setEventUser(data)
@@ -245,9 +259,7 @@ export default function EditEvent({ userData }) {
 
                 for (const app of applications) {
                     const appRef = doc(db, "Applications", app.id);
-                    await updateDoc(appRef, {
-                        status: "Reject"
-                    });
+                    await deleteDoc(appRef);
 
                     await addDoc(collection(db, "Notifications"), {
                         user_id: app.user_id,
@@ -264,13 +276,24 @@ export default function EditEvent({ userData }) {
         })
     }
 
-    const validRatings = reviews
-        .map(review => Number(review.rating))
-        .filter(rating => !isNaN(rating));
+    const calculateAverageRating = (shopId) => {
+        const Allreviews = reviews[shopId] || [];
+        const validRatings = Allreviews
+            .map(review => Number(review.rating))
+            .filter(rating => !isNaN(rating) && rating > 0);
 
-    const averageRating = validRatings.length > 0
-        ? (validRatings.reduce((sum, r) => sum + r, 0) / validRatings.length).toFixed(1)
-        : "N/A";
+        if (validRatings.length === 0) return "N/A";
+
+        const average = validRatings.reduce((sum, rating) => sum + rating, 0) / validRatings.length;
+        return average.toFixed(1);
+    };
+
+    const getReviewCount = (shopId) => {
+        const Allreviews = reviews[shopId] || [];
+        return Allreviews.length;
+    };
+
+    console.log(isGettingData)
 
 
     return (
@@ -439,27 +462,37 @@ export default function EditEvent({ userData }) {
 
                 {suppliers.filter(supplier => applications.some(app => app.user_id === supplier.id && app.status === "Approved")).length > 0 && (
                     <div className="space-y-3">
-                        {suppliers.filter(supplier => applications.some(app => app.user_id === supplier.id && app.status === "Approved")).map((supplier) => (
-                            <div key={supplier.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
-                                <div className="flex items-center space-x-3">
-                                    <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium">
-                                        {supplier.supplier_name.charAt(0).toUpperCase()}
+                        {suppliers.filter(supplier => applications.some(app => app.user_id === supplier.id && app.status === "Approved")).map((supplier) => {
+
+                            const averageRating = calculateAverageRating(supplier.id);
+                            const reviewCount = getReviewCount(supplier.id);
+
+                            return (
+                                <div key={supplier.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
+                                    <div className="flex items-center space-x-3">
+                                        <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium">
+                                            {supplier.supplier_name.charAt(0).toUpperCase()}
+                                        </div>
+                                        <div>
+                                            <p className="font-medium text-gray-900">{supplier.supplier_name}</p>
+                                            <p className="text-sm text-gray-500 capitalize">{supplier.supplier_type.label}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="font-medium text-gray-900">{supplier.supplier_name}</p>
-                                        <p className="text-sm text-gray-500 capitalize">{supplier.supplier_type.label}</p>
+                                    <div className="flex items-center text-sm gap-3">
+                                        <SupplierModal className={'px-4 py-1 text-sm rounded-md'} supplierData={supplier} applications={applications} userData={userData.role} reviews={reviews[supplier.id]} averageRating={averageRating} />
+                                        <ReviewModal supplier_id={supplier.id} event_name={event_name} />
                                     </div>
                                 </div>
-                                <div className="flex items-center text-sm gap-3">
-                                    <SupplierModal className={'px-4 py-1 text-sm rounded-md'} supplierData={supplier} applications={applications} userData={userData.role} reviews={reviews} averageRating={averageRating} />
-                                    <ReviewModal supplier_id={supplier.id} event_name={event_name} />
-                                </div>
-                            </div>
-                        ))}
+                            )
+                        })}
                     </div>
                 )}
-
-                {suppliers.filter(supplier => applications.some(app => app.user_id === supplier.id && app.status === "Approved")).length === 0 && (
+                {isGettingData && (
+                    <div className="flex justify-center">
+                        <div className="border border-t-2 rounded-full h-8 w-8 border-blue animate-spin"></div>
+                    </div>
+                )}
+                {!isGettingData && suppliers.filter(supplier => applications.some(app => app.user_id === supplier.id && app.status === "Approved")).length === 0 && (
                     <div className="text-center py-8 text-gray-500">
                         <p>No suppliers have applied for this event yet.</p>
                     </div>
@@ -470,39 +503,49 @@ export default function EditEvent({ userData }) {
                     <h4 className="text-md font-medium mb-3">Suppliers who applied for this event</h4>
                     {suppliers.length > 0 && (
                         <div className="space-y-3">
-                            {suppliers.filter(supplier => applications.some(app => app.user_id === supplier.id && app.status === "Pending")).map((supplier) => (
-                                <div key={supplier.id} className="flex items-center justify-between p-4 bg-white rounded-lg border">
-                                    <div className="flex items-center space-x-3">
-                                        <div className="w-10 h-10 bg-gray-500 rounded-full flex items-center justify-center text-white font-medium">
-                                            {supplier.supplier_name.charAt(0).toUpperCase()}
+                            {suppliers.filter(supplier => applications.some(app => app.user_id === supplier.id && app.status === "Pending")).map((supplier) => {
+                                const averageRating = calculateAverageRating(supplier.id);
+                                const reviewCount = getReviewCount(supplier.id);
+
+                                return (
+                                    <div key={supplier.id} className="flex items-center justify-between p-4 bg-white rounded-lg border">
+                                        <div className="flex items-center space-x-3">
+                                            <div className="w-10 h-10 bg-gray-500 rounded-full flex items-center justify-center text-white font-medium">
+                                                {supplier.supplier_name.charAt(0).toUpperCase()}
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-gray-900">{supplier.supplier_name}</p>
+                                                <p className="text-sm text-gray-500 capitalize">{supplier.supplier_type?.label}</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="font-medium text-gray-900">{supplier.supplier_name}</p>
-                                            <p className="text-sm text-gray-500 capitalize">{supplier.supplier_type?.label}</p>
-                                        </div>
-                                    </div>
 
 
-                                    <div className="flex items-center space-x-2">
-                                        <SupplierModal className={'px-4 py-1 text-sm rounded-md'} supplierData={supplier} applications={applications} userData={userData.role} reviews={reviews} averageRating={averageRating} />
-                                        <button
-                                            onClick={() => handleApprove(supplier.id)}
-                                            className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
-                                        >
-                                            Approve
-                                        </button>
-                                        <button
-                                            onClick={() => handleReject(supplier.id)}
-                                            className="px-3 py-1 bg-gray-500 text-white text-sm rounded hover:bg-gray-600 transition-colors"
-                                        >
-                                            Reject
-                                        </button>
+                                        <div className="flex items-center space-x-2">
+                                            <SupplierModal className={'px-4 py-1 text-sm rounded-md'} supplierData={supplier} applications={applications} userData={userData.role} reviews={reviews[supplier.id]} averageRating={averageRating} />
+                                            <button
+                                                onClick={() => handleApprove(supplier.id)}
+                                                className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
+                                            >
+                                                Approve
+                                            </button>
+                                            <button
+                                                onClick={() => handleReject(supplier.id)}
+                                                className="px-3 py-1 bg-gray-500 text-white text-sm rounded hover:bg-gray-600 transition-colors"
+                                            >
+                                                Reject
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                )
+                            })}
                         </div>
                     )}
-                    {suppliers.filter(supplier => applications.some(app => app.user_id === supplier.id && app.status === "Pending")).length === 0 && (
+                    {isGettingData && (
+                        <div className="flex justify-center">
+                            <div className="border border-t-2 rounded-full h-8 w-8 border-blue animate-spin"></div>
+                        </div>
+                    )}
+                    {!isGettingData && suppliers.filter(supplier => applications.some(app => app.user_id === supplier.id && app.status === "Pending")).length === 0 && (
                         <div className="text-center py-6 text-gray-500">
                             <p>No new supplier applications for this event.</p>
                         </div>

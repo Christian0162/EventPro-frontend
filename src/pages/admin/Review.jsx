@@ -189,7 +189,7 @@ export default function Review() {
                     <Link to={'/dashboard'} className="transition-all duration-75 bg-blue-600 px-7 py-2 rounded-xl hover:bg-blue-700">Cancel</Link>
                     <button disabled={isLoading} className={`${isLoading ? 'bg-blue-300' : 'bg-blue-600'} transition-all duration-75  hover:bg-blue-700 px-7 py-2 rounded-xl flex space-x-3`}>
                         <IdCard strokeWidth={2} />
-                        <span>{isLoading ? 'Submitting..' : 'Submit'}</span>
+                        <span>{isLoading ? 'Loading..' : 'Approve'}</span>
                     </button>
                 </div>
 

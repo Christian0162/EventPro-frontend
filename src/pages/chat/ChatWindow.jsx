@@ -16,7 +16,6 @@ export default function ChatWindow({ userData }) {
     const [isOpen, setIsOpen] = useState(false);
     const [isSending, setIsSending] = useState(false)
     const [shop, setShop] = useState([])
-    const messagesEndRef = useRef(null);
 
     function open() {
         setIsOpen(true)
@@ -63,11 +62,6 @@ export default function ChatWindow({ userData }) {
         return () => unsubscribe()
     }, [id, navigate]);
 
-    useEffect(() => {
-        if (messagesEndRef.current) {
-            messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-        }
-    }, [messages]);
 
     useEffect(() => {
         if (!selectedContact) return
@@ -91,11 +85,14 @@ export default function ChatWindow({ userData }) {
 
     const enterTrigger = (e) => {
         if (e.key === "Enter") {
-            e.preventDefault();
-            setIsSending(true)
-            handleSendMessage()
+
+            if(!isSending) {
+                handleSendMessage()
+            }
         }
     }
+
+    console.log(isSending)
 
     const handleSendMessage = async () => {
         if (!message.trim() || !selectedContact) return;
@@ -219,7 +216,6 @@ export default function ChatWindow({ userData }) {
                                     </div>
                                 </div>
                             ))}
-                            <div ref={messagesEndRef}></div>
                         </div>
                     </div>
 

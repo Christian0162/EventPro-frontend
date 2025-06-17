@@ -1,13 +1,13 @@
 import { Button, Dialog, DialogPanel, } from '@headlessui/react'
 import { useEffect, useState } from 'react'
-import { MapPin, DollarSign, Clock, Phone, Mail, X, MessageCircleMore, Heart } from 'lucide-react'
+import { MapPin, DollarSign, Clock, Phone, Mail, X, MessageCircleMore, Heart, ChevronsLeftRightEllipsis } from 'lucide-react'
 import { db, auth } from '../firebase/firebase'
 import { doc, addDoc, where, serverTimestamp, onSnapshot, collection, deleteDoc, query, getDocs } from 'firebase/firestore'
 import { useNavigate } from 'react-router-dom'
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from '@headlessui/react'
 import { Star, Clock7, CircleCheck, Edit3 } from "lucide-react"
 import ShopCards from './ShopCards'
-
+import { formatDistanceToNow } from 'date-fns'
 export default function SupplierModal({ supplierData, applications, userData, reviews, averageRating, className }) {
 
     const navigate = useNavigate()
@@ -123,11 +123,14 @@ export default function SupplierModal({ supplierData, applications, userData, re
 
                                 {/* Hero Image */}
                                 <div className="relative h-48 overflow-hidden rounded-t-2xl">
-                                    <img
-                                        src={supplierData.supplier_background_image}
-                                        alt={supplierData.supplier_name}
-                                        className="w-full h-full object-cover"
-                                    />
+                                    {supplierData.supplier_background_image.length > 0 && (
+                                        <img
+                                            src={supplierData.supplier_background_image}
+                                            alt={supplierData.supplier_name}
+                                            className="w-full h-full object-cover"
+                                        />
+
+                                    )}
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                                     <div className="absolute bottom-4 left-6 text-white">
                                         <h1 className="text-2xl font-bold">{supplierData.supplier_name}</h1>
@@ -191,17 +194,16 @@ export default function SupplierModal({ supplierData, applications, userData, re
                                                     <div className="flex justify-between items-start mb-6">
                                                         <div>
                                                             <h3 className="text-xl font-bold text-gray-900 mb-2">About Our Business</h3>
-                                                            <p className="text-gray-600">{supplierData.supplier_description}</p>
+                                                            <p className="text-gray-600 mt-2">{supplierData.supplier_description}</p>
                                                         </div>
-                                                        <button className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md">
-                                                            <Edit3 size={16} />
-                                                            Edit
-                                                        </button>
+                                                        {supplierData.id === auth.currentUser.uid && (
+                                                            <button className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md">
+                                                                <Edit3 size={16} />
+                                                                Edit
+                                                            </button>
+                                                        )}
                                                     </div>
 
-                                                    <p className="text-gray-700 leading-relaxed mb-6 text-lg">
-                                                        Create stunning floral arrangements for weddings and events that leave lasting impressions.
-                                                    </p>
 
                                                     <div>
                                                         <h4 className="font-bold text-gray-900 mb-3">Our Expertise</h4>
@@ -228,10 +230,12 @@ export default function SupplierModal({ supplierData, applications, userData, re
                                                             <h3 className="text-xl font-bold text-gray-900 mb-2">Contact Information</h3>
                                                             <p className="text-gray-600">How customers can reach you</p>
                                                         </div>
-                                                        <button className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md">
-                                                            <Edit3 size={16} />
-                                                            Edit
-                                                        </button>
+                                                        {supplierData.id === auth.currentUser.uid && (
+                                                            <button className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md">
+                                                                <Edit3 size={16} />
+                                                                Edit
+                                                            </button>
+                                                        )}
                                                     </div>
 
                                                     <div className="space-y-6">
@@ -264,10 +268,12 @@ export default function SupplierModal({ supplierData, applications, userData, re
                                                             <h3 className="text-xl font-bold text-gray-900 mb-2">Booking Details</h3>
                                                             <p className="text-gray-600">Pricing and availability information</p>
                                                         </div>
-                                                        <button className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md">
-                                                            <Edit3 size={16} />
-                                                            Edit
-                                                        </button>
+                                                        {supplierData.id === auth.currentUser.uid && (
+                                                            <button className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md">
+                                                                <Edit3 size={16} />
+                                                                Edit
+                                                            </button>
+                                                        )}
                                                     </div>
 
                                                     <div className="space-y-6">
@@ -319,10 +325,12 @@ export default function SupplierModal({ supplierData, applications, userData, re
                                                             <h3 className="text-xl font-bold text-gray-900 mb-2">Our Services</h3>
                                                             <p className="text-gray-600">What we offer to our clients</p>
                                                         </div>
-                                                        <button className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md">
-                                                            <Edit3 size={16} />
-                                                            Edit
-                                                        </button>
+                                                        {supplierData.id === auth.currentUser.uid && (
+                                                            <button className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md">
+                                                                <Edit3 size={16} />
+                                                                Edit
+                                                            </button>
+                                                        )}
                                                     </div>
 
                                                     <div className="grid md:grid-cols-2 gap-6">
@@ -384,11 +392,11 @@ export default function SupplierModal({ supplierData, applications, userData, re
                                                                 <div key={index} className="border-b border-gray-100 pb-6 last:border-b-0">
                                                                     <div className="flex items-start gap-4">
                                                                         <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold">
-                                                                            {review.reviewer_name?.charAt(0).toUpperCase() || 'A'}
+                                                                            {review.event_name?.charAt(0).toUpperCase() || 'A'}
                                                                         </div>
                                                                         <div className="flex-1">
                                                                             <div className="flex items-center gap-3 mb-2">
-                                                                                <h4 className="font-semibold text-gray-900">{review.reviewer_name || 'Anonymous'}</h4>
+                                                                                <h4 className="font-semibold text-gray-900">{review.event_name || 'Anonymous'}</h4>
                                                                                 <div className="flex items-center gap-1">
                                                                                     {[...Array(5)].map((_, i) => (
                                                                                         <Star
@@ -398,7 +406,7 @@ export default function SupplierModal({ supplierData, applications, userData, re
                                                                                         />
                                                                                     ))}
                                                                                 </div>
-                                                                                <span className="text-sm text-gray-500">{review.date || 'Recent'}</span>
+                                                                                <span className="text-   text-gray-500">{review?.createdAt ? formatDistanceToNow(new Date(review.createdAt.seconds * 1000), { addSuffix: true }) : 'Recent'}</span>
                                                                             </div>
                                                                             <p className="text-gray-700">{review.comment || 'Great service!'}</p>
                                                                         </div>

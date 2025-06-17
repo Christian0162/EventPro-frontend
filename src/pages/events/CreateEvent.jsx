@@ -43,21 +43,17 @@ export default function CreateEvent() {
     const { createEvent } = useEvents()
 
     const categoriesOptions = [
-        { label: 'Catering', value: 'catering' },
-        { label: 'Photography', value: 'photography' },
-        { label: 'Entertainment', value: 'entertainment' },
-        { label: 'Decoration', value: 'decoration' },
-        { label: 'Security', value: 'security' },
-        { label: 'Transportation', value: 'transportation' },
-        { label: 'Audio/Visual', value: 'audiovisual' },
-        { label: 'Venue', value: 'venue' },
-    ];
+        { label: 'Floral', value: 'floral' },
+        { label: 'Wedding', value: 'wedding' },
+        { label: 'Events', value: 'events' },
+        { label: 'Corporate', value: 'corporate' },
+        { label: 'Funeral', value: 'funeral' },
+    ]
 
     const statusOptions = [
         { label: 'Planning', value: 'planning' },
         { label: 'Upcoming', value: 'upcoming' },
         { label: 'In Progress', value: 'in-progress' },
-        { label: 'Complete', value: 'complete' },
     ];
 
     const typeOptions = [

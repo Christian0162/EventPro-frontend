@@ -5,11 +5,14 @@ import { Title } from "react-head"
 import { where, query, collection, onSnapshot, getDocs } from "firebase/firestore"
 import { db, auth } from "../../firebase/firebase"
 import { useEffect, useState } from "react"
+import useEvents from "../../hooks/useEvents"
 
 export default function SupplierDashboard({ userData }) {
 
     const [applications, setApplications] = useState([])
     const [userEvents, setUserEvents] = useState([])
+
+    const { getEvents } = useEvents()
 
     useEffect(() => {
 
@@ -27,8 +30,8 @@ export default function SupplierDashboard({ userData }) {
 
     useEffect(() => {
         const fetchEvents = async () => {
-            const snapShotEvents = await getDocs(collection(db, "Events"));
-            const events = snapShotEvents.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+
+            const events = await getEvents()
 
             setUserEvents(events)
         }

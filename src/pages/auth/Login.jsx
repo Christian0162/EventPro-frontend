@@ -25,8 +25,6 @@ export default function Login({ user }) {
         }
         catch (error) {
             console.log(error.code)
-
-
         }
 
         setIsLoading(false);

@@ -8,6 +8,7 @@ import UploadWidget from "../../components/UploadWidgen"
 import { ShopBackgroundModal } from "../../components/ShopBackgroundModal"
 import SupplierRegistration from "./SupplierRegistration"
 import SupplierPanels from "../../components/SupplierPanels"
+import useSupplier from "../../hooks/useSupplier"
 
 export default function SupplierShop() {
     const [shop, setShop] = useState([]);
@@ -16,12 +17,13 @@ export default function SupplierShop() {
     const [isOpen, setIsOpen] = useState(false)
     const [background, setBackground] = useState('')
 
+    const { getSuppliers } = useSupplier()
+
     useEffect(() => {
         const fetchData = async () => {
             try {
                 setIsLoading(true)
-                const snapShotShop = await getDocs(collection(db, "Shops"));
-                const shop = snapShotShop.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+                const shop = await getSuppliers()
                 const isRegistered = shop.find(shop => shop.id === auth.currentUser.uid)
 
                 const snapShotReview = await getDocs(collection(db, "Shops", auth.currentUser.uid, "Reviews"));
@@ -158,7 +160,7 @@ export default function SupplierShop() {
                                 </div>
                             </div>
 
-                            <SupplierPanels reviews={reviews} shop={shop} averageRating={averageRating}/>
+                            <SupplierPanels reviews={reviews} shop={shop} averageRating={averageRating} />
 
                         </div>
                     </div>

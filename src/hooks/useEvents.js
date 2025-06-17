@@ -1,5 +1,5 @@
 import Swal from "sweetalert2"
-import { addDoc, collection, updateDoc, doc, getDoc, deleteDoc, serverTimestamp } from "firebase/firestore"
+import { addDoc, collection, updateDoc, doc, getDoc, getDocs, deleteDoc, serverTimestamp } from "firebase/firestore"
 import { db } from "../firebase/firebase"
 import { useNavigate } from "react-router-dom"
 
@@ -84,6 +84,19 @@ export default function useEvents() {
 
     }
 
+    const getEvents = async () => {
+        try {
+            const eventsSnapShot = await getDocs(collection(db, "Events"))
+
+
+            return eventsSnapShot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        }
+
+        catch (e) {
+            console.error(e)
+        }
+    }
+
     const deleteEvent = (id, setUserEvents) => {
         Swal.fire({
             icon: 'warning',
@@ -111,6 +124,7 @@ export default function useEvents() {
         createEvent,
         updateEvent,
         getEvent,
+        getEvents,  
         deleteEvent
     }
 }

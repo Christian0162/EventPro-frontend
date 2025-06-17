@@ -14,7 +14,6 @@ export default function EventModal({ eventData }) {
         setIsOpen(false)
     }
 
-    console.log(eventData)
     return (
         <>
             <Button

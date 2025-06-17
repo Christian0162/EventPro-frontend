@@ -7,6 +7,8 @@ import { db } from "../../firebase/firebase";
 import Loading from "../../components/Loading";
 import SupplierModal from "../../components/SupplierModal";
 import AIModal from "../../components/AIModal";
+import { Typewriter } from 'react-simple-typewriter'
+import useSupplier from "../../hooks/useSupplier";
 
 export default function Supplier({ userData }) {
     const [category, setCategory] = useState(null);
@@ -15,6 +17,9 @@ export default function Supplier({ userData }) {
     const [isLoading, setIsLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [shopReviews, setShopReviews] = useState({});
+    const [ai_response, setAi_response] = useState('')
+
+    const { getSuppliers } = useSupplier()
 
     const categoriesOptions = [
         { label: 'Wedding', value: 'Wedding' },
@@ -29,8 +34,8 @@ export default function Supplier({ userData }) {
             try {
                 setIsLoading(true);
 
-                const snapShotShop = await getDocs(collection(db, "Shops"));
-                const shops = snapShotShop.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                const shops = await getSuppliers()
+
                 const approvedShops = shops.filter(doc => doc.isApproved === "verified");
 
                 const reviewsData = {};
@@ -60,6 +65,17 @@ export default function Supplier({ userData }) {
 
     useEffect(() => {
         let filtered = shop;
+
+        if (searchTerm) {
+            filtered = filtered.filter(shopItem =>
+                shopItem.supplier_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                shopItem.supplier_expertise?.some(expertise =>
+                    expertise.toLowerCase().includes(searchTerm.toLowerCase())
+                )
+            );
+            setFilteredShops(filtered)
+
+        }
 
         if (category) {
             filtered = filtered.filter(shopItem =>
@@ -91,25 +107,7 @@ export default function Supplier({ userData }) {
         setSearchTerm(e.target.value);
     };
 
-    const handleSearch = () => {
-
-        let filtered = shop
-
-        if (searchTerm) {
-            filtered = filtered.filter(shopItem =>
-                shopItem.supplier_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                shopItem.supplier_expertise?.some(expertise =>
-                    expertise.toLowerCase().includes(searchTerm.toLowerCase())
-                )
-            );
-            setFilteredShops(filtered)
-
-        }
-
-    }
-
-
-    console.log(filteredShops)
+    console.log(shopReviews)
     return (
         <>
             {isLoading && (
@@ -123,10 +121,11 @@ export default function Supplier({ userData }) {
                             Suppliers
                         </h1>
                     </div>
-                    <div>
-                        <AIModal />
-                    </div>
-
+                    {userData.role !== "Supplier" && (
+                        <div>
+                            <AIModal ai_response={setAi_response} ai_shops={setFilteredShops} />
+                        </div>
+                    )}
                 </div>
 
                 {/* Search and Filter Section */}
@@ -144,11 +143,9 @@ export default function Supplier({ userData }) {
                                     placeholder="Search suppliers by name or service..."
                                 />
                             </div>
-                            <button onClick={() => handleSearch()} className="transition-all duration-100 bg-blue-600 px-6 py-2 text-white font-semibold rounded-full hover:bg-blue-700">Search</button>
-                            {/* Category Filter */}
                         </div>
-
                     </div>
+                    {/* Category Filter */}
                     <div className="w-full md:w-72 mt-3 ml-auto">
                         <Select
                             onChange={setCategory}
@@ -161,6 +158,18 @@ export default function Supplier({ userData }) {
                 </div>
             </div>
 
+            {ai_response.length > 0 && (
+                <div className="mb-5 max-w-[800px] px-4">
+                    <h2 className="mb-3 text-2xl font-bold bg-gradient-to-r from-blue-500 to-pink-500 bg-clip-text text-transparent">
+                        AI RESPONSE:
+                    </h2>
+                    <Typewriter
+                        words={[ai_response]}
+                        typeSpeed={20}
+                        delaySpeed={500}
+                    />
+                </div>
+            )}
             {/* Suppliers Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {filteredShops.map((shopItem, index) => {
@@ -171,11 +180,16 @@ export default function Supplier({ userData }) {
                         <Cards key={shopItem.id || index} className="group cursor-pointer">
                             {/* Image */}
                             <div className="relative overflow-hidden">
-                                <img
-                                    src={shopItem?.supplier_background_image}
-                                    className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                                    alt={`${shopItem.supplier_name} background`}
-                                />
+                                {shopItem.supplier_background_image.length > 0 && (
+                                    <img
+                                        src={shopItem?.supplier_background_image}
+                                        className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                                        alt={`${shopItem.supplier_name} background`}
+                                    />
+                                )}
+                                {shopItem.supplier_background_image.length === 0 && (
+                                    <div className="w-full h-48"></div>
+                                )}
                                 <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg flex items-center space-x-1">
                                     <Star className="text-yellow-400 fill-current" size={14} />
                                     <span className="text-sm font-semibold">{averageRating}</span>
@@ -207,14 +221,14 @@ export default function Supplier({ userData }) {
                                 </div>
 
                                 {/* Price and Hours */}
-                                <div className="flex justify-between items-center mb-5">
+                                <div className="flex justify-between items-center mb-5 gap-7">
                                     <div className="flex items-center space-x-1">
                                         <PhilippinePeso className="text-green-600" size={18} />
                                         <span className="text-lg font-bold text-gray-900">{shopItem.supplier_price}</span>
                                         <span className="text-sm text-gray-500">/day</span>
                                     </div>
-                                    <div className="flex items-center space-x-1">
-                                        <Clock className="text-gray-400" size={16} />
+                                    <div className="flex items-center space-x-2">
+                                        <Clock className="text-gray-400 shrink-0" size={16} />
                                         <span className="text-sm text-gray-600">{shopItem.supplier_availability}</span>
                                     </div>
                                 </div>
@@ -240,7 +254,7 @@ export default function Supplier({ userData }) {
                                 </div>
 
                                 {/* Action Button */}
-                                <SupplierModal className={'py-2 rounded-lg font-semibold'} supplierData={shopItem} userData={userData.role} reviews={reviewCount} averageRating={averageRating} />
+                                <SupplierModal className={'py-2 rounded-lg font-semibold'} supplierData={shopItem} userData={userData.role} reviews={shopReviews[shopItem.id]} averageRating={averageRating} />
                             </div>
                         </Cards>
                     );

@@ -7,41 +7,8 @@ export default function HomePage({ user }) {
         return <Navigate to={'/dashboard'} />
     }
 
-    const test = async () => {
-
-        console.log('test')
-
-        const response = await fetch("http://localhost:8000/recommend", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                user_prompt: "Looking for caterers for a corporate event",
-                suppliers: [
-                    {
-                        name: "Gourmet Bites",
-                        category: "Catering",
-                        avg_rating: 4.8,
-                        reviews: "Good presentation and food quality."
-                    },
-                    {
-                        name: "Party Pros",
-                        category: "Catering",
-                        avg_rating: 4.9,
-                        reviews: "Good service's, exellent vegetarian options. and good quality of foods"
-                    }
-                ]
-            }),
-        });
-        console.log('tes1t')
-
-
-        const data = await response.json();
-        console.log(data.recommendations);
-    }
-
     return (
         <>
-            <button onClick={() => test()}>testing</button>
             {/* Hero Section */}
             <div className="relative overflow-hidden">
                 {/* Background Elements */}

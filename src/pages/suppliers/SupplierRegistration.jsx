@@ -1,15 +1,17 @@
-import { MapPin, Mail, Phone, Clock, DollarSign, Calendar } from 'lucide-react';
+import { MapPin, Mail, Phone, Clock, PhilippinePeso, Calendar } from 'lucide-react';
 import Select from 'react-select';
 import AddressAutocomplete from '../../components/AddressAutoComplete';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { setDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase/firebase';
 import { auth } from '../../firebase/firebase';
-import Swal from 'sweetalert2';
+import Swal from 'sweetalert2'
+import { SupplierOptions } from '../../constants/categories';
+import { supplierTypeToExpertise } from '../../constants/categories';
 
 export default function SupplierRegistration() {
 
-    const [supplier_type, setSupplier_type] = useState('')
+    const [supplier_type, setSupplier_type] = useState(null)
     const [expertise, setExpertise] = useState([]);
     const [supplier_name, setSupplier_name] = useState('')
     const [location, setLocation] = useState('')
@@ -23,14 +25,18 @@ export default function SupplierRegistration() {
     const [price, setPrice] = useState('')
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [expertiseOptions, setExpertiseOptions] = useState([])
 
-    const SupplierOptions = [
-        { label: 'Floral', value: 'floral' },
-        { label: 'Wedding', value: 'wedding' },
-        { label: 'Events', value: 'events' },
-        { label: 'Corporate', value: 'corporate' },
-        { label: 'Funeral', value: 'funeral' },
-    ]
+    console.log(expertiseOptions)
+    
+    useEffect(() => {
+        if (supplier_type && supplier_type.value) {
+            const suggestedExpertise = supplierTypeToExpertise[supplier_type.value] || [];
+
+            setExpertiseOptions(suggestedExpertise)
+
+        }
+    }, [supplier_type]);
 
     const pricingStructureOptions = [
         { label: 'Budget-Friendly', value: 'budget-friendly' },
@@ -90,20 +96,18 @@ export default function SupplierRegistration() {
                 text: 'Shop created successfully',
                 confirmButtonText: 'Ok'
             }).then((result) => {
-                if(result.isConfirmed) {
+                if (result.isConfirmed) {
                     console.log('test')
                     window.location.reload();
                 }
             })
-            
+
         }
         catch (e) {
             console.log(e);
             setIsLoading(false)
         }
     }
-
-    const expertiseOptions = ['Floral', 'Wedding', 'Events', 'Corporate', 'Funeral', 'Seasonal', 'Exotic Flowers', 'Local Flowers'];
 
     console.log(location)
     return (
@@ -186,18 +190,25 @@ export default function SupplierRegistration() {
                                     Select all that apply *
                                 </label>
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                    {expertiseOptions.map(option => (
-                                        <button
-                                            key={option}
-                                            onClick={() => handleExertiseChange(option)}
-                                            type="button"
-                                            className={`px-4 py-2 border rounded-lg text-sm transition-colors ${expertise.includes(option) ? 'bg-blue-600 text-white border-blue-600'
-                                                : 'bg-white text-gray-800 border-gray-300 hover:bg-gray-100'}`}
-                                        >
-                                            {option}
-                                        </button>
-                                    ))}
+                                    {supplier_type && (
+                                        <>
+                                            {expertiseOptions.map(option => (
+                                                <button
+                                                    key={option}
+                                                    onClick={() => handleExertiseChange(option)}
+                                                    type="button"
+                                                    className={`px-4 py-2 border rounded-lg text-sm transition-colors ${expertise.includes(option) ? 'bg-blue-600 text-white border-blue-600'
+                                                        : 'bg-white text-gray-800 border-gray-300 hover:bg-gray-100'}`}
+                                                >
+                                                    {option}
+                                                </button>
+                                            ))}
+                                        </>
+                                    )}
                                 </div>
+                                {!supplier_type && (
+                                    <span className="block mt-5 text-gray-500 text-center mb-5">Must select one in supplier type.</span>
+                                )}
                             </div>
 
                             <div>
@@ -244,6 +255,9 @@ export default function SupplierRegistration() {
                                         type="tel"
                                         name="phone"
                                         required
+                                        maxLength={11}
+                                        minLength={11}
+                                        pattern='\d{11}'
                                         onChange={(e) => setPhone_number(e.target.value)}
                                         className={`w-full px-4 py-3 border rounded-lg  focus:border-transparent transition-colors `}
                                         placeholder="(123) 456-7890"
@@ -259,7 +273,7 @@ export default function SupplierRegistration() {
                             <div className="grid md:grid-cols-2 gap-6">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        <DollarSign className="inline w-4 h-4 mr-1" />
+                                        <PhilippinePeso className="inline w-4 h-4 mr-1" />
                                         Pricing Structure
                                     </label>
                                     <Select
@@ -304,7 +318,7 @@ export default function SupplierRegistration() {
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        <DollarSign className="inline w-4 h-4 mr-1" />
+                                        <PhilippinePeso className="inline w-4 h-4 mr-1" />
                                         Pricing
                                     </label>
                                     <input

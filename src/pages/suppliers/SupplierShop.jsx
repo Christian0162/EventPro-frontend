@@ -1,44 +1,71 @@
 import { MapPin, CircleCheckBig, Star, Edit3, X } from "lucide-react"
-import { updateDoc, doc, getDocs, collection } from "firebase/firestore"
+import { updateDoc, doc, getDocs, collection, onSnapshot } from "firebase/firestore"
 import { db, auth } from "../../firebase/firebase"
 import { useEffect, useState } from "react"
 import Loading from "../../components/Loading"
-import { Link } from "react-router-dom"
+import { Link, Navigate } from "react-router-dom"
 import UploadWidget from "../../components/UploadWidgen"
 import { ShopBackgroundModal } from "../../components/ShopBackgroundModal"
 import SupplierRegistration from "./SupplierRegistration"
 import SupplierPanels from "../../components/SupplierPanels"
 import useSupplier from "../../hooks/useSupplier"
+import { SupplierDetails } from "../../components/UpdateModal"
 
-export default function SupplierShop() {
+export default function SupplierShop({userData}) {
     const [shop, setShop] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [reviews, setReviews] = useState([])
     const [isOpen, setIsOpen] = useState(false)
     const [background, setBackground] = useState('')
-
-    const { getSuppliers } = useSupplier()
+    const [services, setServices] = useState([])
 
     useEffect(() => {
-        const fetchData = async () => {
+        const unsubscribeService = onSnapshot(collection(db, "shops", auth.currentUser.uid, "services"), (onsnapshot) => {
             try {
-                setIsLoading(true)
-                const shop = await getSuppliers()
-                const isRegistered = shop.find(shop => shop.id === auth.currentUser.uid)
+                console.log(onsnapshot.docs)
+                const services = onsnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+                setServices(services)
+            }
 
-                const snapShotReview = await getDocs(collection(db, "Shops", auth.currentUser.uid, "Reviews"));
-                const review = snapShotReview.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+            catch (e) {
+                console.error(e)
+            }
+        })
 
-                setShop(isRegistered);
-                setReviews(review)
+        const unsubscribeShop = onSnapshot(collection(db, "shops"), (onsnapshot) => {
+            try {
+                const shop = onsnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+                const isRegistered = shop.find(find => find.id === auth.currentUser.uid)
+
+                setShop(isRegistered)
                 setIsLoading(false)
             }
             catch (e) {
-                console.log(e)
+                console.error(e)
+                setIsLoading(false)
+
             }
+        })
+
+        const unsubscribeReview = onSnapshot(collection(db, "shops", auth.currentUser.uid, "reviews"), (onsnapshot) => {
+            try {
+                const review = onsnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+                setReviews(review)
+            }
+            catch (e) {
+                console.error(e)
+                setIsLoading(false)
+            }
+        })
+
+        return () => {
+            unsubscribeShop()
+            unsubscribeReview()
+            unsubscribeService()
         }
-        fetchData()
     }, [])
+
+    console.log(shop)
 
     const handleSubmit = async (e) => {
         e.preventDefault()
@@ -54,6 +81,10 @@ export default function SupplierShop() {
         return <SupplierRegistration />
     }
 
+    if(userData.role !== 'Supplier') {
+        return <Navigate to={'/dashboard'} />
+    }
+
     const validRatings = reviews
         .map(review => Number(review.rating))
         .filter(rating => !isNaN(rating));
@@ -61,6 +92,8 @@ export default function SupplierShop() {
     const averageRating = validRatings.length > 0
         ? (validRatings.reduce((sum, r) => sum + r, 0) / validRatings.length).toFixed(1)
         : "N/A";
+
+    console.log(services)
 
     return (
         <>
@@ -77,7 +110,7 @@ export default function SupplierShop() {
                     </div>
 
                     {/* Main Content Container */}
-                    <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
+                    <div className="bg-white rounded-2xl shadow-xl border border-gray-100">
                         {/* Hero Image */}
                         <div className="relative h-64 md:h-80 overflow-hidden">
                             <div className="absolute top-4 right-4 z-50">
@@ -117,6 +150,7 @@ export default function SupplierShop() {
                             {shop.supplier_background_image && (
                                 <img src={shop?.supplier_background_image} className="absolute inset-0 " alt="background image" />
                             )}
+                            <div className="absolute inset-0 w-full bg-gradient-to-r from-pink-600 via-blue-600 via-100% to-violet-600 rounded-t-lg"></div>
                         </div>
 
                         <div className="p-8 md:p-10">
@@ -128,23 +162,25 @@ export default function SupplierShop() {
                                         <span className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2 rounded-full text-sm font-medium shadow-sm">
                                             {shop?.supplier_type?.label}
                                         </span>
-                                        <Link to={'/verify'} className={`${shop.isApproved === "unverified" ? 'block' : 'hidden'} transtion-all duration-75 flex group items-center gap-2 bg-blue-50 border border-blue-200 hover:bg-blue-400 rounded-full px-4 py-2`}>
+                                        <Link to={'/verify'} className={`${shop.status === "unverified" ? 'block' : 'hidden'} transtion-all duration-75 flex group items-center gap-2 bg-blue-50 border border-blue-200 hover:bg-blue-400 rounded-full px-4 py-2`}>
                                             <span className={`text-blue-700 group-hover:text-white font-medium text-sm`}>Verify</span>
                                         </Link>
 
-                                        {shop.isApproved === "pending" && (
+                                        {shop.status === "pending" && (
                                             <span className="flex group items-center gap-2 bg-yellow-50 border border-yellow-200 rounded-full px-4 py-2">
                                                 <span className={`text-yellow-700 font-medium text-sm`}>Pending</span>
                                             </span>
                                         )}
 
-                                        {shop.isApproved === "verified" && (
+                                        {shop.status === "verified" && (
                                             <span className="flex group items-center gap-2 bg-green-50 border border-green-200 rounded-full px-4 py-2">
                                                 <span className={`text-green-700 font-medium text-sm`}>Verified</span>
                                                 <CircleCheckBig size={16} className="text-green-600" />
                                             </span>
                                         )}
                                     </div>
+                                    <SupplierDetails supplierData={shop} />
+
                                 </div>
 
                                 <div className="flex flex-wrap items-center gap-6 text-gray-600">
@@ -160,7 +196,7 @@ export default function SupplierShop() {
                                 </div>
                             </div>
 
-                            <SupplierPanels reviews={reviews} shop={shop} averageRating={averageRating} />
+                            <SupplierPanels userData={userData} reviews={reviews} shop={shop} services={services} averageRating={averageRating} />
 
                         </div>
                     </div>

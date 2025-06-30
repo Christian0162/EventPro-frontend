@@ -5,7 +5,7 @@ import useAuth from "../hooks/useAuth";
 import { auth } from "../firebase/firebase";
 import Swal from "sweetalert2";
 
-export default function UserDropdown() {
+export default function UserDropdown({userData}) {
 
     const { logout } = useAuth()
 
@@ -25,11 +25,11 @@ export default function UserDropdown() {
 
     return (
         <Menu as="div" className="relative inline-block text-left">
-            <MenuButton className="bg-gray-300 rounded-full w-8 h-8 flex items-center justify-center hover:ring-2 ring-blue-400 transition">
-                <User size={20} strokeWidth={1.5} />
+            <MenuButton className="bg-gradient-to-r from-violet-600 via-100% via-blue-600 to-pink-600 rounded-full text-white text-sm w-8 h-8 flex items-center justify-center hover:ring-2 ring-blue-400 transition">
+                {userData?.first_name.charAt(0).toUpperCase()}
             </MenuButton>
 
-            <MenuItems className="absolute right-0 mt-2 w-40 origin-top-right bg-white border border-gray-200 rounded-md shadow-lg focus:outline-none z-50">
+            <MenuItems className="absolute right-0 mt-2 w-40 max-h-60 overflow-auto bg-white border border-gray-200 rounded-md shadow-lg z-50">
                 <div className="p-1">
                     <MenuItem>
                         <Link

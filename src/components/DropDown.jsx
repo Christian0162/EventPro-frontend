@@ -12,53 +12,125 @@ export default function DropDown({ user }) {
 
     return (
         <div className="block sm:hidden">
-            <Menu as="div" className="relative">
-                <MenuButton>
-                    <div className="transition-all text-black hover:text-gray-500 duration-75 ">
+            <Menu as="div" className="relative inline-block text-left">
+                <MenuButton className="inline-flex items-center">
+                    <div className="transition-all text-black hover:text-gray-500 duration-75">
                         <AlignJustify size={24} strokeWidth={2} color="currentColor" />
                     </div>
                 </MenuButton>
 
-                <MenuItems className="absolute right-0 origin-bottom-left mt-2 w-50 text-sm border border-gray-200 bg-white focus:outline-none shadow-lg rounded z-50">
-                    <div className="p-1">
+                <MenuItems className="absolute right-0 mt-2 w-48 origin-top-right text-sm border border-gray-200 bg-white focus:outline-none shadow-lg rounded-md z-[9999] max-h-96 overflow-y-auto">
+                    <div className="py-1">
                         {!user && (
-                            <div>
+                            <>
                                 <MenuItem>
-                                    <Link to={'/login'} className="px-4 block py-2 w-full text-left rounded-md hover:bg-gray-100 duration-75">Login</Link>
+                                    {({ active }) => (
+                                        <Link 
+                                            to={'/login'} 
+                                            className={`block px-4 py-2 text-left transition-colors duration-75 ${
+                                                active ? 'bg-gray-100' : ''
+                                            }`}
+                                        >
+                                            Login
+                                        </Link>
+                                    )}
                                 </MenuItem>
 
                                 <MenuItem>
-                                    <Link to={'/register'} className="px-4 block py-2 w-full text-left rounded-md hover:bg-gray-100 duration-75">Register</Link>
+                                    {({ active }) => (
+                                        <Link 
+                                            to={'/register'} 
+                                            className={`block px-4 py-2 text-left transition-colors duration-75 ${
+                                                active ? 'bg-gray-100' : ''
+                                            }`}
+                                        >
+                                            Register
+                                        </Link>
+                                    )}
                                 </MenuItem>
-                            </div>
+                            </>
                         )}
 
                         {user && (
-                            <div>
+                            <>
                                 <MenuItem>
-                                    <Link to={'/dashboard'} className="px-4 block py-2 w-full text-left rounded-md hover:bg-gray-100 duration-75">Dashboard</Link>
+                                    {({ active }) => (
+                                        <Link 
+                                            to={'/dashboard'} 
+                                            className={`block px-4 py-2 text-left transition-colors duration-75 ${
+                                                active ? 'bg-gray-100' : ''
+                                            }`}
+                                        >
+                                            Dashboard
+                                        </Link>
+                                    )}
                                 </MenuItem>
 
                                 <MenuItem>
-                                    <Link to={'/suppliers'} className="px-4 block py-2 w-full text-left rounded-md hover:bg-gray-100 duration-75">Supplier</Link>
+                                    {({ active }) => (
+                                        <Link 
+                                            to={'/suppliers'} 
+                                            className={`block px-4 py-2 text-left transition-colors duration-75 ${
+                                                active ? 'bg-gray-100' : ''
+                                            }`}
+                                        >
+                                            Supplier
+                                        </Link>
+                                    )}
                                 </MenuItem>
 
                                 <MenuItem>
-                                    <Link to={'/events'} className="px-4 block py-2 w-full text-left rounded-md hover:bg-gray-100 duration-75">Events</Link>
+                                    {({ active }) => (
+                                        <Link 
+                                            to={'/events'} 
+                                            className={`block px-4 py-2 text-left transition-colors duration-75 ${
+                                                active ? 'bg-gray-100' : ''
+                                            }`}
+                                        >
+                                            Events
+                                        </Link>
+                                    )}
                                 </MenuItem>
 
                                 <MenuItem>
-                                    <Link to={'/dashboard'} className="px-4 block py-2 w-full text-left rounded-md hover:bg-gray-100 duration-75">Profile</Link>
+                                    {({ active }) => (
+                                        <Link 
+                                            to={'/profile'} 
+                                            className={`block px-4 py-2 text-left transition-colors duration-75 ${
+                                                active ? 'bg-gray-100' : ''
+                                            }`}
+                                        >
+                                            Profile
+                                        </Link>
+                                    )}
                                 </MenuItem>
 
                                 <MenuItem>
-                                    <Link to={'/dashboard'} className="px-4 block py-2 w-full text-left rounded-md hover:bg-gray-100 duration-75">Settings</Link>
+                                    {({ active }) => (
+                                        <Link 
+                                            to={'/settings'} 
+                                            className={`block px-4 py-2 text-left transition-colors duration-75 ${
+                                                active ? 'bg-gray-100' : ''
+                                            }`}
+                                        >
+                                            Settings
+                                        </Link>
+                                    )}
                                 </MenuItem>
 
                                 <MenuItem>
-                                    <button onClick={() => handleSignOut()} className="px-4 block py-2 w-full text-left rounded-md text-red-600 hover:bg-red-200 duration-75">Sign out</button>
+                                    {({ active }) => (
+                                        <button 
+                                            onClick={() => handleSignOut()} 
+                                            className={`block px-4 py-2 w-full text-left transition-colors duration-75 text-red-600 ${
+                                                active ? 'bg-red-50' : ''
+                                            }`}
+                                        >
+                                            Sign out
+                                        </button>
+                                    )}
                                 </MenuItem>
-                            </div>
+                            </>
                         )}
                     </div>
                 </MenuItems>

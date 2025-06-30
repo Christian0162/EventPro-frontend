@@ -1,14 +1,27 @@
-import { collection, getDocs } from "firebase/firestore"
-import { db } from "../firebase/firebase"
+import { collection, getDocs, onSnapshot } from "firebase/firestore"
+import { auth, db } from "../firebase/firebase"
 
 export default function useSupplier() {
 
     const getSuppliers = async () => {
         try {
-            const supplierSnapShot = await getDocs(collection(db, "Shops"))
-
+            const supplierSnapShot = await getDocs(collection(db, "shops"))
             return supplierSnapShot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        }
+        
+        catch (e) {
+            console.error(e)
+            return []
+        }
+    }
 
+    const getReviews = async (id) => {
+        try {
+
+            const reviewSnapShot = await getDocs(collection(db, "shops", id, "reviews"))
+
+
+            return reviewSnapShot.docs.map(rev => ({ id: rev.id, ...rev.data() }))
         }
 
         catch (e) {
@@ -16,10 +29,11 @@ export default function useSupplier() {
         }
     }
 
-    
+
 
     return {
-        getSuppliers
+        getSuppliers,
+        getReviews
     }
 
 }

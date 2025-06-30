@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { getDocs, collection } from "firebase/firestore";
+import { getDocs, collection, onSnapshot } from "firebase/firestore";
 import { db } from "../../firebase/firebase";
 import { Title } from "react-head";
 import DashboardCard from "../../components/DashboardCards";
@@ -12,38 +12,17 @@ export default function AdminDashboard() {
     const [data, setData] = useState([])
 
     useEffect(() => {
-        const fetchingData = async () => {
+        setIsLoading(true)
+        const unsubscribe = onSnapshot(collection(db, "verification"), (onsnapshot) => {
+            const verified = onsnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+            const filteredVerified = verified.filter(verifed => verifed.status === 'pending')
 
-            setIsLoading(true)
-            const snapShotShop = await getDocs(collection(db, "Shops"))
-            const allShop = snapShotShop.docs.map(data => ({ id: data.id, ...data.data() }))
-            
-            const snapShotVerification = await getDocs(collection(db, "ShopVerification"))
-            const verification_data = snapShotVerification.docs.map(data => {
-                const matchedUser = allShop.find(user => user.id === data.id)
-
-                if (matchedUser?.isApproved === "pending") {
-                    return {
-                        id: data.id,
-                        user: matchedUser,
-                        ...data.data(),
-                    }
-                }
-            }).filter(Boolean)
-
-            setData(verification_data)
+            setData(filteredVerified)
             setIsLoading(false)
+        })
 
-        }
-        fetchingData()
+        return () => unsubscribe()
     }, [])
-
-
-    const firstLetter = (name) => {
-        if (name?.length > 3) {
-            return name.slice(0, 1).toUpperCase()
-        }
-    }
 
     console.log(data)
 
@@ -95,10 +74,15 @@ export default function AdminDashboard() {
                         <div key={index}>
                             <div className="flex justify-between items-center">
                                 <div className="flex items-center space-x-3">
-                                    <div className="flex items-center justify-center rounded-full bg-gray-300 h-10 w-10">
-                                        <span className="text-xl">{firstLetter(datas?.supplier_name)}</span>
+                                    <div className="text-white flex items-center justify-center rounded-full bg-gradient-to-r from-violet-600 via-100% via-blue-600 to-pink-600 h-10 w-10">
+                                        <span className="text-xl">{datas.first_name ? datas.first_name.charAt(0).toUpperCase() : datas?.supplier_name?.charAt(0).toUpperCase()}</span>
                                     </div>
-                                    <span className="block">{datas?.supplier_name}</span>
+                                    <div className="flex gap-2">
+                                        <span>{datas.first_name ? datas.first_name : datas?.supplier_name}</span>
+                                        {datas.last_name && (
+                                            <span>{datas.last_name}</span>
+                                        )}
+                                    </div>
                                 </div>
                                 <Link to={`/review/${datas.id}`} className="px-6 py-1 bg-blue-600 rounded-lg text-white">Review</Link>
                             </div>

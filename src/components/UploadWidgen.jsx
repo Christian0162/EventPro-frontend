@@ -1,67 +1,56 @@
 import { useEffect, useRef, useState } from "react";
+import 'filepond/dist/filepond.min.css';
+import { FilePond, registerPlugin } from 'react-filepond';
+import FilePondPluginImagePreview from 'filepond-plugin-image-preview';
+import 'filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css';
 import { X } from "lucide-react";
 
-export default function UploadWidget({ setPicture, className }) {
-    const cloudinaryRef = useRef();
-    const widgetRef = useRef();
-    const [uploadedImages, setUploadedImages] = useState([]);
+export default function UploadWidget({ type, setId, setDoc, className, setError }) {
 
-    useEffect(() => {
-        cloudinaryRef.current = window.cloudinary;
-        widgetRef.current = cloudinaryRef.current.createUploadWidget({
-            cloudName: 'dyikt4p59',
-            uploadPreset: 'ml_default',
-            maxFiles: 2,
-            multiple: true,
-        }, function (error, result) {
-            if (result?.event === 'success') {
-                const newImage = result.info.secure_url;
+    const [files, setFiles] = useState([])
 
-                setUploadedImages(prev => {
-                    const updated = [...prev, newImage].slice(0, 2);
-                    setPicture(updated);
-                    return updated;
-                });
+    const handleUpload = (url) => {
+        if (type === 'id') {
+            setId(prev => [...prev, url])
+        }
 
-                console.log(result.info.secure_url);
-            }
-        });
-    }, [setPicture]);
-
-    const handleDelete = (indexToDelete) => {
-        const updated = uploadedImages.filter((_, index) => index !== indexToDelete);
-        setUploadedImages(updated);
-        setPicture(updated);
-    };
+        else if (type === 'doc') {
+            setDoc(prev => [...prev, url])
+        }
+    }
 
     return (
-        <div>
-            <button
-                type="button"
-                className={`transition-all  mt-4 duration-75 bg-blue-600 hover:bg-blue-700 px-5 py-1 text-white rounded-md ${className}`}
-                onClick={() => widgetRef.current.open()}
-            >
-                Upload picture
-            </button>
-
-            <div className="mt-4 grid grid-cols-2 gap-4">
-                {uploadedImages.map((url, index) => (
-                    <div key={index} className="relative group">
-                        <img
-                            src={url}
-                            alt={`Uploaded ${index + 1}`}
-                            className="rounded-lg object-cover shadow-sm w-full h-[20rem]"
-                        />
-                        <button
-                            onClick={() => handleDelete(index)}
-                            type="button"
-                            className="absolute right-3 top-3 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 shadow-md transition-opacity opacity-80 hover:opacity-100"
-                        >
-                            <X size={16} />
-                        </button>
-                    </div>
-                ))}
+        <>
+            <div className={`${className}`}>
+                <FilePond
+                    files={files}
+                    onupdatefiles={setFiles}
+                    allowMultiple={true}
+                    maxFiles={2}
+                    name="file"
+                    className='filepond--wrapper bg-transparent'
+                    labelIdle='Drag & Drop your picture'
+                    server={{
+                        url: 'https://api.cloudinary.com/v1_1/dyikt4p59/image/upload',
+                        process: {
+                            method: 'POST',
+                            headers: {},
+                            withCredentials: false,
+                            onload: (response) => {
+                                const res = JSON.parse(response);
+                                console.log('Cloudinary URL:', res.secure_url);
+                                handleUpload(res.secure_url)
+                                return res.secure_url;
+                            },
+                            onerror: (response) => response.data,
+                            ondata: (formData) => {
+                                formData.append('upload_preset', 'ml_default');
+                                return formData;
+                            },
+                        }
+                    }}
+                />
             </div>
-        </div>
+        </>
     );
 }

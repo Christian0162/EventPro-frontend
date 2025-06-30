@@ -11,7 +11,7 @@ import { addDoc, collection, deleteDoc, doc, getDocs, onSnapshot, query, serverT
 import { auth, db } from "../../firebase/firebase";
 import Swal from "sweetalert2";
 import SupplierModal from "../../components/SupplierModal";
-import ReviewModal from "../../components/ReviewModal";
+import { Review } from '../../components/ReviewModal'
 
 export default function EditEvent({ userData }) {
 
@@ -94,12 +94,12 @@ export default function EditEvent({ userData }) {
 
         let allReviews = {}
 
-        const unsubscribe = onSnapshot(collection(db, "Shops"), async (snapshot) => {
+        const unsubscribe = onSnapshot(collection(db, "shops"), async (snapshot) => {
             const shops = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
             const filteredShops = shops.filter(shop => applications.some(app => app.user_id === shop.id))
 
             for (const reviews of filteredShops) {
-                const snapShotReview = await getDocs(collection(db, "Shops", reviews.id, "Reviews"));
+                const snapShotReview = await getDocs(collection(db, "shops", reviews.id, "reviews"));
                 const review = snapShotReview.docs.map(doc => ({ id: doc.id, ...doc.data() }))
 
                 allReviews[reviews.id] = review
@@ -209,7 +209,7 @@ export default function EditEvent({ userData }) {
 
             if (result.isConfirmed) {
 
-                const q = query(collection(db, "Applications"),
+                const q = query(collection(db, "applications"),
                     where("event_id", "==", id),
                     where("user_id", "==", supplier_id))
                 const snapShotApplications = await getDocs(q)
@@ -218,12 +218,12 @@ export default function EditEvent({ userData }) {
                 console.log(applications)
 
                 for (const app of applications) {
-                    const appRef = doc(db, "Applications", app.id);
+                    const appRef = doc(db, "applications", app.id);
                     await updateDoc(appRef, {
                         status: "Approved"
                     });
 
-                    await addDoc(collection(db, "Notifications"), {
+                    await addDoc(collection(db, "notifications"), {
                         user_id: app.user_id,
                         avatar: 'A',
                         title: 'Your application has been approved!',
@@ -249,7 +249,7 @@ export default function EditEvent({ userData }) {
 
             if (result.isConfirmed) {
 
-                const q = query(collection(db, "Applications"),
+                const q = query(collection(db, "applications"),
                     where("event_id", "==", id),
                     where("user_id", "==", supplier_id))
                 const snapShotApplications = await getDocs(q)
@@ -258,10 +258,10 @@ export default function EditEvent({ userData }) {
                 console.log(applications)
 
                 for (const app of applications) {
-                    const appRef = doc(db, "Applications", app.id);
+                    const appRef = doc(db, "applications", app.id);
                     await deleteDoc(appRef);
 
-                    await addDoc(collection(db, "Notifications"), {
+                    await addDoc(collection(db, "notifications"), {
                         user_id: app.user_id,
                         avatar: 'A',
                         title: 'Application Rejected',
@@ -298,242 +298,189 @@ export default function EditEvent({ userData }) {
 
     return (
         <>
-            <form onSubmit={handleSubmit} className="w-full h-full mt-5 space-y-5">
+            <div className="bg-white rounded-xl p-10 border border-gray-100 shadow-lg">
+                <form onSubmit={handleSubmit} className="w-full h-full space-y-5">
+                    {/* event name and location */}
+                    <div className="justify-between gap-5 grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2">
+                        {/* event name */}
+                        <div className="flex flex-col w-full">
+                            <label htmlFor="event_name">Event Name</label>
+                            <input type="text" name="event_name" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black"
+                                required
+                                placeholder="Event name"
+                                onChange={(e) => setEvent_name(e.target.value)}
+                                value={event_name} />
+                        </div>
 
-                {/* event name and location */}
-                <div className="justify-between gap-5 grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2">
-                    {/* event name */}
-                    <div className="flex flex-col w-full">
-                        <label htmlFor="event_name">Event Name</label>
-                        <input type="text" name="event_name" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black"
-                            required
-                            placeholder="Event name"
-                            onChange={(e) => setEvent_name(e.target.value)}
-                            value={event_name} />
-                    </div>
-
-                    {/* location */}
-                    <div className="flex flex-col w-full">
-                        <label htmlFor="location">Location</label>
-                        <AddressAutoComplete setLocation={setEvent_location} default_location={event_location} className={'mt-2 py-1 rounded-sm'} />
-                    </div>
-                </div>
-
-                {/* date, time and status */}
-                <div className="gap-3 items-center grid grid-cols-1 sm:grid-cols-3">
-
-                    {/* date */}
-                    <div className="flex flex-col w-full">
-                        <label htmlFor="date">Date</label>
-                        <input type="date" name="event_date" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black"
-                            required
-                            onChange={handleDate}
-                            value={event_date.date_value}
-                        />
-                    </div>
-
-                    {/* time */}
-                    <div className="flex flex-col w-full">
-                        <div className="gap-2 grid grid-cols-1 sm:grid-cols-2">
-                            <div>
-                                <label htmlFor="time">Time Start</label>
-                                <input type="time" name="event_time" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black"
-                                    required
-                                    onChange={(e) => setStartTime(e.target.value)}
-                                    value={startTime}
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor="time">Time End</label>
-                                <input type="time" name="event_time" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black"
-                                    required
-                                    onChange={(e) => setEndTime(e.target.value)}
-                                    value={endTime}
-                                />
-                            </div>
+                        {/* location */}
+                        <div className="flex flex-col w-full">
+                            <label htmlFor="location">Location</label>
+                            <AddressAutoComplete setLocation={setEvent_location} default_location={event_location} className={'mt-2 py-1 rounded-sm ring-1 ring-black'} />
                         </div>
                     </div>
 
-                    {/* status */}
-                    <div className="flex flex-col w-full">
-                        <label htmlFor="status">Status</label>
-                        <Select
-                            name="event_status"
-                            value={event_status}
-                            onChange={setEvent_status}
-                            options={statusOptions}
-                            placeholder="Upcoming"
-                            className="mt-2"
-                        />
-                    </div>
-                </div>
+                    {/* date, time and status */}
+                    <div className="gap-3 items-center grid grid-cols-1 sm:grid-cols-3">
 
-                {/* type */}
-                <div className="flex flex-col w-full">
-                    <label htmlFor="type" className="mb-2">Type</label>
-                    <Select
-                        name="event_type"
-                        options={typeOptions}
-                        value={event_type}
-                        onChange={setEvent_type}
-                        placeholder="Event Type"
-                    />
-                </div>
-
-                {/* Budget */}
-                <div className="flex flex-col w-full">
-                    <label htmlFor="type">Budget</label>
-                    <input placeholder="₱ 25,500" type="text" name="event_budget" className="mt-2 focus:ring-2 focus:outline-none px-5 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black"
-                        required
-                        onChange={(e) => setEvent_budget(e.target.value)}
-                        value={event_budget}
-                    />
-                </div>
-
-                {/* description */}
-                <div className="flex flex-col w-full">
-                    <label htmlFor="description">Description</label>
-                    <textarea name="event_description" id="desctipion" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-38 py-2 ring-black"
-                        required
-                        onChange={(e) => setEvent_description(e.target.value)}
-                        value={event_description}
-                    ></textarea>
-                </div>
-
-                {/* sepcify supplier */}
-                <div className="flex flex-col space-y-4">
-                    <span className="block font-medium">Specify the supplier you are looking for:</span>
-
-                    {/* Tags Display */}
-                    {tags.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                            {tags.map((tag, index) => (
-                                <span
-                                    key={index}
-                                    className="inline-flex items-center gap-2 py-2 px-3 bg-blue-50 border border-blue-200 rounded-lg text-sm"
-                                >
-                                    {tag}
-                                    <button
-                                        type="button"
-                                        onClick={() => removeTag(index)}
-                                        className="hover:bg-blue-100 rounded-full p-1 transition-colors"
-                                    >
-                                        <X width={14} height={14} strokeWidth={2} />
-                                    </button>
-                                </span>
-                            ))}
-                        </div>
-                    )}
-
-                    {/* Add Supplier Controls */}
-                    <div className="flex md:grid md:grid-cols-3 gap-3 items-end">
-                        <div className="md:col-span-2">
-                            <Select
-                                options={categoriesOptions}
-                                value={categories}
-                                onChange={setCategories}
-                                placeholder="Select supplier category"
-                                isClearable
-                                className="w-full"
+                        {/* date */}
+                        <div className="flex flex-col w-full">
+                            <label htmlFor="date">Date</label>
+                            <input type="date" name="event_date" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black"
+                                required
+                                onChange={handleDate}
+                                value={event_date.date_value}
                             />
                         </div>
-                        <button
-                            type="button"
-                            className="py-2 px-4 bg-blue-500 text-white rounded-sm hover:bg-blue-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
-                            onClick={addTag}
-                            disabled={!categories || !categories.value.trim()}
-                        >
-                            Add Supplier
-                        </button>
-                    </div>
-                </div>
 
-                <div className="w-full sm:w-full md:w-full lg:w-[40rem] grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <PrimaryButton>Update Event</PrimaryButton>
-                    <Link to={'/events'} className="flex items-center py-2 w-full text-center justify-center border-1 hover:boder-1 hover:border-blue-500 rounded-sm">
-                        <span className="block">Cancel</span>
-                    </Link>
-                </div>
-            </form>
-
-            {/* Event Suppliers Section */}
-            <div className="mt-8 space-y-4">
-                <h3 className="text-lg font-semibold">Event Suppliers</h3>
-
-                {suppliers.filter(supplier => applications.some(app => app.user_id === supplier.id && app.status === "Approved")).length > 0 && (
-                    <div className="space-y-3">
-                        {suppliers.filter(supplier => applications.some(app => app.user_id === supplier.id && app.status === "Approved")).map((supplier) => {
-
-                            const averageRating = calculateAverageRating(supplier.id);
-                            const reviewCount = getReviewCount(supplier.id);
-
-                            return (
-                                <div key={supplier.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
-                                    <div className="flex items-center space-x-3">
-                                        <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium">
-                                            {supplier.supplier_name.charAt(0).toUpperCase()}
-                                        </div>
-                                        <div>
-                                            <p className="font-medium text-gray-900">{supplier.supplier_name}</p>
-                                            <p className="text-sm text-gray-500 capitalize">{supplier.supplier_type.label}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center text-sm gap-3">
-                                        <SupplierModal className={'px-4 py-1 text-sm rounded-md'} supplierData={supplier} applications={applications} userData={userData.role} reviews={reviews[supplier.id]} averageRating={averageRating} />
-                                        <ReviewModal supplier_id={supplier.id} event_name={event_name} />
-                                    </div>
+                        {/* time */}
+                        <div className="flex flex-col w-full">
+                            <div className="gap-2 grid grid-cols-1 sm:grid-cols-2">
+                                <div>
+                                    <label htmlFor="time">Time Start</label>
+                                    <input type="time" name="event_time" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black"
+                                        required
+                                        onChange={(e) => setStartTime(e.target.value)}
+                                        value={startTime}
+                                    />
                                 </div>
-                            )
-                        })}
-                    </div>
-                )}
-                {isGettingData && (
-                    <div className="flex justify-center">
-                        <div className="border border-t-2 rounded-full h-8 w-8 border-blue animate-spin"></div>
-                    </div>
-                )}
-                {!isGettingData && suppliers.filter(supplier => applications.some(app => app.user_id === supplier.id && app.status === "Approved")).length === 0 && (
-                    <div className="text-center py-8 text-gray-500">
-                        <p>No suppliers have applied for this event yet.</p>
-                    </div>
-                )}
+                                <div>
+                                    <label htmlFor="time">Time End</label>
+                                    <input type="time" name="event_time" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black"
+                                        required
+                                        onChange={(e) => setEndTime(e.target.value)}
+                                        value={endTime}
+                                    />
+                                </div>
+                            </div>
+                        </div>
 
-                {/* Suppliers who applied for this event - separate section */}
-                <div className="mt-6">
-                    <h4 className="text-md font-medium mb-3">Suppliers who applied for this event</h4>
-                    {suppliers.length > 0 && (
+                        {/* status */}
+                        <div className="flex flex-col w-full">
+                            <label htmlFor="status">Status</label>
+                            <Select
+                                name="event_status"
+                                value={event_status}
+                                onChange={setEvent_status}
+                                options={statusOptions}
+                                placeholder="Upcoming"
+                                className="mt-2"
+                            />
+                        </div>
+                    </div>
+
+                    {/* type */}
+                    <div className="flex flex-col w-full">
+                        <label htmlFor="type" className="mb-2">Type</label>
+                        <Select
+                            name="event_type"
+                            options={typeOptions}
+                            value={event_type}
+                            onChange={setEvent_type}
+                            placeholder="Event Type"
+                        />
+                    </div>
+
+                    {/* Budget */}
+                    <div className="flex flex-col w-full">
+                        <label htmlFor="type">Budget</label>
+                        <input placeholder="₱ 25,500" type="text" name="event_budget" className="mt-2 focus:ring-2 focus:outline-none px-5 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black"
+                            required
+                            onChange={(e) => setEvent_budget(e.target.value)}
+                            value={event_budget}
+                        />
+                    </div>
+
+                    {/* description */}
+                    <div className="flex flex-col w-full">
+                        <label htmlFor="description">Description</label>
+                        <textarea name="event_description" id="desctipion" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-38 py-2 ring-black"
+                            required
+                            onChange={(e) => setEvent_description(e.target.value)}
+                            value={event_description}
+                        ></textarea>
+                    </div>
+
+                    {/* sepcify supplier */}
+                    <div className="flex flex-col space-y-4">
+                        <span className="block font-medium">Specify the supplier you are looking for:</span>
+
+                        {/* Tags Display */}
+                        {tags.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                                {tags.map((tag, index) => (
+                                    <span
+                                        key={index}
+                                        className="inline-flex items-center gap-2 py-2 px-3 bg-blue-50 border border-blue-200 rounded-lg text-sm"
+                                    >
+                                        {tag}
+                                        <button
+                                            type="button"
+                                            onClick={() => removeTag(index)}
+                                            className="hover:bg-blue-100 rounded-full p-1 transition-colors"
+                                        >
+                                            <X width={14} height={14} strokeWidth={2} />
+                                        </button>
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Add Supplier Controls */}
+                        <div className="flex md:grid md:grid-cols-3 gap-3 items-end">
+                            <div className="md:col-span-2">
+                                <Select
+                                    options={categoriesOptions}
+                                    value={categories}
+                                    onChange={setCategories}
+                                    placeholder="Select supplier category"
+                                    isClearable
+                                    className="w-full"
+                                />
+                            </div>
+                            <button
+                                type="button"
+                                className="py-2 px-4 bg-blue-500 text-white rounded-sm hover:bg-blue-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                onClick={addTag}
+                                disabled={!categories || !categories.value.trim()}
+                            >
+                                Add Supplier
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="w-full sm:w-full md:w-full lg:w-[40rem] grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <PrimaryButton>Update Event</PrimaryButton>
+                        <Link to={'/events'} className="flex items-center py-2 w-full text-center justify-center border-1 hover:boder-1 hover:border-blue-500 rounded-sm">
+                            <span className="block">Cancel</span>
+                        </Link>
+                    </div>
+                </form>
+
+                {/* Event Suppliers Section */}
+                <div className="mt-8 space-y-4">
+                    <h3 className="text-lg font-semibold">Event Suppliers</h3>
+
+                    {suppliers.filter(supplier => applications.some(app => app.user_id === supplier.id && app.status === "Approved")).length > 0 && (
                         <div className="space-y-3">
-                            {suppliers.filter(supplier => applications.some(app => app.user_id === supplier.id && app.status === "Pending")).map((supplier) => {
+                            {suppliers.filter(supplier => applications.some(app => app.user_id === supplier.id && app.status === "Approved")).map((supplier) => {
+
                                 const averageRating = calculateAverageRating(supplier.id);
                                 const reviewCount = getReviewCount(supplier.id);
 
                                 return (
-                                    <div key={supplier.id} className="flex items-center justify-between p-4 bg-white rounded-lg border">
+                                    <div key={supplier.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
                                         <div className="flex items-center space-x-3">
-                                            <div className="w-10 h-10 bg-gray-500 rounded-full flex items-center justify-center text-white font-medium">
+                                            <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium">
                                                 {supplier.supplier_name.charAt(0).toUpperCase()}
                                             </div>
                                             <div>
                                                 <p className="font-medium text-gray-900">{supplier.supplier_name}</p>
-                                                <p className="text-sm text-gray-500 capitalize">{supplier.supplier_type?.label}</p>
+                                                <p className="text-sm text-gray-500 capitalize">{supplier.supplier_type.label}</p>
                                             </div>
                                         </div>
-
-
-                                        <div className="flex items-center space-x-2">
+                                        <div className="flex items-center text-sm gap-3">
                                             <SupplierModal className={'px-4 py-1 text-sm rounded-md'} supplierData={supplier} applications={applications} userData={userData.role} reviews={reviews[supplier.id]} averageRating={averageRating} />
-                                            <button
-                                                onClick={() => handleApprove(supplier.id)}
-                                                className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
-                                            >
-                                                Approve
-                                            </button>
-                                            <button
-                                                onClick={() => handleReject(supplier.id)}
-                                                className="px-3 py-1 bg-gray-500 text-white text-sm rounded hover:bg-gray-600 transition-colors"
-                                            >
-                                                Reject
-                                            </button>
+                                            <Review supplier_id={supplier.id} event_name={event_name} />
                                         </div>
                                     </div>
                                 )
@@ -545,11 +492,65 @@ export default function EditEvent({ userData }) {
                             <div className="border border-t-2 rounded-full h-8 w-8 border-blue animate-spin"></div>
                         </div>
                     )}
-                    {!isGettingData && suppliers.filter(supplier => applications.some(app => app.user_id === supplier.id && app.status === "Pending")).length === 0 && (
-                        <div className="text-center py-6 text-gray-500">
-                            <p>No new supplier applications for this event.</p>
+                    {!isGettingData && suppliers.filter(supplier => applications.some(app => app.user_id === supplier.id && app.status === "Approved")).length === 0 && (
+                        <div className="text-center py-8 text-gray-500">
+                            <p>No suppliers have applied for this event yet.</p>
                         </div>
                     )}
+
+                    {/* Suppliers who applied for this event - separate section */}
+                    <div className="mt-6">
+                        <h4 className="text-md font-medium mb-3">Suppliers who applied for this event</h4>
+                        {suppliers.length > 0 && (
+                            <div className="space-y-3">
+                                {suppliers.filter(supplier => applications.some(app => app.user_id === supplier.id && app.status === "Pending")).map((supplier) => {
+                                    const averageRating = calculateAverageRating(supplier.id);
+                                    const reviewCount = getReviewCount(supplier.id);
+
+                                    return (
+                                        <div key={supplier.id} className="flex items-center justify-between p-4 bg-white rounded-lg border">
+                                            <div className="flex items-center space-x-3">
+                                                <div className="w-10 h-10 bg-gray-500 rounded-full flex items-center justify-center text-white font-medium">
+                                                    {supplier.supplier_name.charAt(0).toUpperCase()}
+                                                </div>
+                                                <div>
+                                                    <p className="font-medium text-gray-900">{supplier.supplier_name}</p>
+                                                    <p className="text-sm text-gray-500 capitalize">{supplier.supplier_type?.label}</p>
+                                                </div>
+                                            </div>
+
+
+                                            <div className="flex items-center space-x-2">
+                                                <SupplierModal className={'px-4 py-1 text-sm rounded-md'} supplierData={supplier} applications={applications} userData={userData.role} reviews={reviews[supplier.id]} averageRating={averageRating} />
+                                                <button
+                                                    onClick={() => handleApprove(supplier.id)}
+                                                    className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
+                                                >
+                                                    Approve
+                                                </button>
+                                                <button
+                                                    onClick={() => handleReject(supplier.id)}
+                                                    className="px-3 py-1 bg-gray-500 text-white text-sm rounded hover:bg-gray-600 transition-colors"
+                                                >
+                                                    Reject
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        )}
+                        {isGettingData && (
+                            <div className="flex justify-center">
+                                <div className="border border-t-2 rounded-full h-8 w-8 border-blue animate-spin"></div>
+                            </div>
+                        )}
+                        {!isGettingData && suppliers.filter(supplier => applications.some(app => app.user_id === supplier.id && app.status === "Pending")).length === 0 && (
+                            <div className="text-center py-6 text-gray-500">
+                                <p>No new supplier applications for this event.</p>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </>

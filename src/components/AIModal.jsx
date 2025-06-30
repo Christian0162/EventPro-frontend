@@ -32,7 +32,7 @@ export default function AIModal({ ai_response, ai_shops }) {
 
         try {
             // Get all shops (no category filter)
-            const q = query(collection(db, "Shops"));
+            const q = query(collection(db, "shops"));
             const snapShop = await getDocs(q);
             const shops = snapShop.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
@@ -43,7 +43,7 @@ export default function AIModal({ ai_response, ai_shops }) {
                 const data = doc.data();
                 const shopId = doc.id;
 
-                const reviewSnapshot = await getDocs(collection(db, "Shops", shopId, "Reviews"));
+                const reviewSnapshot = await getDocs(collection(db, "shops", shopId, "reviews"));
 
                 let sum = 0;
                 reviewSnapshot.forEach((rev) => {
@@ -54,7 +54,7 @@ export default function AIModal({ ai_response, ai_shops }) {
                     (sum / reviewSnapshot.size).toFixed(1) : 0;
 
                 const latestReviewQuery = query(
-                    collection(db, "Shops", shopId, "Reviews"),
+                    collection(db, "shops", shopId, "reviews"),
                     orderBy("createdAt", "desc"),
                     limit(1)
                 );

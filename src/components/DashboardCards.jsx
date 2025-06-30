@@ -1,6 +1,6 @@
-export default function DashboardCard({ children }) {
+export default function DashboardCard({ children, className }) {
     return (
-        <div className="w-full h-full border-1 border-b-black rounded-md flex items-center justify-between p-10 px-[6rem]">
+        <div className={`border border-gray-300 shadow-lg bg-white  rounded-2xl flex justify-between items-center p-5 px-10 ${className}`}>
             {children}
         </div>
     )

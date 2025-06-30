@@ -28,7 +28,7 @@ export default function SupplierRegistration() {
     const [expertiseOptions, setExpertiseOptions] = useState([])
 
     console.log(expertiseOptions)
-    
+
     useEffect(() => {
         if (supplier_type && supplier_type.value) {
             const suggestedExpertise = supplierTypeToExpertise[supplier_type.value] || [];
@@ -70,7 +70,7 @@ export default function SupplierRegistration() {
                 return setError('must fill all fields')
             }
             setIsLoading(true)
-            await setDoc(doc(db, "Shops", auth.currentUser.uid), {
+            await setDoc(doc(db, "shops", auth.currentUser.uid), {
                 supplier_background_image: "",
                 supplier_name: supplier_name,
                 supplier_location: location,
@@ -85,10 +85,8 @@ export default function SupplierRegistration() {
                 supplier_availability: supplier_availability,
                 supplier_price: price,
                 createdAt: serverTimestamp(),
-                isApproved: "unverified"
+                status: "unverified"
             })
-
-            setIsLoading(false)
 
             Swal.fire({
                 title: 'Success',
@@ -99,6 +97,7 @@ export default function SupplierRegistration() {
                 if (result.isConfirmed) {
                     console.log('test')
                     window.location.reload();
+                    setIsLoading(false)
                 }
             })
 
@@ -150,7 +149,7 @@ export default function SupplierRegistration() {
                                         <MapPin className="inline w-4 h-4 mr-1" />
                                         Location *
                                     </label>
-                                    <AddressAutocomplete className={'py-3 rounded-md'} setLocation={setLocation} />
+                                    <AddressAutocomplete className={'py-3 rounded-md ring-1 ring-black'} setLocation={setLocation} />
                                 </div>
                             </div>
 

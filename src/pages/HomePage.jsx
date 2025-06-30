@@ -1,8 +1,11 @@
 import { Navigate } from "react-router-dom";
 import { Calendar, Heart, Users, Star, ChevronRight } from 'lucide-react';
+import { useState } from "react";
 import { Link } from "react-router-dom";
 
+
 export default function HomePage({ user }) {
+
     if (user) {
         return <Navigate to={'/dashboard'} />
     }

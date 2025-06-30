@@ -2,8 +2,8 @@ import { Search, MapPin, PhilippinePeso, Clock, Star, Bot } from "lucide-react";
 import { useEffect, useState } from "react";
 import Cards from "../../components/Cards";
 import Select from 'react-select';
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "../../firebase/firebase";
+import { collection, getDocs, onSnapshot } from "firebase/firestore";
+import { auth, db } from "../../firebase/firebase";
 import Loading from "../../components/Loading";
 import SupplierModal from "../../components/SupplierModal";
 import AIModal from "../../components/AIModal";
@@ -18,6 +18,7 @@ export default function Supplier({ userData }) {
     const [searchTerm, setSearchTerm] = useState("");
     const [shopReviews, setShopReviews] = useState({});
     const [ai_response, setAi_response] = useState('')
+    const [services, setServices] = useState([])
 
     const { getSuppliers } = useSupplier()
 
@@ -29,38 +30,60 @@ export default function Supplier({ userData }) {
         { label: 'Venues', value: 'Venues' },
     ];
 
+
     useEffect(() => {
-        const fetchData = async () => {
+        setIsLoading(true);
+        
+        const unsubscribeShop = onSnapshot(collection(db, "shops"), (onsnapshot) => {
             try {
-                setIsLoading(true);
+                const shop = onsnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                const approvedShops = shop.filter(shop => shop.isApproved === 'verified');
 
-                const shops = await getSuppliers()
-
-                const approvedShops = shops.filter(doc => doc.isApproved === "verified");
-
-                const reviewsData = {};
-                for (const shopItem of approvedShops) {
-                    try {
-                        const reviewsSnapshot = await getDocs(collection(db, "Shops", shopItem.id, "Reviews"));
-                        const reviews = reviewsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                        reviewsData[shopItem.id] = reviews;
-                    } catch (error) {
-                        console.log(`Error fetching reviews for shop ${shopItem.id}:`, error);
-                        reviewsData[shopItem.id] = [];
-                    }
-                }
-
-                setShopReviews(reviewsData);
                 setShop(approvedShops);
                 setFilteredShops(approvedShops);
-                setIsLoading(false);
-            } catch (error) {
-                console.log('Error fetching data:', error);
+
+                const unsubscribeReviews = [];
+                const unsubscribeServices = []
+
+                approvedShops.forEach((shopItem) => {
+
+                    const unsubscribeService = onSnapshot(collection(db, "shops", shopItem.id, "services"), (onsnapshot) => {
+                        try {
+                            const services = onsnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+                            setServices(prev => ({...prev, [shopItem.id]: services}))
+                        }
+
+                        catch (e) {
+                            console.error(e)
+                        }
+                    })
+                    const unsubscribeReview = onSnapshot(
+                        collection(db, "shops", shopItem.id, "reviews"),
+                        (onsnapshot) => {
+                            try {
+                                const review = onsnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                                setShopReviews(prev => ({ ...prev, [shopItem.id]: review }));
+                            } catch (e) {
+                                console.error(e);
+                            }
+                        }
+                    );
+
+                    unsubscribeServices.push(unsubscribeService)
+                    unsubscribeReviews.push(unsubscribeReview);
+                });
+                setIsLoading(false)
+                return () => {
+                    unsubscribeReviews.forEach(unsub => unsub());
+                    unsubscribeServices.forEach(unsub => unsub());
+                };
+            } catch (e) {
+                console.error(e);
                 setIsLoading(false);
             }
-        };
+        });
 
-        fetchData();
+        return () => { unsubscribeShop(); }
     }, []);
 
     useEffect(() => {
@@ -110,8 +133,11 @@ export default function Supplier({ userData }) {
     console.log(shopReviews)
     return (
         <>
-            {isLoading && (
-                <Loading />
+            {isLoading && shop && (
+                <div className="flex justify-center items-center mt-[250px]">
+                    <div className="h-12 w-12 border border-t-blue-600 rounded-full animate-spin "></div>
+
+                </div>
             )}
 
             <div className={`mb-8  ${isLoading ? 'hidden' : 'block'}`}>
@@ -177,7 +203,7 @@ export default function Supplier({ userData }) {
                     const reviewCount = getReviewCount(shopItem.id);
 
                     return (
-                        <Cards key={shopItem.id || index} className="group cursor-pointer">
+                        <Cards key={shopItem.id || index} className="group cursor-pointer flex flex-col justify-between">
                             {/* Image */}
                             <div className="relative overflow-hidden">
                                 {shopItem.supplier_background_image.length > 0 && (
@@ -188,7 +214,7 @@ export default function Supplier({ userData }) {
                                     />
                                 )}
                                 {shopItem.supplier_background_image.length === 0 && (
-                                    <div className="w-full h-48"></div>
+                                    <div className="w-full h-48 bg-gradient-to-r from-pink-500 to-violet-500"></div>
                                 )}
                                 <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg flex items-center space-x-1">
                                     <Star className="text-yellow-400 fill-current" size={14} />
@@ -254,7 +280,7 @@ export default function Supplier({ userData }) {
                                 </div>
 
                                 {/* Action Button */}
-                                <SupplierModal className={'py-2 rounded-lg font-semibold'} supplierData={shopItem} userData={userData.role} reviews={shopReviews[shopItem.id]} averageRating={averageRating} />
+                                <SupplierModal className={'py-2 rounded-lg font-semibold'} services={services[shopItem.id]} supplierData={shopItem} userData={userData} reviews={shopReviews[shopItem.id]} averageRating={averageRating} />
                             </div>
                         </Cards>
                     );

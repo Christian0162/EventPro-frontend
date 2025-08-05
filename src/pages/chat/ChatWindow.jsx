@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Search, Send, ReceiptText, X } from 'lucide-react';
 import { Button, Dialog, DialogPanel } from "@headlessui/react";
@@ -113,7 +113,7 @@ export default function ChatWindow({ userData }) {
                 contact_id: auth.currentUser.uid,
                 name: userData?.role === "Event Planner" ? userData.first_name : shop.supplier_name,
                 last_message: "",
-                isActive: false,
+                is_active: false,
                 created_at: serverTimestamp()
             });
 

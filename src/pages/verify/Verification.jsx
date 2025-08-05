@@ -6,18 +6,16 @@ import { FileText, IdCard } from "lucide-react";
 import VerificationCheckbox from "../../components/VerificationCheckBox";
 import { Link } from "react-router-dom";
 import { auth, db } from "../../firebase/firebase";
-import { setDoc, doc, getDoc, updateDoc } from "firebase/firestore";
+import { setDoc, doc, getDoc, updateDoc, query, where } from "firebase/firestore";
 import UploadWidget from "../../components/UploadWidgen";
 import { SupplierOptions, idOptions, documentOptions, exampleIds, exampleDocuments } from "../../constants/categories";
 import Swal from "sweetalert2";
 
 export default function Verification({ userData }) {
 
-    const [shop, setShop] = useState([])
-    const [errorUpload, setErrorUpload] = useState('')
     const [errorId, setErrorId] = useState('')
     const [errorDoc, setErrorDoc] = useState('')
-    const [isLoading, setIsLoading] = useState(true)
+    const [isLoading, setIsLoading] = useState(false)
     const [supplierType, setSupplierType] = useState(null)
     const [location, setLocation] = useState('')
     const [supplier_id, setSupplier_Id] = useState(null)
@@ -57,7 +55,6 @@ export default function Verification({ userData }) {
                     const snapShotShop = await getDoc(doc(db, "shops", auth.currentUser.uid));
                     const data = snapShotShop.data()
 
-                    setShop(data)
                     setBusiness_name(data?.supplier_name)
                     setContact_number(data?.supplier_number)
                     setLocation(data?.supplier_location)
@@ -72,7 +69,7 @@ export default function Verification({ userData }) {
                     setFirst_Name(userData.first_name)
                     setLast_Name(userData.last_name)
                     setEmail_Address(userData.email_address)
-                    setContact_number(data.contact_number)
+                    setContact_number(data.contact_number || '')
                     setIsLoading(false)
 
                 }
@@ -89,7 +86,9 @@ export default function Verification({ userData }) {
 
         try {
             const fetchVerification = async () => {
-                const onSnapShotVerification = await getDoc(doc(db, "verification", userData.id));
+                const q = query(doc(db, "verification", userData.id),
+                    where("status", "in", ["pending", "rejected"]))
+                const onSnapShotVerification = await getDoc(q);
 
                 if (onSnapShotVerification.exists()) {
                     setRedirect(true)

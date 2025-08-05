@@ -2,18 +2,27 @@ import { useState, useEffect } from "react"
 import { useParams } from "react-router-dom";
 import AddressAutoComplete from "../../components/AddressAutoComplete";
 import Select from "react-select"
-import { X, MessageCircleMore } from "lucide-react";
+import { X } from "lucide-react";
 import PrimaryButton from "../../components/PrimaryButton";
 import { Link } from "react-router-dom";
 import useEvents from "../../hooks/useEvents";
 import Loading from "../../components/Loading";
-import { addDoc, collection, deleteDoc, doc, getDocs, onSnapshot, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
-import { auth, db } from "../../firebase/firebase";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { db } from "../../firebase/firebase";
 import Swal from "sweetalert2";
 import SupplierModal from "../../components/SupplierModal";
 import { Review } from '../../components/ReviewModal'
+import { useNavigate } from "react-router-dom";
+import { useFetchReviews } from "../../hooks/useReviews";
+import { useFetchSupplierServices, useFetchSuppliers } from "../../hooks/useSupplier";
+import ContractModal from "../../components/ContractModal";
+import { useFetchContract } from "../../hooks/useContract";
+import { statusOptions, SupplierOptions } from "../../constants/categories";
+import { RejectReview } from "../../components/ReviewModal";
 
 export default function EditEvent({ userData }) {
+
+    const navigate = useNavigate()
 
     const { id } = useParams();
     const [event_name, setEvent_name] = useState('')
@@ -27,41 +36,17 @@ export default function EditEvent({ userData }) {
     const [categories, setCategories] = useState(null)
     const [event_budget, setEvent_budget] = useState('')
     const [tags, setTags] = useState([])
-    const [isLoading, setIsLoading] = useState(false)
+    const [isLoading, setIsLoading] = useState(true)
     const [applications, setApplications] = useState([])
-    const [suppliers, setSuppliers] = useState([])
-    const [reviews, setReviews] = useState([])
-    const [eventUser, setEventUser] = useState([])
-    const [isGettingData, setIsGettingData] = useState(false)
+    const [eventData, setEventData] = useState([])
     const { updateEvent, getEvent } = useEvents()
+    const { contracts } = useFetchContract()
+    const { reviews } = useFetchReviews()
+    const { services } = useFetchSupplierServices()
+    const { suppliers } = useFetchSuppliers()
+    const [countdown, setCoutdown] = useState(2)
 
-    const categoriesOptions = [
-        { label: 'Catering', value: 'catering' },
-        { label: 'Photography', value: 'photography' },
-        { label: 'Entertainment', value: 'entertainment' },
-        { label: 'Decoration', value: 'decoration' },
-        { label: 'Security', value: 'security' },
-        { label: 'Transportation', value: 'transportation' },
-        { label: 'Audio/Visual', value: 'audiovisual' },
-        { label: 'Venue', value: 'venue' },
-    ];
-
-    const statusOptions = [
-        { label: 'Planning', value: 'planning' },
-        { label: 'Upcoming', value: 'upcoming' },
-        { label: 'In Progress', value: 'in-progress' },
-        { label: 'Complete', value: 'complete' },
-    ];
-
-    const typeOptions = [
-        { label: 'Corporate', value: 'corporate' },
-        { label: 'Wedding', value: 'wedding' },
-        { label: 'Birthday Party', value: 'birthday' },
-        { label: 'Conference', value: 'conference' },
-        { label: 'Workshop', value: 'workshop' },
-        { label: 'Social Event', value: 'social' },
-        { label: 'Other', value: 'other' },
-    ];
+    console.log(contracts)
 
     const addTag = () => {
         if (categories?.value.trim() && !tags.includes(categories?.value.trim())) {
@@ -75,7 +60,7 @@ export default function EditEvent({ userData }) {
     }
 
     useEffect(() => {
-        const q = query(collection(db, "Applications"),
+        const q = query(collection(db, "applications"),
             where("event_id", "==", id))
 
         const unsubscribe = onSnapshot(q, (onsnapshot) => {
@@ -88,43 +73,26 @@ export default function EditEvent({ userData }) {
     }, [])
 
     useEffect(() => {
+        if (countdown <= 0) { return setIsLoading(false) }
 
-        setIsGettingData(true)
+        const countDownLoading = setInterval(() => {
+            setCoutdown(prev => prev - 1)
+        }, [500])
 
+        return () => clearInterval(countDownLoading)
 
-        let allReviews = {}
+    }, [countdown])
 
-        const unsubscribe = onSnapshot(collection(db, "shops"), async (snapshot) => {
-            const shops = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-            const filteredShops = shops.filter(shop => applications.some(app => app.user_id === shop.id))
-
-            for (const reviews of filteredShops) {
-                const snapShotReview = await getDocs(collection(db, "shops", reviews.id, "reviews"));
-                const review = snapShotReview.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-
-                allReviews[reviews.id] = review
-
-            }
-            setReviews(allReviews)
-            setSuppliers(filteredShops)
-            setIsGettingData(false)
-        })
-
-
-
-
-        return () => unsubscribe()
-    }, [applications])
+    console.log(contracts)
 
 
     useEffect(() => {
         const loadEvent = async () => {
             try {
-                setIsLoading(true)
                 const data = await getEvent(id);
 
                 if (data) {
-                    setEventUser(data)
+                    setEventData(data)
                     setEvent_name(data.event_name)
                     setEvent_location(data.event_location)
                     setEvent_date(data.event_date)
@@ -136,10 +104,10 @@ export default function EditEvent({ userData }) {
                     setStartTime(data.event_time.valueStartAndEnd[0])
                     setEndTime(data.event_time.valueStartAndEnd[1])
                 }
-            } catch (e) {
+            }
+
+            catch (e) {
                 console.log(e)
-            } finally {
-                setIsLoading(false)
             }
         }
 
@@ -164,6 +132,11 @@ export default function EditEvent({ userData }) {
         })
 
     }
+
+    // const handlePayment = (price) => {
+    //     console.log(price)
+    //     createPayment(price)
+    // }
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -194,84 +167,15 @@ export default function EditEvent({ userData }) {
         }
     }
 
-    if (isLoading) {
-        return <Loading />
-    }
-
-    const handleApprove = async (supplier_id) => {
+    const handleApprove = async (supplier) => {
         Swal.fire({
-            title: 'Confirm Request',
-            text: 'This action will confirm the request and notify the user.',
+            title: 'Approve',
+            text: 'This action you will be redirecting to contract',
             icon: 'question',
-            confirmButtonText: 'Approve',
             showCancelButton: true
         }).then(async (result) => {
-
             if (result.isConfirmed) {
-
-                const q = query(collection(db, "applications"),
-                    where("event_id", "==", id),
-                    where("user_id", "==", supplier_id))
-                const snapShotApplications = await getDocs(q)
-                const applications = snapShotApplications.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-
-                console.log(applications)
-
-                for (const app of applications) {
-                    const appRef = doc(db, "applications", app.id);
-                    await updateDoc(appRef, {
-                        status: "Approved"
-                    });
-
-                    await addDoc(collection(db, "notifications"), {
-                        user_id: app.user_id,
-                        avatar: 'A',
-                        title: 'Your application has been approved!',
-                        message: `The event "${event_name}" you applied for has been approved.`,
-                        timestamp: serverTimestamp(),
-                        unread: true
-                    });
-                }
-                Swal.fire('Success', 'The supplier has been approved and notified.', 'success')
-            }
-        })
-
-    }
-
-    const handleReject = async (supplier_id) => {
-        Swal.fire({
-            title: 'Reject Request',
-            text: 'This action will reject the request and notify the user.',
-            icon: 'question',
-            confirmButtonText: 'Reject',
-            showCancelButton: true
-        }).then(async (result) => {
-
-            if (result.isConfirmed) {
-
-                const q = query(collection(db, "applications"),
-                    where("event_id", "==", id),
-                    where("user_id", "==", supplier_id))
-                const snapShotApplications = await getDocs(q)
-                const applications = snapShotApplications.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-
-                console.log(applications)
-
-                for (const app of applications) {
-                    const appRef = doc(db, "applications", app.id);
-                    await deleteDoc(appRef);
-
-                    await addDoc(collection(db, "notifications"), {
-                        user_id: app.user_id,
-                        avatar: 'A',
-                        title: 'Application Rejected',
-                        message: `We're sorry, your application for the event "${event_name}" has been rejected.`,
-                        timestamp: serverTimestamp(),
-                        unread: true
-                    });
-
-                }
-                Swal.fire('Reject', 'The supplier has been rejected and notified.', 'success')
+                return navigate(`/events/${id}/contract/${supplier.id}`)
             }
         })
     }
@@ -288,271 +192,322 @@ export default function EditEvent({ userData }) {
         return average.toFixed(1);
     };
 
-    const getReviewCount = (shopId) => {
-        const Allreviews = reviews[shopId] || [];
-        return Allreviews.length;
-    };
-
-    console.log(isGettingData)
-
-
     return (
         <>
-            <div className="bg-white rounded-xl p-10 border border-gray-100 shadow-lg">
-                <form onSubmit={handleSubmit} className="w-full h-full space-y-5">
-                    {/* event name and location */}
-                    <div className="justify-between gap-5 grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2">
-                        {/* event name */}
-                        <div className="flex flex-col w-full">
-                            <label htmlFor="event_name">Event Name</label>
-                            <input type="text" name="event_name" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black"
-                                required
-                                placeholder="Event name"
-                                onChange={(e) => setEvent_name(e.target.value)}
-                                value={event_name} />
-                        </div>
+            {isLoading && (
+                <div className="flex justify-center items-center mt-[230px]">
+                    <div className="h-12 w-12 border border-t-blue-600 rounded-full animate-spin "></div>
 
-                        {/* location */}
-                        <div className="flex flex-col w-full">
-                            <label htmlFor="location">Location</label>
-                            <AddressAutoComplete setLocation={setEvent_location} default_location={event_location} className={'mt-2 py-1 rounded-sm ring-1 ring-black'} />
-                        </div>
+                </div>
+            )}
+
+            {!isLoading && (
+                <>
+                    <div className="mb-5">
+                        <h1 className="text-3xl  font-bold text-blue-600">Manage Events</h1>
                     </div>
 
-                    {/* date, time and status */}
-                    <div className="gap-3 items-center grid grid-cols-1 sm:grid-cols-3">
-
-                        {/* date */}
-                        <div className="flex flex-col w-full">
-                            <label htmlFor="date">Date</label>
-                            <input type="date" name="event_date" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black"
-                                required
-                                onChange={handleDate}
-                                value={event_date.date_value}
-                            />
-                        </div>
-
-                        {/* time */}
-                        <div className="flex flex-col w-full">
-                            <div className="gap-2 grid grid-cols-1 sm:grid-cols-2">
-                                <div>
-                                    <label htmlFor="time">Time Start</label>
-                                    <input type="time" name="event_time" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black"
+                    <div className="bg-white rounded-xl p-10 border border-gray-100 shadow-lg">
+                        <form onSubmit={handleSubmit} className="w-full h-full space-y-5">
+                            {/* event name and location */}
+                            <div className="justify-between gap-5 grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2">
+                                {/* event name */}
+                                <div className="flex flex-col w-full">
+                                    <label htmlFor="event_name">Event Name</label>
+                                    <input type="text" name="event_name" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black"
                                         required
-                                        onChange={(e) => setStartTime(e.target.value)}
-                                        value={startTime}
-                                    />
+                                        placeholder="Event name"
+                                        onChange={(e) => setEvent_name(e.target.value)}
+                                        value={event_name} />
                                 </div>
-                                <div>
-                                    <label htmlFor="time">Time End</label>
-                                    <input type="time" name="event_time" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black"
-                                        required
-                                        onChange={(e) => setEndTime(e.target.value)}
-                                        value={endTime}
-                                    />
+
+                                {/* location */}
+                                <div className="flex flex-col w-full">
+                                    <label htmlFor="location">Location</label>
+                                    <AddressAutoComplete setLocation={setEvent_location} default_location={event_location} className={'mt-2 py-1 rounded-sm ring-1 ring-black'} />
                                 </div>
                             </div>
-                        </div>
 
-                        {/* status */}
-                        <div className="flex flex-col w-full">
-                            <label htmlFor="status">Status</label>
-                            <Select
-                                name="event_status"
-                                value={event_status}
-                                onChange={setEvent_status}
-                                options={statusOptions}
-                                placeholder="Upcoming"
-                                className="mt-2"
-                            />
-                        </div>
-                    </div>
+                            {/* date, time and status */}
+                            <div className="gap-3 items-center grid grid-cols-1 sm:grid-cols-3">
 
-                    {/* type */}
-                    <div className="flex flex-col w-full">
-                        <label htmlFor="type" className="mb-2">Type</label>
-                        <Select
-                            name="event_type"
-                            options={typeOptions}
-                            value={event_type}
-                            onChange={setEvent_type}
-                            placeholder="Event Type"
-                        />
-                    </div>
+                                {/* date */}
+                                <div className="flex flex-col w-full">
+                                    <label htmlFor="date">Date</label>
+                                    <input type="date" name="event_date" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black"
+                                        required
+                                        onChange={handleDate}
+                                        value={event_date.date_value}
+                                    />
+                                </div>
 
-                    {/* Budget */}
-                    <div className="flex flex-col w-full">
-                        <label htmlFor="type">Budget</label>
-                        <input placeholder="₱ 25,500" type="text" name="event_budget" className="mt-2 focus:ring-2 focus:outline-none px-5 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black"
-                            required
-                            onChange={(e) => setEvent_budget(e.target.value)}
-                            value={event_budget}
-                        />
-                    </div>
-
-                    {/* description */}
-                    <div className="flex flex-col w-full">
-                        <label htmlFor="description">Description</label>
-                        <textarea name="event_description" id="desctipion" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-38 py-2 ring-black"
-                            required
-                            onChange={(e) => setEvent_description(e.target.value)}
-                            value={event_description}
-                        ></textarea>
-                    </div>
-
-                    {/* sepcify supplier */}
-                    <div className="flex flex-col space-y-4">
-                        <span className="block font-medium">Specify the supplier you are looking for:</span>
-
-                        {/* Tags Display */}
-                        {tags.length > 0 && (
-                            <div className="flex flex-wrap gap-2">
-                                {tags.map((tag, index) => (
-                                    <span
-                                        key={index}
-                                        className="inline-flex items-center gap-2 py-2 px-3 bg-blue-50 border border-blue-200 rounded-lg text-sm"
-                                    >
-                                        {tag}
-                                        <button
-                                            type="button"
-                                            onClick={() => removeTag(index)}
-                                            className="hover:bg-blue-100 rounded-full p-1 transition-colors"
-                                        >
-                                            <X width={14} height={14} strokeWidth={2} />
-                                        </button>
-                                    </span>
-                                ))}
-                            </div>
-                        )}
-
-                        {/* Add Supplier Controls */}
-                        <div className="flex md:grid md:grid-cols-3 gap-3 items-end">
-                            <div className="md:col-span-2">
-                                <Select
-                                    options={categoriesOptions}
-                                    value={categories}
-                                    onChange={setCategories}
-                                    placeholder="Select supplier category"
-                                    isClearable
-                                    className="w-full"
-                                />
-                            </div>
-                            <button
-                                type="button"
-                                className="py-2 px-4 bg-blue-500 text-white rounded-sm hover:bg-blue-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
-                                onClick={addTag}
-                                disabled={!categories || !categories.value.trim()}
-                            >
-                                Add Supplier
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="w-full sm:w-full md:w-full lg:w-[40rem] grid grid-cols-1 sm:grid-cols-2 gap-5">
-                        <PrimaryButton>Update Event</PrimaryButton>
-                        <Link to={'/events'} className="flex items-center py-2 w-full text-center justify-center border-1 hover:boder-1 hover:border-blue-500 rounded-sm">
-                            <span className="block">Cancel</span>
-                        </Link>
-                    </div>
-                </form>
-
-                {/* Event Suppliers Section */}
-                <div className="mt-8 space-y-4">
-                    <h3 className="text-lg font-semibold">Event Suppliers</h3>
-
-                    {suppliers.filter(supplier => applications.some(app => app.user_id === supplier.id && app.status === "Approved")).length > 0 && (
-                        <div className="space-y-3">
-                            {suppliers.filter(supplier => applications.some(app => app.user_id === supplier.id && app.status === "Approved")).map((supplier) => {
-
-                                const averageRating = calculateAverageRating(supplier.id);
-                                const reviewCount = getReviewCount(supplier.id);
-
-                                return (
-                                    <div key={supplier.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
-                                        <div className="flex items-center space-x-3">
-                                            <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium">
-                                                {supplier.supplier_name.charAt(0).toUpperCase()}
-                                            </div>
-                                            <div>
-                                                <p className="font-medium text-gray-900">{supplier.supplier_name}</p>
-                                                <p className="text-sm text-gray-500 capitalize">{supplier.supplier_type.label}</p>
-                                            </div>
+                                {/* time */}
+                                <div className="flex flex-col w-full">
+                                    <div className="gap-2 grid grid-cols-1 sm:grid-cols-2">
+                                        <div>
+                                            <label htmlFor="time">Time Start</label>
+                                            <input type="time" name="event_time" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black"
+                                                required
+                                                onChange={(e) => setStartTime(e.target.value)}
+                                                value={startTime}
+                                            />
                                         </div>
-                                        <div className="flex items-center text-sm gap-3">
-                                            <SupplierModal className={'px-4 py-1 text-sm rounded-md'} supplierData={supplier} applications={applications} userData={userData.role} reviews={reviews[supplier.id]} averageRating={averageRating} />
-                                            <Review supplier_id={supplier.id} event_name={event_name} />
+                                        <div>
+                                            <label htmlFor="time">Time End</label>
+                                            <input type="time" name="event_time" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black"
+                                                required
+                                                onChange={(e) => setEndTime(e.target.value)}
+                                                value={endTime}
+                                            />
                                         </div>
                                     </div>
-                                )
-                            })}
-                        </div>
-                    )}
-                    {isGettingData && (
-                        <div className="flex justify-center">
-                            <div className="border border-t-2 rounded-full h-8 w-8 border-blue animate-spin"></div>
-                        </div>
-                    )}
-                    {!isGettingData && suppliers.filter(supplier => applications.some(app => app.user_id === supplier.id && app.status === "Approved")).length === 0 && (
-                        <div className="text-center py-8 text-gray-500">
-                            <p>No suppliers have applied for this event yet.</p>
-                        </div>
-                    )}
+                                </div>
 
-                    {/* Suppliers who applied for this event - separate section */}
-                    <div className="mt-6">
-                        <h4 className="text-md font-medium mb-3">Suppliers who applied for this event</h4>
-                        {suppliers.length > 0 && (
-                            <div className="space-y-3">
-                                {suppliers.filter(supplier => applications.some(app => app.user_id === supplier.id && app.status === "Pending")).map((supplier) => {
-                                    const averageRating = calculateAverageRating(supplier.id);
-                                    const reviewCount = getReviewCount(supplier.id);
+                                {/* status */}
+                                <div className="flex flex-col w-full">
+                                    <label htmlFor="status">Status</label>
+                                    <Select
+                                        name="event_status"
+                                        value={event_status}
+                                        onChange={setEvent_status}
+                                        options={statusOptions}
+                                        placeholder="Upcoming"
+                                        className="mt-2"
+                                    />
+                                </div>
+                            </div>
 
-                                    return (
-                                        <div key={supplier.id} className="flex items-center justify-between p-4 bg-white rounded-lg border">
-                                            <div className="flex items-center space-x-3">
-                                                <div className="w-10 h-10 bg-gray-500 rounded-full flex items-center justify-center text-white font-medium">
-                                                    {supplier.supplier_name.charAt(0).toUpperCase()}
-                                                </div>
-                                                <div>
-                                                    <p className="font-medium text-gray-900">{supplier.supplier_name}</p>
-                                                    <p className="text-sm text-gray-500 capitalize">{supplier.supplier_type?.label}</p>
-                                                </div>
-                                            </div>
+                            {/* type */}
+                            <div className="flex flex-col w-full">
+                                <label htmlFor="type" className="mb-2">Type</label>
+                                <Select
+                                    name="event_type"
+                                    options={SupplierOptions}
+                                    value={event_type}
+                                    onChange={setEvent_type}
+                                    placeholder="Event Type"
+                                />
+                            </div>
 
+                            {/* Budget */}
+                            <div className="flex flex-col w-full">
+                                <label htmlFor="type">Budget</label>
+                                <input placeholder="₱ 25,500" type="text" name="event_budget" className="mt-2 focus:ring-2 focus:outline-none px-5 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black"
+                                    required
+                                    onChange={(e) => setEvent_budget(e.target.value)}
+                                    value={event_budget}
+                                />
+                            </div>
 
-                                            <div className="flex items-center space-x-2">
-                                                <SupplierModal className={'px-4 py-1 text-sm rounded-md'} supplierData={supplier} applications={applications} userData={userData.role} reviews={reviews[supplier.id]} averageRating={averageRating} />
+                            {/* description */}
+                            <div className="flex flex-col w-full">
+                                <label htmlFor="description">Description</label>
+                                <textarea name="event_description" id="desctipion" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-38 py-2 ring-black"
+                                    required
+                                    onChange={(e) => setEvent_description(e.target.value)}
+                                    value={event_description}
+                                ></textarea>
+                            </div>
+
+                            {/* sepcify supplier */}
+                            <div className="flex flex-col space-y-4">
+                                <span className="block font-medium">Specify the supplier you are looking for:</span>
+
+                                {/* Tags Display */}
+                                {tags.length > 0 && (
+                                    <div className="flex flex-wrap gap-2">
+                                        {tags.map((tag, index) => (
+                                            <span
+                                                key={index}
+                                                className="inline-flex items-center gap-2 py-2 px-3 bg-blue-50 border border-blue-200 rounded-lg text-sm"
+                                            >
+                                                {tag}
                                                 <button
-                                                    onClick={() => handleApprove(supplier.id)}
-                                                    className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
+                                                    type="button"
+                                                    onClick={() => removeTag(index)}
+                                                    className="hover:bg-blue-100 rounded-full p-1 transition-colors"
                                                 >
-                                                    Approve
+                                                    <X width={14} height={14} strokeWidth={2} />
                                                 </button>
-                                                <button
-                                                    onClick={() => handleReject(supplier.id)}
-                                                    className="px-3 py-1 bg-gray-500 text-white text-sm rounded hover:bg-gray-600 transition-colors"
-                                                >
-                                                    Reject
-                                                </button>
-                                            </div>
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Add Supplier Controls */}
+                                <div className="flex md:grid md:grid-cols-3 gap-3 items-end">
+                                    <div className="md:col-span-2">
+                                        <Select
+                                            options={SupplierOptions}
+                                            value={categories}
+                                            onChange={setCategories}
+                                            placeholder="Select supplier category"
+                                            isClearable
+                                            className="w-full"
+                                        />
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="py-2 px-4 bg-blue-500 text-white rounded-sm hover:bg-blue-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                        onClick={addTag}
+                                        disabled={!categories || !categories.value.trim()}
+                                    >
+                                        Add Supplier
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="w-full sm:w-full md:w-full lg:w-[40rem] grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                <PrimaryButton>Update Event</PrimaryButton>
+                                <Link to={'/events'} className="flex items-center py-2 w-full text-center justify-center border-1 hover:boder-1 hover:border-blue-500 rounded-sm">
+                                    <span className="block">Cancel</span>
+                                </Link>
+                            </div>
+                        </form>
+
+                        {/* Event Suppliers Section */}
+                        <div className="mt-8 space-y-4">
+                            <h3 className="text-md font-semibold">Event Suppliers</h3>
+                            {suppliers.length > 0 &&
+                                <div className="space-y-3">
+                                    {suppliers.filter(supplier => applications.some(app => app.supplier_id === supplier.id && app.status === "Approved") &&
+                                        contracts.some(contracts => contracts.status === "Approved" && supplier.id === contracts.supplier_id)).map((supplier) => {
+
+                                            const averageRating = calculateAverageRating(supplier.id);
+
+                                            return (
+                                                <div key={supplier.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
+                                                    <div className="flex items-center space-x-3">
+                                                        <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium">
+                                                            {supplier.supplier_name.charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-medium relative top-1 text-gray-900">{supplier.supplier_name}</p>
+                                                            <SupplierModal className={'text-sm text-gray-600 hover:text-blue-600'} supplierData={supplier} applications={applications} userData={userData.role} services={services[supplier.id]} reviews={reviews[supplier.id]} averageRating={averageRating} />
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex items-center space-x-2">
+                                                        <ContractModal event_id={id} supplier_id={supplier.id} eventData={eventData} supplierData={supplier} />
+                                                    </div>
+
+                                                    <div className="flex items-center text-sm gap-3">
+                                                        <Review supplier_id={supplier.id} event_name={event_name} />
+                                                    </div>
+
+                                                </div>
+                                            )
+                                        })}
+                                </div>
+                            }
+                            {isLoading && (
+                                <div className="flex justify-center">
+                                    <div className="border border-t-2 rounded-full h-8 w-8 border-blue animate-spin"></div>
+                                </div>
+                            )}
+                            {!isLoading && suppliers.filter(supplier => applications.some(app => app.supplier_id === supplier.id && app.status === "Approved") &&
+                                contracts.some(contracts => contracts.status === "Approved" && supplier.id === contracts.supplier_id)).length === 0 && (
+                                    <div className="text-center py-6 text-gray-500">
+                                        <p>No new supplier applications for this event.</p>
+                                    </div>
+                                )}
+
+                            {/* Suppliers who applied for this event - separate section */}
+                            <div className="mt-6">
+                                <h4 className="text-md font-medium mb-3">Suppliers who applied for this event</h4>
+                                {suppliers.length > 0 && (
+                                    <div className="space-y-3">
+                                        {suppliers.filter(supplier => applications.some(app => app.supplier_id === supplier.id && app.status === "Pending")).map((supplier) => {
+                                            const averageRating = calculateAverageRating(supplier.id);
+
+                                            return (
+                                                <div key={supplier.id} className="flex items-center justify-between p-4 bg-white rounded-lg border">
+                                                    <div className="flex items-center space-x-3">
+                                                        <div className="w-10 h-10 bg-gray-500 rounded-full flex items-center justify-center text-white font-medium">
+                                                            {supplier.supplier_name.charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-medium relative top-1 text-gray-900">{supplier.supplier_name}</p>
+                                                            <SupplierModal className={'text-sm text-gray-600 hover:text-blue-600'} supplierData={supplier} applications={applications} userData={userData.role} services={services[supplier.id]} reviews={reviews[supplier.id]} averageRating={averageRating} />
+                                                        </div>
+                                                    </div>
+
+
+                                                    <div className="flex items-center space-x-2">
+                                                        <button
+                                                            onClick={() => handleApprove(supplier)}
+                                                            className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
+                                                        >
+                                                            Approve
+                                                        </button>
+
+                                                        <RejectReview className={`px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition-colors`} event_id={id} event_name={event_name} supplier_id={supplier.id} supplier={supplier}/>
+                                                    </div>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                )}
+                                {isLoading && (
+                                    <div className="flex justify-center">
+                                        <div className="border border-t-2 rounded-full h-8 w-8 border-blue animate-spin"></div>
+                                    </div>
+                                )}
+                                {!isLoading && suppliers.filter(supplier => applications.some(app => app.supplier_id === supplier.id && app.status !== "Approved")).length === 0 && (
+                                    <div className="text-center py-6 text-gray-500">
+                                        <p>No new supplier applications for this event.</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* your offers to suppliers */}
+                            <div className="mt-6">
+                                <h4 className="text-md font-medium mb-3">Your Offers to Suppliers</h4>
+                                {contracts.length > 0 && (
+                                    <div className="space-y-3">
+                                        {suppliers.filter(supplier =>
+                                            applications.some(app => app.supplier_id === supplier.id && app.status === "Approved") &&
+                                            contracts.some(contracts => contracts.status === "Pending" && supplier.id === contracts.supplier_id))
+                                            .map((supplier, index) => {
+                                                const averageRating = calculateAverageRating(supplier.id);
+
+                                                return (
+                                                    <div key={supplier.id} className="flex items-center justify-between p-4 bg-white rounded-lg border">
+                                                        <div className="flex items-center space-x-3">
+                                                            <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium">
+                                                                {supplier.supplier_name.charAt(0).toUpperCase()}
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-medium relative top-1 text-gray-900">{supplier.supplier_name}</p>
+                                                                <SupplierModal className={'text-sm text-gray-600 hover:text-blue-600'} supplierData={supplier} applications={applications} userData={userData.role} services={services[supplier.id]} reviews={reviews[supplier.id]} averageRating={averageRating} />
+                                                            </div>
+                                                        </div>
+
+
+                                                        <div className="flex items-center space-x-2">
+                                                            <ContractModal event_id={id} supplier_id={supplier.id} eventData={eventData} supplierData={supplier} />
+                                                        </div>
+                                                    </div>
+                                                )
+                                            })}
+                                    </div>
+                                )}
+                                {isLoading && (
+                                    <div className="flex justify-center">
+                                        <div className="border border-t-2 rounded-full h-8 w-8 border-blue animate-spin"></div>
+                                    </div>
+                                )}
+                                {!isLoading && suppliers.filter(supplier => applications.some(app => app.supplier_id === supplier.id && app.status === "Approved") &&
+                                    contracts.some(contracts => contracts.status === "Pending" && supplier.id === contracts.supplier_id)).length === 0 && (
+                                        <div className="text-center py-6 text-gray-500">
+                                            <p>No new supplier applications for this event.</p>
                                         </div>
-                                    )
-                                })}
+                                    )}
                             </div>
-                        )}
-                        {isGettingData && (
-                            <div className="flex justify-center">
-                                <div className="border border-t-2 rounded-full h-8 w-8 border-blue animate-spin"></div>
-                            </div>
-                        )}
-                        {!isGettingData && suppliers.filter(supplier => applications.some(app => app.user_id === supplier.id && app.status === "Pending")).length === 0 && (
-                            <div className="text-center py-6 text-gray-500">
-                                <p>No new supplier applications for this event.</p>
-                            </div>
-                        )}
+                        </div>
                     </div>
-                </div>
-            </div>
+                </>
+            )}
         </>
     )
 }

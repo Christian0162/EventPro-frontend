@@ -3,20 +3,19 @@ import { setDoc, doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "../firebase/firebase";
 import bcrypt from "bcryptjs";
 import Swal from "sweetalert2";
+import { useState } from "react";
 
-export default function useAuth() {
+export const useAuthLogin = () => {
+    const [isLoading, setIsLoading] = useState(false)
+    const [error, setError] = useState('')
 
-
-    const login = async (auth, email, password, setError) => {
+    const login = async (auth, email, password) => {
         try {
-            const currentUser = await signInWithEmailAndPassword(auth, email, password);
+            setIsLoading(true)
 
-            const user = currentUser.user
+            const user = await signInWithEmailAndPassword(auth, email, password);
 
             if (user) {
-                await updateDoc(doc(db, "users", user.uid), {
-                    lastLoginAt: serverTimestamp()
-                })
                 Swal.fire({
                     icon: 'success',
                     title: 'Signed in',
@@ -24,9 +23,16 @@ export default function useAuth() {
                     timer: 1000,
                     showConfirmButton: false
                 })
+
+                await updateDoc(doc(db, "users", user.user.uid), {
+                    lastLoginAt: serverTimestamp()
+                })
+
             }
             else {
                 console.log('no user found')
+                setIsLoading(true)
+
             }
         }
         catch (e) {
@@ -34,41 +40,51 @@ export default function useAuth() {
                 setError("invalid credentials")
             }
         }
+
+        finally {
+            setIsLoading(false)
+        }
     }
 
-    const logout = (auth) => {
-        return signOut(auth)
+    return { login, isLoading, error }
+
+}
+
+export const useAuthLogout = () => {
+
+    const logout = async (auth) => {
+
+        Swal.fire({
+            icon: 'success',
+            title: 'Sign out',
+            text: 'Successfully logout',
+            timer: 1000,
+            showConfirmButton: false
+
+        })
+
+        await signOut(auth)
     }
 
-    const register = async (auth, email, password, firstName, lastName, role, setErrorEmail) => {
+    return { logout }
+}
+
+export const useAuthRegister = () => {
+    const [isLoading, setIsLoading] = useState(false)
+    const [error, setError] = useState('')
+
+    const register = async (auth, email, password, userData) => {
         try {
-            const userCredential = await createUserWithEmailAndPassword(auth, email, password)
+            setIsLoading(true)
 
-            const user = userCredential.user.uid
+            const user = await createUserWithEmailAndPassword(auth, email, password)
 
             const salt = bcrypt.genSaltSync(10);
             const hashedPassword = bcrypt.hashSync(password, salt);
 
-            if (role === 'Event Planner') {
-                await setDoc(doc(db, "users", user), {
-                    first_name: firstName,
-                    last_name: lastName,
-                    email_address: email,
-                    password: hashedPassword,
-                    role: role,
-                    status: 'unverified',
-                    createdAt: serverTimestamp()
-                })
+            console.log(userData)
 
-                await setDoc(doc(db, "userProfile", user), {
-                    first_name: firstName,
-                    last_name: lastName,
-                    email_address: email,
-                    description: '',
-                    profile_pic: '',
-                    contact_number: '',
-                    createdAt: serverTimestamp()
-                })
+            if (user) {
                 Swal.fire({
                     icon: 'success',
                     title: 'Signed in',
@@ -76,49 +92,44 @@ export default function useAuth() {
                     timer: 1000,
                     showConfirmButton: false
                 })
-            }
 
-            else {
-                await setDoc(doc(db, "users", user), {
-                    first_name: firstName,
-                    last_name: lastName,
-                    email: email,
+                await setDoc(doc(db, "users", user.user.uid), {
+                    first_name: userData?.first_name,
+                    last_name: userData?.last_name,
+                    email_address: email,
                     password: hashedPassword,
-                    role: role,
+                    role: userData?.role,
+                    status: userData?.role === "Event Planner" ? 'unverified' : '',
                     createdAt: serverTimestamp()
                 })
 
-                await setDoc(doc(db, "userProfile", user), {
-                    first_name: firstName,
-                    last_name: lastName,
+                await setDoc(doc(db, "userProfiles", user.user.uid), {
+                    first_name: userData?.first_name,
+                    last_name: userData?.last_name,
                     email_address: email,
                     description: '',
                     profile_pic: '',
                     contact_number: '',
                     createdAt: serverTimestamp()
-                })
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Signed in',
-                    text: 'Successfully registered',
-                    timer: 1000,
-                    showConfirmButton: false
                 })
             }
 
         }
+
         catch (e) {
             if (e.code === "auth/email-already-in-use") {
-                setErrorEmail("The email is already exist.");
+                setError("The email is already exist.");
+                setIsLoading(false)
                 return
             }
-            else { setErrorEmail('') }
+            else { setError('') }
+        }
+
+        finally {
+            setIsLoading(false)
         }
     }
 
-    return {
-        login,
-        logout,
-        register
-    }
+    return { register, isLoading, error }
 }
+

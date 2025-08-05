@@ -1,5 +1,5 @@
-import { Button, Dialog, DialogPanel, } from '@headlessui/react'
-import { useState, useEffect } from 'react'
+import { Dialog, DialogPanel, } from '@headlessui/react'
+import { useState } from 'react'
 import { deleteDoc, updateDoc, doc } from 'firebase/firestore'
 import { X, MessageSquare, Clock } from 'lucide-react'
 import { db } from '../firebase/firebase'

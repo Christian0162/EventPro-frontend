@@ -72,7 +72,7 @@ export default function SupplierPanels({ shop, reviews, services, averageRating,
         }
     }
 
-    console.log(shop.id)
+    console.log(services)
 
     return (
         <>
@@ -101,7 +101,7 @@ export default function SupplierPanels({ shop, reviews, services, averageRating,
                                 <div className="flex justify-between items-start mb-6">
                                     <div>
                                         <h3 className="text-lg font-bold text-gray-900 mb-2">About Our Business</h3>
-                                        <p className="text-gray-600">{shop.supplier_description}</p>
+                                        <p className="text-gray-600">{shop?.supplier_description}</p>
                                     </div>
                                     <AboutOurBusiessEdit supplierData={shop} />
                                 </div>
@@ -166,7 +166,7 @@ export default function SupplierPanels({ shop, reviews, services, averageRating,
                                                     <h4 className="font-bold text-gray-900 mb-1">Email Address</h4>
                                                     {!contactEditing
                                                         ? (
-                                                            <p className="text-gray-600">{shop.supplier_email}</p>
+                                                            <p className="text-gray-600">{shop?.supplier_email}</p>
 
                                                         )
 
@@ -185,7 +185,7 @@ export default function SupplierPanels({ shop, reviews, services, averageRating,
                                                     <h4 className="font-bold text-gray-900 mb-1">Phone Number</h4>
                                                     {!contactEditing
                                                         ? (
-                                                            <p className="text-gray-600">{shop.supplier_number}</p>
+                                                            <p className="text-gray-600">{shop?.supplier_number}</p>
                                                         ) : (
                                                             <input
                                                                 type="text"
@@ -249,7 +249,7 @@ export default function SupplierPanels({ shop, reviews, services, averageRating,
                                                 <div>
                                                     <h4 className="font-bold text-gray-900 mb-1">Starting Price</h4>
                                                     {!bookingEdting ? (
-                                                        <p className="text-xl font-bold text-green-600">₱{shop.supplier_price}</p>
+                                                        <p className="text-xl font-bold text-green-600">₱{shop?.supplier_price}</p>
                                                     ) : (
                                                         <input type="number" value={supplier_price} onChange={(e) => setSupplier_price(e.target.value)} placeholder='e.g ₱5000' className='border border-gray-300 focus:outline-none px-4 py-2 rounded-md text-sm' />
                                                     )}
@@ -264,7 +264,7 @@ export default function SupplierPanels({ shop, reviews, services, averageRating,
                                                 <div>
                                                     <h4 className="font-bold text-gray-900 mb-1">Availability</h4>
                                                     {!bookingEdting ? (
-                                                        <p className="text-gray-600">{shop.supplier_availability}</p>
+                                                        <p className="text-gray-600">{shop?.supplier_availability}</p>
                                                     ) : (
                                                         <input type="text" placeholder="e.g., Monday to Saturday, 8AM-6PM" value={availability} onChange={(e) => setAvailability(e.target.value)} className='border border-gray-300 focus:outline-none px-4 py-2 rounded-md text-sm' />
                                                     )}
@@ -280,7 +280,7 @@ export default function SupplierPanels({ shop, reviews, services, averageRating,
                                                     <h4 className="font-bold text-gray-900 mb-1">Typical Response Time</h4>
                                                     <div className="flex items-center gap-2">
                                                         {!bookingEdting ? (
-                                                            <span className="text-gray-600">{shop.supplier_response_time?.label}</span>
+                                                            <span className="text-gray-600">{shop?.supplier_response_time?.label}</span>
 
                                                         ) : (
                                                             <Select value={response_time} className='text-sm' onChange={setResponse_time} options={responseTimeOptions} placeholder="Typically response time" isClearable required />
@@ -311,7 +311,7 @@ export default function SupplierPanels({ shop, reviews, services, averageRating,
                                     </div>
                                     <ServiceModal supplierData={shop}/>
                                 </div>
-                                {!services.length > 0 && (
+                                {!services?.length > 0 && (
                                     <span className='text-lg text-gray-400 my-10 mt-15 block text-center'>No Service</span>
                                 )}
                                 {services && (

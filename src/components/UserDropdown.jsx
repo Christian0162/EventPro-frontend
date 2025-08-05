@@ -1,63 +1,48 @@
-import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
-import { User } from "lucide-react";
-import { Link } from "react-router-dom";
-import useAuth from "../hooks/useAuth";
-import { auth } from "../firebase/firebase";
-import Swal from "sweetalert2";
+import { useState } from "react"
+import { useAuthLogout } from "../hooks/useAuth"
+import { auth } from "../firebase/firebase"
+import { useNavigate } from "react-router-dom"
 
-export default function UserDropdown({userData}) {
+export default function UserDropDown({ userData }) {
+    const [isOpen, setIsOpen] = useState(false)
+    const navigate = useNavigate()
 
-    const { logout } = useAuth()
+    const { logout } = useAuthLogout()
 
     const handleLogout = async () => {
-
-        logout(auth)
-        Swal.fire({
-            icon: 'success',
-            title: 'Sign out',
-            text: 'Successfully logout',
-            timer: 1000,
-            showConfirmButton: false
-
-        })
-
+        await logout(auth)
+        setIsOpen(false)
     }
 
+
+
     return (
-        <Menu as="div" className="relative inline-block text-left">
-            <MenuButton className="bg-gradient-to-r from-violet-600 via-100% via-blue-600 to-pink-600 rounded-full text-white text-sm w-8 h-8 flex items-center justify-center hover:ring-2 ring-blue-400 transition">
-                {userData?.first_name.charAt(0).toUpperCase()}
-            </MenuButton>
+        <>
+            <div className="relative">
 
-            <MenuItems className="absolute right-0 mt-2 w-40 max-h-60 overflow-auto bg-white border border-gray-200 rounded-md shadow-lg z-50">
-                <div className="p-1">
-                    <MenuItem>
-                        <Link
-                            to="/profile"
-                            className="transition-all duration-75 block w-full text-left px-4 py-2 text-sm rounded-md hover:bg-gray-100"
-                        >
-                            Profile
-                        </Link>
-                    </MenuItem>
-                    <MenuItem>
-                        <Link
-                            to="/settings"
-                            className="transition-all duration-75 block w-full text-left px-4 py-2 text-sm rounded-md hover:bg-gray-100"
+                <button className="bg-gradient-to-r from-blue-600 to-violet-600 w-8 h-8 rounded-full text-white"
+                    onClick={() => setIsOpen(!isOpen)}
+                >
+                    {userData?.first_name.charAt(0).toUpperCase()}
+                </button>
 
-                        >
-                            Settings
-                        </Link>
-                    </MenuItem>
-                    <MenuItem>
-                        <button
-                            onClick={() => handleLogout()}
-                            className="transition-all duration-75 w-full text-left px-4 py-2 text-sm text-red-600 rounded-md hover:bg-red-100"
-                        >
-                            Sign Out
-                        </button>
-                    </MenuItem>
-                </div>
-            </MenuItems>
-        </Menu>
-    );
+                {isOpen && (
+                    <>
+                        <div onClick={() => setIsOpen(false)} className="fixed inset-0 z-40"></div>
+
+                        <div className="absolute z-50 mt-2 right-0 w-48 rounded-lg p-1 text-sm bg-white border border-gray-100 shadow-lg">
+                            <div className="py-1 flex flex-col text-left">
+                                <button onClick={() => {navigate('/profile', { replace: true }); setIsOpen(false)}} className="transition-all duration-50 w-full p-2 text-left rounded text-gray-600 hover:text-black hover:bg-gray-100">Profile</button>
+                                <button className="transition-all duration-50 w-full p-2 text-left rounded text-gray-600 hover:text-black hover:bg-gray-100">Settings</button>
+                                <button onClick={() => handleLogout()} className="transition-all duration-50 w-full p-2 text-left rounded text-gray-600 hover:text-black hover:bg-gray-100">Logout</button>
+                            </div>
+                        </div>
+                    </>
+
+
+                )}
+            </div>
+
+        </>
+    )
 }

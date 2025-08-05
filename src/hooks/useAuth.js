@@ -14,7 +14,7 @@ export default function useAuth() {
             const user = currentUser.user
 
             if (user) {
-                await updateDoc(doc(db, "Users", user.uid), {
+                await updateDoc(doc(db, "users", user.uid), {
                     lastLoginAt: serverTimestamp()
                 })
                 Swal.fire({
@@ -49,15 +49,62 @@ export default function useAuth() {
             const salt = bcrypt.genSaltSync(10);
             const hashedPassword = bcrypt.hashSync(password, salt);
 
-            await setDoc(doc(db, "Users", user), {
-                first_name: firstName,
-                last_name: lastName,
-                email: email,
-                password: hashedPassword,
-                role: role,
-                isApproved: false,
-                createdAt: serverTimestamp()
-            })
+            if (role === 'Event Planner') {
+                await setDoc(doc(db, "users", user), {
+                    first_name: firstName,
+                    last_name: lastName,
+                    email_address: email,
+                    password: hashedPassword,
+                    role: role,
+                    status: 'unverified',
+                    createdAt: serverTimestamp()
+                })
+
+                await setDoc(doc(db, "userProfile", user), {
+                    first_name: firstName,
+                    last_name: lastName,
+                    email_address: email,
+                    description: '',
+                    profile_pic: '',
+                    contact_number: '',
+                    createdAt: serverTimestamp()
+                })
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Signed in',
+                    text: 'Successfully registered',
+                    timer: 1000,
+                    showConfirmButton: false
+                })
+            }
+
+            else {
+                await setDoc(doc(db, "users", user), {
+                    first_name: firstName,
+                    last_name: lastName,
+                    email: email,
+                    password: hashedPassword,
+                    role: role,
+                    createdAt: serverTimestamp()
+                })
+
+                await setDoc(doc(db, "userProfile", user), {
+                    first_name: firstName,
+                    last_name: lastName,
+                    email_address: email,
+                    description: '',
+                    profile_pic: '',
+                    contact_number: '',
+                    createdAt: serverTimestamp()
+                })
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Signed in',
+                    text: 'Successfully registered',
+                    timer: 1000,
+                    showConfirmButton: false
+                })
+            }
 
         }
         catch (e) {

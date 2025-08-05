@@ -27,7 +27,7 @@ export default function ChatWindow({ userData }) {
 
     useEffect(() => {
         const fetchData = async () => {
-            const onSnapShop = await getDocs(collection(db, "Shops"))
+            const onSnapShop = await getDocs(collection(db, "shops"))
             const shop = onSnapShop.docs.map(doc => ({ id: doc.id, ...doc.data() }))
             const filteredShop = shop.filter(shop => shop.id === auth.currentUser.uid)
 
@@ -37,7 +37,7 @@ export default function ChatWindow({ userData }) {
     }, [])
 
     useEffect(() => {
-        const unsubscribe = onSnapshot(collection(db, "Contacts"), (snapshot) => {
+        const unsubscribe = onSnapshot(collection(db, "contacts"), (snapshot) => {
             const fetchedContacts = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
@@ -66,7 +66,7 @@ export default function ChatWindow({ userData }) {
     useEffect(() => {
         if (!selectedContact) return
 
-        const messageQuery = query(collection(db, "Messages"),
+        const messageQuery = query(collection(db, "messages"),
             where("sender_id", "in", [auth.currentUser.uid, selectedContact.contact_id]),
             where("recipient_id", "in", [auth.currentUser.uid, selectedContact.contact_id]),
             orderBy("timestamp", "asc"))
@@ -98,7 +98,7 @@ export default function ChatWindow({ userData }) {
         if (!message.trim() || !selectedContact) return;
         setIsSending(true)
 
-        const contactsRef = collection(db, "Contacts");
+        const contactsRef = collection(db, "contacts");
 
         const q = query(contactsRef,
             where("user_id", "==", selectedContact.contact_id),
@@ -122,7 +122,7 @@ export default function ChatWindow({ userData }) {
 
         setMessage('');
 
-        await addDoc(collection(db, "Messages"), {
+        await addDoc(collection(db, "messages"), {
             sender_id: auth.currentUser.uid,
             recipient_id: selectedContact.contact_id,
             text: message,

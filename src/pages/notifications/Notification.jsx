@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
-import { Bell, Check, X, Clock } from 'lucide-react';
-import { collection, onSnapshot, orderBy, query, where } from 'firebase/firestore';
+import { Bell, Check } from 'lucide-react';
+import { collection, getDocs, onSnapshot, orderBy, query, updateDoc, where, doc } from 'firebase/firestore';
 import { db, auth } from '../../firebase/firebase';
+import NotificationModal from '../../components/NotificationModal';
 
-export default function Notification() {
+export default function Notification({ userData }) {
 
     const [notifications, setNotications] = useState([])
 
     useEffect(() => {
 
-        const q = query(collection(db, "Notifications"),
+        const q = query(collection(db, "notifications"),
             where("user_id", "==", auth.currentUser.uid),
             orderBy("timestamp", "desc")
         )
@@ -23,72 +24,37 @@ export default function Notification() {
 
     }, [])
 
+    const hanldeMarksAllRead = async () => {
+        const q = query(collection(db, "notifications"),
+            where('user_id', '==', userData.id),
+            where('unread', '==', true)
+        )
+
+        const onSnapShotNotif = await getDocs(q)
+        const notificaions = onSnapShotNotif.docs.map((notficDoc) => updateDoc(doc(db, "notifications", notficDoc.id), {
+            unread: false,
+        }))
+
+        await Promise.all(notificaions)
+    }
 
     return (
         <div className="">
             {/* Header */}
-            <div className="mb-8">
+            <div className="mb-8 flex items-center justify-between">
                 <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent mb-2">
                     Notifications
                 </h1>
+                <button onClick={() => hanldeMarksAllRead()} className='transition-all duration-200 flex items-center bg-blue-600 hover:bg-blue-700 py-2 px-5 gap-2 text-white rounded-xl'>
+                    Mark All As Read
+                    <Check size={20} className='text-white' />
+                </button>
             </div>
-
 
             {/* Notifications List */}
             <div className="space-y-3">
                 {notifications.map((notification) => (
-                    <div
-                        key={notification.id}
-                        className={`group relative bg-white rounded-xl p-6 shadow-sm border transition-all duration-300 hover:shadow-lg hover:scale-[1.01] ${notification.unread
-                            ? 'border-l-4 border-l-blue-500 border-slate-200'
-                            : 'border-slate-200'
-                            }`}
-                    >
-                        {/* Unread indicator */}
-                        {/* {notification.unread && (
-                            <div className="absolute top-6 right-6 w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
-                        )} */}
-
-                        <div className="flex items-start gap-4">
-                            {/* Avatar with icon */}
-                            <div className="relative">
-                                <div className={`flex items-center justify-center w-12 h-12 rounded-full text-white font-semibold text-lg bg-blue-600`}>
-                                    {notification.avatar}
-                                </div>
-                            </div>
-
-                            {/* Content */}
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-start justify-between gap-4">
-                                    <div className="flex-1">
-                                        <h3 className={`font-semibold text-slate-900 ${notification.unread ? 'text-slate-900' : 'text-slate-700'}`}>
-                                            {notification.title}
-                                        </h3>
-                                        <p className={`mt-1 text-sm ${notification.unread ? 'text-slate-700' : 'text-slate-500'}`}>
-                                            {notification.message}
-                                        </p>
-                                        <p className="mt-2 text-xs text-slate-400 flex items-center gap-1">
-                                            <Clock className="w-3 h-3" />
-                                            {notification.timestamp.toDate().toLocaleTimeString([], {
-                                                hour: '2-digit',
-                                                minute: '2-digit'
-                                            })}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Actions */}
-                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button className="p-2 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors">
-                                    <Check className="w-4 h-4" />
-                                </button>
-                                <button className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                                    <X className="w-4 h-4" />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                    <NotificationModal key={notification.id} notification={notification} />
                 ))}
             </div>
 

@@ -2,11 +2,12 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { onAuthStateChanged } from "firebase/auth";
 import { useEffect, useState, lazy, Suspense } from "react";
 import { auth } from "./firebase/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { db } from "./firebase/firebase";
 import Loading from "./components/Loading";
 import { HeadProvider } from "react-head";
-
+import Verification from "./pages/verify/Verification";
+import Profile from "./profile/Profile";
 
 const GuestLayout = lazy(() => import("./layouts/GuestLayout"))
 const AuthLayout = lazy(() => import("./layouts/AuthLayout"))
@@ -16,7 +17,6 @@ const Login = lazy(() => import("./pages/auth/Login"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const Review = lazy(() => import("./pages/admin/Review"));
-const SupplierVerification = lazy(() => import("./pages/suppliers/SupplierVerification"));
 const Event = lazy(() => import("./pages/events/Event"));
 const CreateEvent = lazy(() => import("./pages/events/CreateEvent"));
 const EditEvent = lazy(() => import("./pages/events/EditEvent"));
@@ -26,7 +26,6 @@ const Favorites = lazy(() => import("./pages/favorites/Favorites"));
 const ChatWindow = lazy(() => import("./pages/chat/ChatWindow"));
 const Notification = lazy(() => import("./pages/notifications/Notification"));
 const Error404 = lazy(() => import("./components/Error404"));
-
 
 function App() {
     const [user, setUser] = useState(null);
@@ -39,17 +38,19 @@ function App() {
                 setIsLoading(true);
                 if (user) {
                     setUser(user);
-                    const userDocRef = doc(db, "Users", user.uid);
-                    const docSnap = await getDoc(userDocRef);
+                    const unsubscribeUsers = onSnapshot(doc(db, "users", auth.currentUser.uid), async (onsnapshot) => {
 
-                    if (docSnap.exists()) {
-                        setUserData(docSnap.data());
-                    }
+                        if (onsnapshot.exists()) {
+                            setUserData({ id: onsnapshot.id, ...onsnapshot.data() });
+                        }
 
-                    else {
-                        console.warn("No user data found");
-                        setUserData(null);
-                    }
+                        else {
+                            console.warn("No user data found");
+                            setUserData(null);
+                        }
+
+                        return () => unsubscribeUsers()
+                    })
                 } else {
                     setUser(null);
                     setUserData(null);
@@ -111,7 +112,7 @@ function App() {
 
                             <Route path="/verify" element={user ?
                                 <AuthLayout user={user} userData={userData}>
-                                    <SupplierVerification user={user} userData={userData} />
+                                    <Verification user={user} userData={userData} />
                                 </AuthLayout> : <Navigate to={'/login'} />}></Route>
 
                             <Route path="/events" element={user ?
@@ -127,6 +128,11 @@ function App() {
                             <Route path="/events/edit/:id" element={user ?
                                 <AuthLayout user={user} userData={userData}>
                                     <EditEvent user={user} userData={userData} />
+                                </AuthLayout> : <Navigate to={'/login'} />}></Route>
+
+                            <Route path="/profile" element={user ?
+                                <AuthLayout user={user} userData={userData}>
+                                    <Profile user={user} userData={userData} />
                                 </AuthLayout> : <Navigate to={'/login'} />}></Route>
 
                             <Route path="/suppliers" element={user ?

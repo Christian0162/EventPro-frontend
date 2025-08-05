@@ -1,0 +1,514 @@
+import { Button, Dialog, DialogPanel, } from '@headlessui/react'
+import { updateDoc, doc } from 'firebase/firestore'
+import { Edit3, X, UserPen, Store, MapPin, Container, MessageSquareWarning, SquarePen, PackagePlus, PhilippinePeso } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { auth, db } from '../firebase/firebase'
+import Select from 'react-select'
+import { SupplierOptions, planTypeOptions, paymentNoticeOptions } from '../constants/categories'
+import AddressAutocomplete from './AddressAutoComplete'
+import Swal from 'sweetalert2'
+
+export const AboutOurBusiessEdit = ({ supplierData }) => {
+    const [isOpen, setIsOpen] = useState(false)
+    const [error, setError] = useState('')
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [expertise, setExpertise] = useState([])
+    const [supplier_description, setSupplier_description] = useState('')
+    const [removedExpertise, setRemovedExpertise] = useState([])
+
+    useEffect(() => {
+        setExpertise(supplierData?.supplier_expertise)
+        setSupplier_description(supplierData.supplier_description)
+    }, [supplierData])
+
+
+
+    const handleExpertiseChange = (option) => {
+        setExpertise(prev => {
+            if (prev.includes(option)) {
+
+                setRemovedExpertise(removed => removed.includes(option) ? removed : [...removed, option])
+
+                return prev.filter(prev => prev !== option)
+            }
+            else {
+                return [...prev, option]
+            }
+        })
+    }
+
+    const handleExpertiseRemoved = (option) => {
+        setExpertise(prev => {
+            if (prev.includes(option)) {
+                return prev.filter(prev => prev !== option)
+            }
+            else {
+                setRemovedExpertise(removed => removed.filter(rev => rev !== option))
+
+                return [...prev, option]
+            }
+        })
+    }
+
+    function open() {
+        setIsOpen(true)
+    }
+
+    function close() {
+        setIsOpen(false)
+    }
+
+    const handleSubmit = async (e) => {
+        e.preventDefault()
+        setIsSubmitting(true)
+        try {
+            await updateDoc(doc(db, "shops", auth.currentUser.uid), {
+                supplier_description: supplier_description,
+                supplier_expertise: expertise
+            })
+
+            Swal.fire('Updated', 'Your profile\'s About section has been updated.', 'success')
+
+            setIsSubmitting(false)
+            close()
+        }
+
+        catch (e) {
+            console.error(e)
+            setIsSubmitting(false)
+        }
+
+    }
+
+    console.log(removedExpertise)
+    return (
+        <>
+            <Button onClick={open} className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md">
+                <Edit3 size={16} />
+                Edit
+            </Button>
+
+            <Dialog open={isOpen} as="div" className="relative z-50 focus:outline-none" onClose={close}>
+                <div className="fixed inset-0 bg-black/25" />
+                <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
+                    <div className="flex min-h-full items-center justify-center p-4">
+                        <DialogPanel
+                            transition
+                            className="w-full max-w-3xl rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                        >
+                            <div className='relative px-10 py-5 bg-gray-100 rounded-t-xl'>
+                                <button
+                                    onClick={close}
+                                    className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/80 hover:bg-white transition-colors duration-200"
+                                >
+                                    <X size={20} className="text-gray-600" />
+                                </button>
+
+                                <div className="flex flex-col gap-1 mb-2 mt-2">
+                                    <div className='flex gap-2 items-center'>
+                                        <UserPen size={24} className='text-blue-600' />
+                                        <h2 className="text-3xl font-bold text-blue-600">
+                                            Edit About Profile
+                                        </h2>
+                                    </div>
+                                    <p className='text-gray-600'>Update your business and information</p>
+                                </div>
+                            </div>
+
+                            <form onSubmit={handleSubmit}>
+                                <div className='flex flex-col px-10 py-5'>
+                                    <div className='relative flex flex-col'>
+                                        <label htmlFor="search" className='text-sm mb-2 text-gray-800 font-bold'>About our Business</label>
+                                        <textarea
+                                            onChange={(e) => setSupplier_description(e.target.value)}
+                                            type="text"
+                                            value={supplier_description}
+                                            placeholder="Tell us briefly about your business..."
+                                            className='rounded-lg focus:outline-none border resize-none h-[130px] border-gray-300 shadow-lg py-2 px-4'
+                                        />
+                                        <span className='text-sm block text-gray-600 mt-2 text-right' >{supplier_description?.length}/500</span>
+
+
+                                    </div>
+
+                                    {error && (
+                                        <span className='mt-5 text-red-500'>{error}</span>
+                                    )}
+
+                                    <div className='flex flex-col gap-3'>
+                                        <span className='block text-gray-800 font-bold mt-3 text-sm'>Expertise</span>
+                                        <div className='flex gap-2'>
+                                            {expertise?.length > 0 && (
+                                                <>
+                                                    {expertise.map((supplier, index) => (
+                                                        <button type='button' onClick={() => handleExpertiseChange(supplier)} className={`group px-4 py-1 rounded-full bg-green-500 flex items-center text-white hover:bg-red-500 transition-all duration-200 `} key={index}>
+                                                            {supplier} <span className='ml-2 transition-all duration-200 group-hover:opacity-100 opacity-0 font-bold flex'> - </span>
+                                                        </button>
+                                                    ))}
+                                                </>
+                                            )}
+                                        </div>
+                                        {expertise?.length === 0 && (
+                                            <div className='flex justify-center items-center'>
+                                                <span className='text-gray-600 block text-center'>No expertise</span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {removedExpertise.length > 0 && (
+                                        <div className='flex flex-col gap-3'>
+                                            <span className='block text-gray-800 font-bold mt-3 text-sm'>Removed</span>
+                                            <div className='flex gap-2'>
+                                                <>
+                                                    {removedExpertise.map((supplier, index) => (
+                                                        <button type='button' onClick={() => handleExpertiseRemoved(supplier)} className={`group px-4 py-1 rounded-full bg-yellow-500 flex items-center text-white hover:bg-green-500 transition-all duration-200 `} key={index}>
+                                                            {supplier} <span className='ml-2 transition-all duration-200 group-hover:opacity-100 opacity-0 font-bold flex'> + </span>
+                                                        </button>
+                                                    ))}
+                                                </>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <button
+                                        disabled={isSubmitting}
+                                        className={`${isSubmitting ? 'bg-blue-300' : 'bg-blue-600 hover:bg-blue-700'} text-md mt-7 py-2 rounded-md text-white flex justify-center text-center items-center gap-3`}
+                                    >
+                                        {isSubmitting ? <div className='h-6 w-6 rounded-full border border-t-2 animate-spin'></div> : 'Update'}
+
+                                    </button>
+                                </div>
+                            </form>
+                        </DialogPanel>
+                    </div>
+                </div>
+            </Dialog>
+
+        </>
+    )
+}
+
+export const SupplierDetails = ({ supplierData }) => {
+    const [isOpen, setIsOpen] = useState(false)
+    const [error, setError] = useState('')
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [supplier_type, setSupplier_type] = useState(null)
+    const [store_name, setStore_name] = useState('')
+    const [supplier_location, setSupplier_location] = useState('')
+
+    useEffect(() => {
+        setSupplier_location(supplierData?.supplier_location)
+        setStore_name(supplierData?.supplier_name)
+        setSupplier_type(supplierData?.supplier_type)
+    }, [supplierData])
+
+
+    function open() {
+        setIsOpen(true)
+    }
+
+    function close() {
+        setIsOpen(false)
+    }
+
+    const handleSubmit = async (e) => {
+        e.preventDefault()
+        setIsSubmitting(true)
+        try {
+            await updateDoc(doc(db, "shops", auth.currentUser.uid), {
+                supplier_name: store_name,
+                supplier_location: supplier_location,
+                supplier_type: supplier_type
+            })
+
+            Swal.fire('Updated', 'Your profile\'s About section has been updated.', 'success')
+
+            setIsSubmitting(false)
+            close()
+        }
+
+        catch (e) {
+            console.error(e)
+            setIsSubmitting(false)
+        }
+
+    }
+
+    return (
+        <>
+            <Button onClick={open} className="flex items-center ml-auto gap-2 px-3 py-2 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md">
+                <Edit3 size={16} />
+                Edit Details
+            </Button>
+
+            <Dialog open={isOpen} as="div" className="relative z-50 focus:outline-none" onClose={close}>
+                <div className="fixed inset-0 bg-black/25" />
+                <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
+                    <div className="flex min-h-full items-center justify-center p-4">
+                        <DialogPanel
+                            transition
+                            className="w-full max-w-3xl rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                        >
+                            <div className='relative px-10 py-5 bg-gray-100 rounded-t-xl'>
+                                <button
+                                    onClick={close}
+                                    className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/80 hover:bg-white transition-colors duration-200"
+                                >
+                                    <X size={20} className="text-gray-600" />
+                                </button>
+
+                                <div className="flex flex-col gap-1 mb-2 mt-2">
+                                    <div className='flex gap-2 items-center'>
+                                        <UserPen size={24} className='text-blue-600' />
+                                        <h2 className="text-3xl font-bold text-blue-600">
+                                            Edit Profile Details
+                                        </h2>
+                                    </div>
+                                    <p className='text-gray-600 text-sm mt-1'>Update your profile details</p>
+                                </div>
+                            </div>
+
+                            <form onSubmit={handleSubmit}>
+                                <div className='flex flex-col space-y-5 px-10 py-5'>
+                                    <div className='relative flex flex-col'>
+                                        <div className='flex items-center gap-2'>
+                                            <Store size={20} className='text-blue-600' />
+                                            <label htmlFor="">Shop name</label>
+                                        </div>
+                                        <input type="text" value={store_name} onChange={(e) => setStore_name(e.target.value)} required className='px-4 py-2 mt-3 border border-gray-400 rounded-md focus:outline-none' placeholder='e.g Rivera Shop' />
+                                    </div>
+
+                                    <div className='relative flex flex-col'>
+                                        <div className='flex items-center gap-2'>
+                                            <MapPin size={20} className='text-blue-600' />
+                                            <label htmlFor="">Location</label>
+                                        </div>
+                                        <AddressAutocomplete setLocation={setSupplier_location} default_location={supplier_location} className={'px-3 py-2 mt-3 rounded-md border border-gray-400'} />
+                                    </div>
+
+                                    <div className='relative flex flex-col'>
+                                        <div className='flex items-center gap-2'>
+                                            <Container size={20} className='text-blue-600' />
+                                            <label htmlFor="">Supplier Type</label>
+                                        </div>
+                                        <Select className='mt-3' onChange={setSupplier_type} value={supplier_type} options={SupplierOptions} required placeholder="e.g Wedding" />
+                                    </div>
+
+                                    <button
+                                        disabled={isSubmitting}
+                                        className={`${isSubmitting ? 'bg-blue-300' : 'bg-blue-600 hover:bg-blue-700'} text-md mt-7 py-2 rounded-md text-white flex justify-center text-center items-center gap-3`}
+                                    >
+                                        {isSubmitting ? <div className='h-6 w-6 rounded-full border border-t-2 animate-spin'></div> : 'Update'}
+
+                                    </button>
+                                </div>
+                            </form>
+                        </DialogPanel>
+                    </div>
+                </div>
+            </Dialog>
+
+        </>
+    )
+}
+
+export const ServiceEdit = ({ supplierData, service_id, services }) => {
+
+    const [isOpen, setIsOpen] = useState(false)
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [service_plan, setService_plan] = useState(null)
+    const [inclusions, setInclusions] = useState('')
+    const [allInclusions, setAllInclusions] = useState([])
+    const [price, setPrice] = useState('')
+    const [payment_notice, setPayment_notice] = useState(null)
+    const [error, setError] = useState('')
+
+    useEffect(() => {
+        setService_plan(services.service_plan)
+        setPrice(services.service_price)
+        setPayment_notice(services.service_payment_notice)
+        setAllInclusions(services.service_inclusions)
+    }, [services])
+
+    function open() {
+        setIsOpen(true)
+    }
+    function close() {
+        setIsOpen(false)
+    }
+
+    const handleInclusions = (inclusions) => {
+        try {
+            setAllInclusions(prev => {
+                if (prev.includes(inclusions)) {
+                    setError('The item is already in the list.')
+                    return prev
+                }
+
+                else {
+                    setError('')
+                    return [...prev, inclusions]
+                }
+            })
+        }
+        catch (e) {
+            console.error(e)
+        }
+        finally {
+            setInclusions('')
+        }
+
+    }
+
+    const removeInclusion = (inclusion) => {
+        try {
+            setAllInclusions(prev => {
+                if (prev.includes(inclusion)) {
+                    setError('')
+                    return prev.filter(remove => remove !== inclusion)
+                }
+                else {
+                    return prev
+                }
+            })
+        }
+
+        catch (e) {
+            console.error(e)
+        }
+    }
+
+    const handleService = async (e) => {
+        e.preventDefault()
+
+        setIsSubmitting(true)
+
+        try {
+            await updateDoc(doc(db, "shops", auth.currentUser.uid, "services", service_id), {
+                service_plan: service_plan,
+                service_price: price,
+                service_inclusions: allInclusions,
+                service_payment_notice: payment_notice
+            })
+
+            Swal.fire('Success!', 'Your service has been added successfully.', 'success')
+
+            close()
+        }
+
+        catch (e) {
+            console.error(e)
+        }
+        finally {
+            setIsSubmitting(false)
+        }
+    }
+
+    console.log(inclusions)
+
+    return (
+        <>
+            {supplierData?.id === auth.currentUser.uid && (
+                <Button
+                    onClick={open}
+                    className="flex items-center justify-center gap-2 w-full text-center py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md"
+                >
+                    Edit
+                </Button>
+            )}
+
+            <Dialog open={isOpen} as="div" className="relative z-50 focus:outline-none" onClose={close}>
+                <div className="fixed inset-0 bg-black/25" />
+                <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
+                    <div className="flex min-h-full items-center justify-center p-4">
+                        <DialogPanel
+                            transition
+                            className="w-full max-w-3xl rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                        >
+                            <div className='relative px-10 py-7 bg-gray-100 rounded-t-xl'>
+                                <button
+                                    onClick={close}
+                                    className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/80 hover:bg-white transition-colors duration-200"
+                                >
+                                    <X size={20} className="text-gray-600" />
+                                </button>
+
+                                <div className="flex items-center gap-3 mb-2">
+                                    <h2 className="text-3xl font-bold text-blue-600">
+                                        Service Plan Type
+                                    </h2>
+                                </div>
+                                <p className="text-gray-600 text-sm">Designed to make things easier, so you can focus on what matters most.</p>
+                            </div>
+
+                            <form onSubmit={handleService}>
+                                <div className='flex flex-col px-10 py-5'>
+                                    <div className='relative flex flex-col gap-5'>
+                                        <div className='flex flex-col gap-2'>
+                                            <div className='flex gap-2 items-center'>
+                                                <SquarePen size={20} className='text-blue-600' />
+                                                <label htmlFor="" className='text-gray-700 font-bold'>Service Plan Type</label>
+                                            </div>
+                                            <Select onChange={setService_plan} value={service_plan} options={planTypeOptions} placeholder="e.g Basic Plan" required />
+                                        </div>
+
+                                        <div className='flex flex-col gap-2'>
+                                            <div className='flex gap-2 items-center'>
+                                                <PhilippinePeso size={20} className='text-blue-600' />
+                                                <label htmlFor="" className='text-gray-700 font-bold'>Price</label>
+                                            </div>
+                                            <input type="text" value={price} className='px-4 py-2 rounded-md focus:outline-none border border-gray-400' onChange={(e) => setPrice(e.target.value)} required placeholder='e.g ₱5000' />
+                                        </div>
+
+                                        <div className='flex flex-col gap-2'>
+                                            <div className='flex gap-2 items-center'>
+                                                <PackagePlus size={20} className='text-blue-600' />
+                                                <label htmlFor="" className='text-gray-700 font-bold'>List Inclusions</label>
+                                            </div>
+                                            <div className='flex gap-3'>
+                                                <input value={inclusions} type="text" className='w-full px-4 py-2 rounded-md focus:outline-none border border-gray-400' onChange={(e) => setInclusions(e.target.value)} placeholder='e.g One Free Tiramisu' />
+                                                <button onClick={() => handleInclusions(inclusions)} className='w-1/3 bg-blue-600 hover:bg-blue-700 transition-all duration-200 rounded-md text-white' type='button'>Add</button>
+                                            </div>
+                                            {error && (
+                                                <span className='text-sm text-red-500'>{error}</span>
+                                            )}
+
+                                            {allInclusions?.length > 0 && (
+                                                <>
+                                                    <span className='text-sm font-bold text-gray-600 mt-3'>Added inclusions</span>
+                                                    <div className='flex gap-2'>
+                                                        {allInclusions.map((inclusion, index) => (
+                                                            <button onClick={() => removeInclusion(inclusion)} type='button' className='px-5 flex text-white py-1 rounded-full bg-blue-600 hover:bg-red-500 transition-all duration-200 group' key={index}>
+                                                                {inclusion}
+                                                                <span className='ml-3 block font-bold opacity-0 group-hover:opacity-100 transition-all duration-200'>-</span>
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+
+                                        <div className='flex flex-col gap-2'>
+                                            <div className='flex gap-2 items-center'>
+                                                <MessageSquareWarning size={20} className='text-blue-600' />
+                                                <label htmlFor="" className='text-gray-700 font-bold'>Payment Notice</label>
+                                            </div>
+                                            <Select onChange={setPayment_notice} value={payment_notice} options={paymentNoticeOptions} placeholder="e.g Pay after service.." required />
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        disabled={isSubmitting}
+                                        className={`${isSubmitting ? 'bg-blue-300' : 'bg-blue-600 hover:bg-blue-700'} text-md mt-7 py-2 rounded-md text-white flex justify-center text-center items-center gap-3`}
+                                    >
+                                        {isSubmitting ? <div className='h-8 w-8 rounded-full border border-t-2 animate-spin'></div> : 'Save'}
+                                    </button>
+                                </div>
+                            </form>
+                        </DialogPanel>
+                    </div>
+                </div>
+            </Dialog>
+        </>
+    )
+}

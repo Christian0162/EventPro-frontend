@@ -8,7 +8,7 @@ export default function useEvents() {
     const navigate = useNavigate()
 
     const createEvent = (user, event_name, event_location, event_date, event_time, event_status, type, event_budget, event_description, tags) => {
-        addDoc(collection(db, "Events"), {
+        addDoc(collection(db, "events"), {
             user_id: user.uid,
             event_name: event_name,
             event_location: event_location,
@@ -32,7 +32,7 @@ export default function useEvents() {
 
     const updateEvent = (id, event_name, event_location, event_date, event_time, event_status, event_type, event_budget, event_description, tags) => {
         try {
-            updateDoc(doc(db, 'Events', id), {
+            updateDoc(doc(db, 'events', id), {
                 event_name: event_name,
                 event_location: event_location,
                 event_date: event_date,
@@ -68,7 +68,7 @@ export default function useEvents() {
 
     const getEvent = async (id) => {
         try {
-            const docRef = await getDoc(doc(db, "Events", id));
+            const docRef = await getDoc(doc(db, "events", id));
 
             if (docRef.exists()) {
                 const data = docRef.data()
@@ -86,14 +86,14 @@ export default function useEvents() {
 
     const getEvents = async () => {
         try {
-            const eventsSnapShot = await getDocs(collection(db, "Events"))
+            const eventsSnapShot = await getDocs(collection(db, "events"))
 
 
             return eventsSnapShot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
         }
 
         catch (e) {
-            console.error(e)
+            console.error("Error fetching document:",e)
         }
     }
 
@@ -107,7 +107,7 @@ export default function useEvents() {
             cancelButtonText: 'No, Cancel',
         }).then((result) => {
             if (result.isConfirmed) {
-                deleteDoc(doc(db, "Events", id))
+                deleteDoc(doc(db, "events", id))
                 setUserEvents(prev => prev.filter(event => event.id !== id));
                 Swal.fire({
                     icon: 'success',

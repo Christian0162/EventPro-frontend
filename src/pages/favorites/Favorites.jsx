@@ -13,6 +13,7 @@ export default function Favorites() {
     const [favorites, setFavorites] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [shopReviews, setShopReviews] = useState({});
+    const [services, setServices] = useState([])
 
 
     useEffect(() => {
@@ -29,53 +30,63 @@ export default function Favorites() {
     }, []);
 
     useEffect(() => {
-        const fetchData = async () => {
+
+        if (!favorites.length > 0) return;
+
+        setIsLoading(true);
+
+        const unsubscribeShop = onSnapshot(collection(db, "shops"), (onsnapshot) => {
             try {
-                setIsLoading(true)
+                const shop = onsnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-                if (favorites.length > 0) {
-                    const snapShotShop = await getDocs(collection(db, "Shops"));
-                    const shops = snapShotShop.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                const favoriteShop = shop.filter(shop =>
+                    favorites.some(fav => fav.supplier_id === shop.id)
+                );
 
-                    const favoriteShop = shops.filter(shop =>
-                        favorites.some(fav => fav.supplier_id === shop.id)
+                setShop(favoriteShop);
+
+                const unsubscribeReviews = [];
+                const unsubscribeServices = []
+
+                favoriteShop.forEach((shopItem) => {
+
+                    const unsubscribeService = onSnapshot(collection(db, "shops", shopItem.id, "services"), (onsnapshot) => {
+                        try {
+                            const services = onsnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+                            setServices(prev => ({ ...prev, [shopItem.id]: services }))
+                        }
+
+                        catch (e) {
+                            console.error(e)
+                        }
+                    })
+                    const unsubscribeReview = onSnapshot(
+                        collection(db, "shops", shopItem.id, "reviews"),
+                        (onsnapshot) => {
+                            try {
+                                const review = onsnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                                setShopReviews(prev => ({ ...prev, [shopItem.id]: review }));
+                            } catch (e) {
+                                console.error(e);
+                            }
+                        }
                     );
 
-                    const reviewsData = {};
-                    for (const shopItem of favoriteShop) {
-                        try {
-                            const reviewsSnapshot = await getDocs(collection(db, "Shops", shopItem.id, "Reviews"));
-                            const reviews = reviewsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                            reviewsData[shopItem.id] = reviews;
-
-                        } catch (error) {
-                            console.log(`Error fetching reviews for shop ${shopItem.id}:`, error);
-                            reviewsData[shopItem.id] = [];
-                        }
-                    }
-                    
-                    setShopReviews(reviewsData);
-                    setShop(favoriteShop);
-                    setIsLoading(false);
-
-                }
-                
-                else {
-                    setShop([])
-                    setShopReviews([])
-                }
-
-            } catch (error) {
-                console.log('Error fetching data:', error);
+                    unsubscribeServices.push(unsubscribeService)
+                    unsubscribeReviews.push(unsubscribeReview);
+                });
+                setIsLoading(false)
+                return () => {
+                    unsubscribeReviews.forEach(unsub => unsub());
+                    unsubscribeServices.forEach(unsub => unsub());
+                };
+            } catch (e) {
+                console.error(e);
                 setIsLoading(false);
             }
-            finally {
-                setIsLoading(false);
-            }
-        };
+        });
 
-        fetchData();
-
+        return () => { unsubscribeShop(); }
     }, [favorites]);
 
     const calculateAverageRating = (shopId) => {
@@ -95,7 +106,7 @@ export default function Favorites() {
         return reviews.length;
     };
 
-    console.log(favorites)
+    console.log(services)
 
     return (
         <>
@@ -189,7 +200,7 @@ export default function Favorites() {
                                 </div>
 
                                 {/* Action Button */}
-                                <SupplierModal supplierData={shopItem}  reviews={reviewCount} averageRating={averageRating} className={'py-2 rounded-md '}/>
+                                <SupplierModal services={services[shopItem.id]} supplierData={shopItem} reviews={reviewCount} averageRating={averageRating} className={'py-2 rounded-md '} />
                             </div>
                         </Cards>
                     );

@@ -1,14 +1,19 @@
-import { Button, Dialog, DialogPanel, } from '@headlessui/react'
+import { Button, Dialog, DialogPanel, Tab, TabGroup, TabList, TabPanel, TabPanels } from '@headlessui/react'
 import { useEffect, useState } from 'react'
 import { MapPin, DollarSign, Clock, Phone, Mail, X, MessageCircleMore, Heart, ChevronsLeftRightEllipsis } from 'lucide-react'
 import { db, auth } from '../firebase/firebase'
-import { doc, addDoc, where, serverTimestamp, onSnapshot, collection, deleteDoc, query, getDocs } from 'firebase/firestore'
+import { doc, addDoc, where, serverTimestamp, onSnapshot, collection, deleteDoc, query, getDocs, updateDoc } from 'firebase/firestore'
 import { useNavigate } from 'react-router-dom'
-import { Tab, TabGroup, TabList, TabPanel, TabPanels } from '@headlessui/react'
 import { Star, Clock7, CircleCheck, Edit3 } from "lucide-react"
+import { ServiceEdit } from './UpdateModal'
 import ShopCards from './ShopCards'
 import { formatDistanceToNow } from 'date-fns'
-export default function SupplierModal({ supplierData, applications, userData, reviews, averageRating, className }) {
+import { responseTimeOptions } from '../constants/categories'
+import ServiceModal from './ServiceModal'
+import Select from 'react-select'
+import { AboutOurBusiessEdit } from './UpdateModal'
+
+export default function SupplierModal({ supplierData, applications, userData, reviews, services, averageRating, className }) {
 
     const navigate = useNavigate()
 
@@ -25,7 +30,7 @@ export default function SupplierModal({ supplierData, applications, userData, re
 
     useEffect(() => {
 
-        const unsubscribe = onSnapshot(collection(db, "Favorites"),
+        const unsubscribe = onSnapshot(collection(db, "favorites"),
             (snapshot) => {
                 const userFavorites = snapshot.docs
                     .filter(doc => doc.data().user_id === auth.currentUser.uid && doc.data().supplier_id === supplierData.id)
@@ -46,18 +51,18 @@ export default function SupplierModal({ supplierData, applications, userData, re
         e.preventDefault()
 
         if (isLiked) {
-            const q = query(collection(db, "Favorites"),
+            const q = query(collection(db, "favorites"),
                 where("user_id", "==", auth.currentUser.uid),
                 where("supplier_id", "==", supplierData.id)
             )
             const querySnapshot = await getDocs(q)
             querySnapshot.forEach(async (docSnapshot) => {
-                await deleteDoc(doc(db, "Favorites", docSnapshot.id))
+                await deleteDoc(doc(db, "favorites", docSnapshot.id))
             })
             setIsLiked(false)
         }
         else {
-            await addDoc(collection(db, "Favorites"), {
+            await addDoc(collection(db, "favorites"), {
                 user_id: auth.currentUser.uid,
                 supplier_id: supplierData.id,
                 isActive: true,
@@ -70,7 +75,7 @@ export default function SupplierModal({ supplierData, applications, userData, re
     const handleChat = async (e) => {
         e.preventDefault()
 
-        const q = query(collection(db, "Contacts"),
+        const q = query(collection(db, "contacts"),
             where("user_id", "==", auth.currentUser.uid),
             where("contact_id", "==", supplierData.id)
         )
@@ -78,7 +83,7 @@ export default function SupplierModal({ supplierData, applications, userData, re
         const querySnapShot = await getDocs(q)
 
         if (querySnapShot.empty) {
-            await addDoc(collection(db, "Contacts"), {
+            await addDoc(collection(db, "contacts"), {
                 user_id: auth.currentUser.uid,
                 contact_id: supplierData.id,
                 name: supplierData.supplier_name,
@@ -92,6 +97,66 @@ export default function SupplierModal({ supplierData, applications, userData, re
         }
         else {
             navigate(`/chats/`)
+        }
+    }
+
+    const [contactEditing, setContactEditing] = useState(false)
+    const [bookingEdting, setBookingEditing] = useState(false)
+    const [response_time, setResponse_time] = useState(null)
+    const [contactLoading, setContactLoading] = useState(false)
+    const [bookingLoading, setBookingLoading] = useState(false)
+    const [contact_number, setContact_number] = useState('')
+    const [email_address, setEmail_address] = useState('')
+    const [availability, setAvailability] = useState('')
+    const [supplier_price, setSupplier_price] = useState('')
+
+    useEffect(() => {
+        setSupplier_price(supplierData?.supplier_price)
+        setAvailability(supplierData?.supplier_availability)
+        setResponse_time(supplierData?.supplier_response_time)
+        setEmail_address(supplierData?.supplier_email)
+        setContact_number(supplierData?.supplier_number)
+
+    }, [supplierData])
+
+
+
+    const handleContactSubmit = async (e) => {
+        e.preventDefault()
+
+        setContactLoading(true)
+
+        try {
+            await updateDoc(doc(db, "shops", auth.currentUser.uid), {
+                supplier_email: email_address,
+                supplier_number: contact_number,
+            })
+        }
+        catch (e) {
+            console.error(e)
+        }
+        finally {
+            setContactLoading(false)
+            setContactEditing(false)
+        }
+    }
+
+    const handleBookingSubmit = async () => {
+        setBookingLoading(true)
+        try {
+            await updateDoc(doc(db, "shops", auth.currentUser.uid), {
+                supplier_price: supplier_price,
+                supplier_availability: availability,
+                supplier_response_time: response_time
+            })
+        }
+
+        catch (e) {
+            console.error(e)
+        }
+        finally {
+            setBookingEditing(false)
+            setBookingLoading(false)
         }
     }
 
@@ -110,7 +175,7 @@ export default function SupplierModal({ supplierData, applications, userData, re
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
                             transition
-                            className="w-full max-w-3xl rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                            className="w-full max-w-4xl rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
                         >
                             {/* Header with close button */}
                             <div className="relative">
@@ -197,10 +262,7 @@ export default function SupplierModal({ supplierData, applications, userData, re
                                                             <p className="text-gray-600 mt-2">{supplierData.supplier_description}</p>
                                                         </div>
                                                         {supplierData.id === auth.currentUser.uid && (
-                                                            <button className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md">
-                                                                <Edit3 size={16} />
-                                                                Edit
-                                                            </button>
+                                                            <AboutOurBusiessEdit supplierData={supplierData} />
                                                         )}
                                                     </div>
 
@@ -230,35 +292,81 @@ export default function SupplierModal({ supplierData, applications, userData, re
                                                             <h3 className="text-xl font-bold text-gray-900 mb-2">Contact Information</h3>
                                                             <p className="text-gray-600">How customers can reach you</p>
                                                         </div>
-                                                        {supplierData.id === auth.currentUser.uid && (
-                                                            <button className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md">
+
+                                                        {supplierData.id === auth.currentUser.uid && !contactEditing && !contactLoading && (
+                                                            <button onClick={() => setContactEditing(true)} className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md">
                                                                 <Edit3 size={16} />
                                                                 Edit
                                                             </button>
                                                         )}
+
+                                                        {contactEditing && !contactLoading && (
+                                                            <button onClick={() => setContactEditing(false)} className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md">
+                                                                Cancel
+                                                            </button>
+                                                        )}
                                                     </div>
 
-                                                    <div className="space-y-6">
-                                                        <div className="flex items-start gap-4">
-                                                            <div className="p-2 bg-blue-100 rounded-lg">
-                                                                <Mail size={24} className="text-blue-600" />
-                                                            </div>
-                                                            <div>
-                                                                <h4 className="font-bold text-gray-900 mb-1">Email Address</h4>
-                                                                <p className="text-gray-600">{supplierData.supplier_email}</p>
-                                                            </div>
+                                                    {contactLoading && (
+                                                        <div className='flex justify-center'>
+                                                            <div className='h-12 w-12 border-t-2 mt-10 border-blue-600 animate-spin rounded-full'></div>
                                                         </div>
+                                                    )}
+                                                    {!contactLoading && (
+                                                        <div className="space-y-6">
+                                                            <form onSubmit={handleContactSubmit} className='relative'>
+                                                                <div className="flex items-center gap-4 mt-6">
+                                                                    <div className="p-2 bg-blue-100 rounded-lg">
+                                                                        <Mail size={24} className="text-blue-600" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <h4 className="font-bold text-gray-900 mb-1">Email Address</h4>
+                                                                        {!contactEditing
+                                                                            ? (
+                                                                                <p className="text-gray-600">{supplierData.supplier_email}</p>
 
-                                                        <div className="flex items-start gap-4">
-                                                            <div className="p-2 bg-green-100 rounded-lg">
-                                                                <Phone size={24} className="text-green-600" />
-                                                            </div>
-                                                            <div>
-                                                                <h4 className="font-bold text-gray-900 mb-1">Phone Number</h4>
-                                                                <p className="text-gray-600">{supplierData.supplier_number}</p>
-                                                            </div>
+                                                                            )
+
+                                                                            : (
+                                                                                <input type="email" value={email_address} onChange={(e) => setEmail_address(e.target.value)} placeholder='e.g test@gmail.com' className='border border-gray-300 focus:outline-none px-4 py-2 rounded-md text-sm' />
+                                                                            )}
+
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="flex items-center gap-4 mt-6">
+                                                                    <div className="p-2 bg-green-100 rounded-lg">
+                                                                        <Phone size={24} className="text-green-600" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <h4 className="font-bold text-gray-900 mb-1">Phone Number</h4>
+                                                                        {!contactEditing
+                                                                            ? (
+                                                                                <p className="text-gray-600">{supplierData.supplier_number}</p>
+                                                                            ) : (
+                                                                                <input
+                                                                                    type="text"
+                                                                                    inputMode="numeric"
+                                                                                    className='px-3 py-2 border border-gray-300 focus:outline-none rounded-md text-sm'
+                                                                                    maxLength={11}
+                                                                                    value={contact_number}
+                                                                                    onChange={(e) => {
+                                                                                        const digits = e.target.value.replace(/[^0-9]/g, "");
+                                                                                        setContact_number(digits);
+                                                                                    }}
+                                                                                    placeholder="e.g 0961234567"
+                                                                                />
+                                                                            )}
+                                                                    </div>
+                                                                </div>
+                                                                {contactEditing && (
+                                                                    <button className='flex ml-auto mt-5 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md'>
+                                                                        Save
+                                                                    </button>
+                                                                )}
+                                                            </form>
                                                         </div>
-                                                    </div>
+                                                    )}
                                                 </ShopCards>
 
                                                 {/* Booking Information */}
@@ -268,50 +376,83 @@ export default function SupplierModal({ supplierData, applications, userData, re
                                                             <h3 className="text-xl font-bold text-gray-900 mb-2">Booking Details</h3>
                                                             <p className="text-gray-600">Pricing and availability information</p>
                                                         </div>
-                                                        {supplierData.id === auth.currentUser.uid && (
-                                                            <button className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md">
+                                                        {supplierData.id === auth.currentUser.uid &&  !bookingEdting && (
+                                                            <button onClick={() => setBookingEditing(true)} className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md">
                                                                 <Edit3 size={16} />
                                                                 Edit
                                                             </button>
                                                         )}
+
+                                                        {bookingEdting && (
+                                                            <button onClick={() => setBookingEditing(false)} className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md">
+                                                                Cancel
+                                                            </button>
+                                                        )}
                                                     </div>
 
-                                                    <div className="space-y-6">
-                                                        <div className="flex items-center gap-4">
-                                                            <div className="p-2 bg-green-100 rounded-lg">
-                                                                <DollarSign size={24} className="text-green-600" />
-                                                            </div>
-                                                            <div>
-                                                                <h4 className="font-bold text-gray-900 mb-1">Starting Price</h4>
-                                                                <p className="text-xl font-bold text-green-600">₱{supplierData.supplier_price}</p>
-                                                            </div>
+                                                    {bookingLoading && (
+                                                        <div className='flex justify-center'>
+                                                            <div className='h-12 w-12 border-t-2 mt-10 border-blue-600 animate-spin rounded-full'></div>
                                                         </div>
+                                                    )}
 
-                                                        <div className="flex items-center gap-4">
-                                                            <div className="p-2 bg-purple-100 rounded-lg">
-                                                                <Clock7 size={24} className="text-purple-600" />
-                                                            </div>
-                                                            <div>
-                                                                <h4 className="font-bold text-gray-900 mb-1">Availability</h4>
-                                                                <p className="text-gray-600">{supplierData.supplier_availability}</p>
-                                                            </div>
-                                                        </div>
+                                                    {!bookingLoading && (
+                                                        <form onSubmit={handleBookingSubmit}>
+                                                            <div className="space-y-6">
+                                                                <div className="flex items-center gap-4">
+                                                                    <div className="p-2 bg-green-100 rounded-lg">
+                                                                        <DollarSign size={24} className="text-green-600" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <h4 className="font-bold text-gray-900 mb-1">Starting Price</h4>
+                                                                        {!bookingEdting ? (
+                                                                            <p className="text-xl font-bold text-green-600">₱{supplierData.supplier_price}</p>
+                                                                        ) : (
+                                                                            <input type="number" value={supplier_price} onChange={(e) => setSupplier_price(e.target.value)} placeholder='e.g ₱5000' className='border border-gray-300 focus:outline-none px-4 py-2 rounded-md text-sm' />
+                                                                        )}
 
-                                                        <div className="flex items-center gap-4">
-                                                            <div className="p-2 bg-blue-100 rounded-lg">
-                                                                <CircleCheck size={24} className="text-blue-600" />
-                                                            </div>
-                                                            <div>
-                                                                <h4 className="font-bold text-gray-900 mb-1">{supplierData.supplier_response_time?.label}</h4>
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="text-gray-600">Within 24 Hours</span>
-                                                                    <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-medium">
-                                                                        Fast Response
-                                                                    </span>
+                                                                    </div>
                                                                 </div>
+
+                                                                <div className="flex items-center gap-4">
+                                                                    <div className="p-2 bg-purple-100 rounded-lg">
+                                                                        <Clock7 size={24} className="text-purple-600" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <h4 className="font-bold text-gray-900 mb-1">Availability</h4>
+                                                                        {!bookingEdting ? (
+                                                                            <p className="text-gray-600">{supplierData.supplier_availability}</p>
+                                                                        ) : (
+                                                                            <input type="text" placeholder="e.g., Monday to Saturday, 8AM-6PM" value={availability} onChange={(e) => setAvailability(e.target.value)} className='border border-gray-300 focus:outline-none px-4 py-2 rounded-md text-sm' />
+                                                                        )}
+
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="flex items-center gap-4 ">
+                                                                    <div className="p-2 bg-blue-100 rounded-lg">
+                                                                        <CircleCheck size={24} className="text-blue-600" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <h4 className="font-bold text-gray-900 mb-1">Typical Response Time</h4>
+                                                                        <div className="flex items-center gap-2">
+                                                                            {!bookingEdting ? (
+                                                                                <span className="text-gray-600">{supplierData.supplier_response_time?.label}</span>
+
+                                                                            ) : (
+                                                                                <Select value={response_time} className='text-sm' onChange={setResponse_time} options={responseTimeOptions} placeholder="Typically response time" isClearable required />
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                {bookingEdting && (
+                                                                    <button className='flex ml-auto px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md'>
+                                                                        Save
+                                                                    </button>
+                                                                )}
                                                             </div>
-                                                        </div>
-                                                    </div>
+                                                        </form>
+                                                    )}
                                                 </ShopCards>
                                             </div>
                                         </TabPanel>
@@ -320,48 +461,47 @@ export default function SupplierModal({ supplierData, applications, userData, re
                                         <TabPanel className="focus:outline-none text-sm">
                                             <div className="grid md:grid-cols-1 gap-8">
                                                 <ShopCards>
-                                                    <div className="flex justify-between items-start mb-6">
-                                                        <div>
-                                                            <h3 className="text-xl font-bold text-gray-900 mb-2">Our Services</h3>
-                                                            <p className="text-gray-600">What we offer to our clients</p>
+                                                    <div className='flex'>
+                                                        <div className='flex flex-col ml-2 gap-1'>
+                                                            <h2 className='text-2xl font-bold text-gray-800 '>Services</h2>
+                                                            <p className='text-md text-gray-600'>Services Built Around Your Needs</p>
                                                         </div>
-                                                        {supplierData.id === auth.currentUser.uid && (
-                                                            <button className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md">
-                                                                <Edit3 size={16} />
-                                                                Edit
-                                                            </button>
-                                                        )}
+                                                        <ServiceModal supplierData={supplierData} />
                                                     </div>
+                                                    {!services?.length > 0 && (
+                                                        <span className='text-lg text-gray-400 my-10 mt-15 block text-center'>No Service</span>
+                                                    )}
+                                                    {services && (
+                                                        <div className="grid md:grid-cols-2 gap-6 mt-5">
+                                                            {services?.map((services, index) => (
+                                                                <div key={index} className={`bg-gradient-to-br rounded-xl flex flex-col justify-between  h-full min-h-[420px]  ${services.service_plan.label === 'Premium Plan' ? 'from-blue-50 to-indigo-50 border border-blue-100' : 'from-green-50 to-emerald-50 border border-green-100'} `}>
+                                                                    <h4 className={`font-bold text-white py-7 rounded-t-md text-center ${services.service_plan.label === 'Premium Plan' ? 'bg-blue-600' : 'bg-green-600'}`}>{services.service_plan.label}</h4>
+                                                                    <div className='p-6 flex flex-col flex-1'>
+                                                                        <div className="mb-4">
+                                                                            <span className='font-bold text-gray-600'>Price</span>
+                                                                            <span className="text-2xl font-bold text-blue-600 block">₱{services.service_price}</span>
+                                                                        </div>
 
-                                                    <div className="grid md:grid-cols-2 gap-6">
-                                                        <div className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-                                                            <h4 className="font-bold text-gray-900 mb-3">Premium Service</h4>
-                                                            <p className="text-gray-600 mb-4">Our flagship service with full customization and premium materials.</p>
-                                                            <div className="flex items-center justify-between">
-                                                                <span className="text-2xl font-bold text-blue-600">₱{supplierData.supplier_price}</span>
-                                                                <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">Popular</span>
-                                                            </div>
+                                                                        <hr className='border-t border-gray-300 my-3' />
+
+                                                                        <div className='flex flex-col gap-2 my-4'>
+                                                                            <ul className='list-disc pl-5 flex text-gray-800 flex-col gap-2'>
+                                                                                {services?.service_inclusions?.map((inclusion, index) => (
+                                                                                    <li key={index} >{inclusion}</li>
+                                                                                ))}
+                                                                            </ul>
+                                                                        </div>
+                                                                        <hr className='border-t border-gray-300 my-3' />
+
+                                                                        <p className='text-gray-500 mt-3'>Note: {services.service_payment_notice.label}</p>
+                                                                        <div className="mt-auto pt-6">
+                                                                            <ServiceEdit supplierData={supplierData} service_id={services.id} services={services} />
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
                                                         </div>
-
-                                                        <div className="p-6 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-100">
-                                                            <h4 className="font-bold text-gray-900 mb-3">Basic Package</h4>
-                                                            <p className="text-gray-600 mb-4">Essential service package perfect for smaller events and budgets.</p>
-                                                            <div className="flex items-center justify-between">
-                                                                <span className="text-2xl font-bold text-green-600">₱{Math.floor(supplierData.supplier_price * 0.7)}</span>
-                                                                <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium">Budget</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                                                        <h5 className="font-semibold text-gray-900 mb-2">Service Includes:</h5>
-                                                        <ul className="text-gray-600 space-y-1">
-                                                            <li>• Initial consultation and planning</li>
-                                                            <li>• Professional setup and arrangement</li>
-                                                            <li>• Quality materials and supplies</li>
-                                                            <li>• Post-event cleanup (Premium only)</li>
-                                                        </ul>
-                                                    </div>
+                                                    )}
                                                 </ShopCards>
                                             </div>
                                         </TabPanel>
@@ -381,18 +521,18 @@ export default function SupplierModal({ supplierData, applications, userData, re
                                                                     <Star size={20} className="text-yellow-500 fill-yellow-500" />
                                                                     <span className="text-2xl font-bold text-gray-900">{averageRating}</span>
                                                                 </div>
-                                                                <p className="text-sm text-gray-500">{reviews.length} reviews</p>
+                                                                <p className="text-sm text-gray-500">{reviews?.length} reviews</p>
                                                             </div>
                                                         </div>
                                                     </div>
 
-                                                    {reviews.length > 0 ? (
+                                                    {reviews?.length > 0 ? (
                                                         <div className="space-y-6">
                                                             {reviews.map((review, index) => (
                                                                 <div key={index} className="border-b border-gray-100 pb-6 last:border-b-0">
                                                                     <div className="flex items-start gap-4">
                                                                         <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold">
-                                                                            {review.event_name?.charAt(0).toUpperCase() || 'A'}
+                                                                            {review?.event_name?.charAt(0).toUpperCase() || 'A'}
                                                                         </div>
                                                                         <div className="flex-1">
                                                                             <div className="flex items-center gap-3 mb-2">
@@ -437,7 +577,7 @@ export default function SupplierModal({ supplierData, applications, userData, re
                                             Close
                                         </Button>
 
-                                        {applications?.some(app => app.user_id === supplierData.id) || userData === "Event Planner" && (
+                                        {applications?.some(app => app.user_id === supplierData.id) || userData?.role === "Event Planner" && (
                                             <Button
                                                 className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                                             >

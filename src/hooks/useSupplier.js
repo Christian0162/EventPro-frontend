@@ -1,39 +1,99 @@
-import { collection, getDocs, onSnapshot } from "firebase/firestore"
-import { auth, db } from "../firebase/firebase"
+import { collection, getDocs, doc, getDoc, onSnapshot } from "firebase/firestore"
+import { db } from "../firebase/firebase"
+import { useEffect, useState } from "react"
 
-export default function useSupplier() {
+export const useFetchSuppliers = () => {
 
-    const getSuppliers = async () => {
+    const [suppliers, setSuppliers] = useState([])
+    const [isLoading, setIsLoading] = useState(true)
+
+    useEffect(() => {
         try {
-            const supplierSnapShot = await getDocs(collection(db, "shops"))
-            return supplierSnapShot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-        }
-        
-        catch (e) {
-            console.error(e)
-            return []
-        }
-    }
+            const unsubscribe = onSnapshot(collection(db, "shops"), (onsnapshot) => {
+                setSuppliers(onsnapshot.docs.map(suppliers => ({ id: suppliers.id, ...suppliers.data() })))
+            })
 
-    const getReviews = async (id) => {
-        try {
+            return () => unsubscribe()
 
-            const reviewSnapShot = await getDocs(collection(db, "shops", id, "reviews"))
-
-
-            return reviewSnapShot.docs.map(rev => ({ id: rev.id, ...rev.data() }))
         }
 
         catch (e) {
             console.error(e)
+            setIsLoading(false)
         }
-    }
+
+        finally {
+            setIsLoading(false)
+        }
+
+    }, [])
 
 
-
-    return {
-        getSuppliers,
-        getReviews
-    }
+    return { suppliers, isLoading }
 
 }
+
+export const useFetchSupplierById = (supplier_id) => {
+    const [supplier, setSupplier] = useState([])
+    const [isLoading, setIsLoading] = useState(false)
+
+    useEffect(() => {
+        try {
+            setIsLoading(true)
+
+            const fetchSupplier = async () => {
+                const onSnapShotSupplier = await getDoc(doc(db, "shops", supplier_id))
+                setSupplier(onSnapShotSupplier.data())
+            }
+
+            fetchSupplier()
+        }
+
+        catch (e) {
+            console.error(e)
+        }
+
+        finally {
+            setIsLoading(false)
+        }
+
+    }, [supplier_id])
+
+    return { supplier, isLoading }
+}
+
+export const useFetchSupplierServices = () => {
+    const [services, setServices] = useState([])
+    const [isLoading, setIsLoading] = useState(true)
+    const { suppliers } = useFetchSuppliers()
+
+    useEffect(() => {
+
+        const fetchServices = async () => {
+            try {
+
+                const serviceData = {}
+
+                await Promise.all(suppliers.map(async (suppliers) => {
+                    const serviceSnapShot = await getDocs(collection(db, "shops", suppliers.id, "services"))
+                    serviceData[suppliers.id] = serviceSnapShot.docs.map(service => ({ id: service.id, ...service.data() }))
+                }))
+
+                setServices(serviceData)
+            }
+
+            catch (e) {
+                console.error(e)
+            }
+
+            finally {
+                setIsLoading(false)
+            }
+        }
+
+        fetchServices()
+    }, [suppliers])
+
+    return { services, isLoading }
+}
+

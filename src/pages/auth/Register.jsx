@@ -4,7 +4,7 @@ import PrimaryButton from "../../components/PrimaryButton";
 import { auth } from "../../firebase/firebase";
 import { Navigate } from "react-router-dom";
 import { Title } from "react-head";
-import useAuth from "../../hooks/useAuth";
+import { useAuthRegister } from "../../hooks/useAuth";
 
 export default function Register({ user }) {
 
@@ -14,12 +14,10 @@ export default function Register({ user }) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [role, setRole] = useState('');
-    const [errorEmail, setErrorEmail] = useState('');
     const [errorPassword, setErrorPassword] = useState('')
-    const [isLoading, setIsLoading] = useState(false)
     const [currentStep, setCurrentStep] = useState(1)
 
-    const { register } = useAuth()
+    const { register, isLoading, error: registerError} = useAuthRegister()
 
     console.log(isLoading)
 
@@ -27,21 +25,19 @@ export default function Register({ user }) {
         e.preventDefault();
 
         setError(null);
-        setErrorEmail('');
         setErrorPassword('');
 
         if (password.length < 5) {
-            setIsLoading(false)
             return setErrorPassword('Password must be at least 6 characters long.')
         }
 
-        setIsLoading(true)
+        const userData = {
+            first_name: firstName,
+            last_name: lastName,
+            role: role
+        }
 
-        await register(auth, email, password, firstName, lastName, role, setErrorEmail)
-
-        console.log(errorEmail)
-        setIsLoading(false)
-        setError(null);
+        await register(auth, email, password, userData)
 
     }
 
@@ -218,8 +214,8 @@ export default function Register({ user }) {
                                                 value={email}
                                                 onChange={(e) => setEmail(e.target.value)}
                                             />
-                                            {errorEmail && (
-                                                <p className="text-red-500 text-sm mt-1">{errorEmail}</p>
+                                            {registerError && (
+                                                <p className="text-red-500 text-sm mt-1">{registerError}</p>
                                             )}
                                         </div>
 

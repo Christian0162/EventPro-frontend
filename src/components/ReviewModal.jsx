@@ -1,7 +1,7 @@
 import { Button, Dialog, DialogPanel, } from '@headlessui/react'
 import { useState } from 'react'
 import { X, Star, ThumbsUp, MessageSquare } from 'lucide-react'
-import { addDoc, updateDoc, collection, serverTimestamp, Timestamp, doc } from 'firebase/firestore'
+import { addDoc, updateDoc, collection, serverTimestamp, doc, query, where, deleteDoc, getDocs } from 'firebase/firestore'
 import { useNavigate } from 'react-router-dom'
 import { auth, db } from '../firebase/firebase'
 import Swal from 'sweetalert2'
@@ -94,7 +94,7 @@ export const Review = ({ supplier_id, event_name }) => {
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
                             transition
-                            className="w-full max-w-3xl rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                            className="w-full max-w-xl mt-18 rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
                         >
                             <div className='relative'>
                                 <button
@@ -228,7 +228,7 @@ export const Review = ({ supplier_id, event_name }) => {
     )
 }
 
-export const RejectReview = ({ id }) => {
+export const RejectReview = ({ id, event_id, supplier_id, event_name, supplier, className }) => {
     const [isOpen, setIsOpen] = useState(false)
     const [reviewText, setReviewText] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -258,31 +258,62 @@ export const RejectReview = ({ id }) => {
         }).then(async (result) => {
             try {
                 if (result.isConfirmed) {
-                    await updateDoc(doc(db, "verification", id), {
-                        status: 'rejected'
-                    })
+                    if (!supplier) {
+                        await updateDoc(doc(db, "verification", id), {
+                            status: 'rejected'
+                        })
 
-                    await updateDoc(doc(db, "users", id), {
-                        status: 'rejected'
-                    })
+                        await updateDoc(doc(db, "users", id), {
+                            status: 'rejected'
+                        })
 
-                    await addDoc(collection(db, "notifications"), {
-                        user_id: id,
-                        avatar: 'A',
-                        title: 'Verification Rejected',
-                        message: "Unfortunately, your submission did not meet the required criteria. Please review the feedback and re-submit your application for verification.",
-                        feedback: reviewText,
-                        timestamp: Timestamp.now(),
-                        unread: true
-                    })
+                        await addDoc(collection(db, "notifications"), {
+                            user_id: id,
+                            avatar: 'A',
+                            title: 'Verification Rejected',
+                            message: "Unfortunately, your submission did not meet the required criteria. Please review the feedback and re-submit your application for verification.",
+                            feedback: reviewText,
+                            createdAt: serverTimestamp(),
+                            unread: true
+                        })
+                    }
+                    else {
+                        const q = query(collection(db, "applications"),
+                            where("event_id", "==", event_id),
+                            where("supplier_id", "==", supplier_id))
+                        const snapShotApplications = await getDocs(q)
+                        const applications = snapShotApplications.docs.map(app => ({ id: app.id, ...app.data() }))
+
+                        for (const app of applications) {
+                            await deleteDoc(doc(db, "applications", app.id));
+
+                            await addDoc(collection(db, "notifications"), {
+                                user_id: app?.supplier_id,
+                                avatar: 'A',
+                                title: 'Application Rejected',
+                                message: `We're sorry, your application for the event "${event_name}" has been rejected.`,
+                                feedback: reviewText,
+                                timestamp: serverTimestamp(),
+                                unread: true
+                            });
+                        }
+
+                        console.log("ni gana")
+
+
+
+
+                    }
 
                     Swal.fire('Rejected', 'The review has been rejected.', 'success');
                     close()
-                    navigate('/admin/dashboard', {replace: true})
+                    if (!supplier) {
+                        navigate('/admin/dashboard', { replace: true })
+                    }
                 }
             }
             catch (e) {
-                console.log(e)
+                console.error(e)
             }
             finally {
                 setIsSubmitting(false)
@@ -292,7 +323,7 @@ export const RejectReview = ({ id }) => {
 
     return (
         <>
-            <Button onClick={open} className={'transition-all duration-100 hover:bg-blue-700 self-center px-7 py-2 rounded-xl bg-blue-600 text-white '}>Reject</Button>
+            <Button onClick={open} className={`${className}`}>Reject</Button>
 
             <Dialog open={isOpen} as='div' className={'z-999 relative focus:outline-none'} onClose={close}>
                 <div className="fixed inset-0 bg-black/25 " />
@@ -349,7 +380,7 @@ export const RejectReview = ({ id }) => {
                                             Cancel
                                         </button>
                                         <button
-                                            type="button" 
+                                            type="button"
                                             onClick={(e) => handleSubmit(e)}
                                             disabled={isSubmitting}
                                             className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium flex items-center justify-center space-x-2"

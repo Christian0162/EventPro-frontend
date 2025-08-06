@@ -7,7 +7,7 @@ export default function useEvents() {
 
     const navigate = useNavigate()
 
-    const createEvent = (user, event_name, event_location, event_date, event_time, event_status, type, event_budget, event_description, tags) => {
+    const addEvent = (user, event_name, event_location, event_date, event_time, event_status, type, event_budget, event_description, tags) => {
         addDoc(collection(db, "events"), {
             user_id: user.uid,
             event_name: event_name,
@@ -121,7 +121,7 @@ export default function useEvents() {
     }
 
     return {
-        createEvent,
+        addEvent,
         updateEvent,
         getEvent,
         getEvents,  

@@ -1,5 +1,5 @@
 import { db } from "../../firebase/firebase";
-import { getDoc, doc, updateDoc, collection, addDoc, Timestamp, deleteDoc } from "firebase/firestore";
+import { getDoc, doc, updateDoc, collection, addDoc, serverTimestamp, deleteDoc } from "firebase/firestore";
 import { Navigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react"
 import { IdCard } from "lucide-react";
@@ -69,7 +69,7 @@ export default function Review() {
                     avatar: 'A',
                     title: 'Your Verification Has Been approved!',
                     message: "You're verified! Your business is now publicly visible to planners in the Suppliers directory!",
-                    timestamp: Timestamp.now(),
+                    createdAt: serverTimestamp(),
                     unread: true
                 })
 

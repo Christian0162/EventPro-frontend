@@ -1,4 +1,4 @@
-import { doc, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { Star, BadgeCheck, Badge } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -13,7 +13,6 @@ export default function Profile({ userData }) {
     const [email_address, setEmail_address] = useState('')
     const [contact_number, setContact_number] = useState('')
     const [description, setDescription] = useState('')
-    const [userProfile, setUserProfile] = useState([])
 
     const reviews = [
         {
@@ -59,7 +58,7 @@ export default function Profile({ userData }) {
     };
 
     useEffect(() => {
-        const unsubscribe = onSnapshot(doc(db, "userProfile", userData.id), (onsnapshot) => {
+        const unsubscribe = onSnapshot(doc(db, "userProfiles", userData.id), (onsnapshot) => {
             const userProfile = onsnapshot.data()
 
             setContact_number(userProfile.contact_number)
@@ -75,7 +74,7 @@ export default function Profile({ userData }) {
         setDescriptionLoading(true)
 
         try {
-            await updateDoc(doc(db, "userProfile", userData.id), {
+            await updateDoc(doc(db, "userProfiles", userData.id), {
                 description: description
             })
         }
@@ -95,7 +94,7 @@ export default function Profile({ userData }) {
         setContactInformationLoading(true)
 
         try {
-            await updateDoc(doc(db, "userProfile", userData.id), {
+            await updateDoc(doc(db, "userProfiles", userData.id), {
                 contact_number: contact_number,
                 email_address: email_address
             })
@@ -130,7 +129,7 @@ export default function Profile({ userData }) {
                         <p className="text-md text-gray-500">{userData.role}</p>
                     </div>
                 </div>
-                {userData.role !== 'Supplier' && userData.status === 'unverified' && (
+                {(userData.status === 'unverified' || userData.status === 'rejected' || userData.role === 'Event Planner') && (
                     <Link to={'/verify'} className="px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-colors">
                         Verify
                     </Link>

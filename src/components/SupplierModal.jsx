@@ -19,6 +19,15 @@ export default function SupplierModal({ supplierData, applications, userData, re
 
     const [isOpen, setIsOpen] = useState(false)
     const [isLiked, setIsLiked] = useState(false)
+    const [contactEditing, setContactEditing] = useState(false)
+    const [bookingEdting, setBookingEditing] = useState(false)
+    const [response_time, setResponse_time] = useState(null)
+    const [contactLoading, setContactLoading] = useState(false)
+    const [bookingLoading, setBookingLoading] = useState(false)
+    const [contact_number, setContact_number] = useState('')
+    const [email_address, setEmail_address] = useState('')
+    const [availability, setAvailability] = useState('')
+    const [supplier_price, setSupplier_price] = useState('')
 
     function open() {
         setIsOpen(true)
@@ -42,6 +51,15 @@ export default function SupplierModal({ supplierData, applications, userData, re
         return () => unsubscribe();
 
     }, [supplierData]);
+
+    useEffect(() => {
+        setSupplier_price(supplierData?.supplier_price)
+        setAvailability(supplierData?.supplier_availability)
+        setResponse_time(supplierData?.supplier_response_time)
+        setEmail_address(supplierData?.supplier_email)
+        setContact_number(supplierData?.supplier_number)
+
+    }, [supplierData])
 
     if (!supplierData) {
         return null;
@@ -100,27 +118,6 @@ export default function SupplierModal({ supplierData, applications, userData, re
         }
     }
 
-    const [contactEditing, setContactEditing] = useState(false)
-    const [bookingEdting, setBookingEditing] = useState(false)
-    const [response_time, setResponse_time] = useState(null)
-    const [contactLoading, setContactLoading] = useState(false)
-    const [bookingLoading, setBookingLoading] = useState(false)
-    const [contact_number, setContact_number] = useState('')
-    const [email_address, setEmail_address] = useState('')
-    const [availability, setAvailability] = useState('')
-    const [supplier_price, setSupplier_price] = useState('')
-
-    useEffect(() => {
-        setSupplier_price(supplierData?.supplier_price)
-        setAvailability(supplierData?.supplier_availability)
-        setResponse_time(supplierData?.supplier_response_time)
-        setEmail_address(supplierData?.supplier_email)
-        setContact_number(supplierData?.supplier_number)
-
-    }, [supplierData])
-
-
-
     const handleContactSubmit = async (e) => {
         e.preventDefault()
 
@@ -164,7 +161,7 @@ export default function SupplierModal({ supplierData, applications, userData, re
         <>
             <Button
                 onClick={open}
-                className={`w-full bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${className}`}
+                className={` ${className}`}
             >
                 View Details
             </Button>
@@ -175,7 +172,7 @@ export default function SupplierModal({ supplierData, applications, userData, re
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
                             transition
-                            className="w-full max-w-4xl rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                            className="w-full max-w-5xl mt-20 rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
                         >
                             {/* Header with close button */}
                             <div className="relative">
@@ -187,7 +184,7 @@ export default function SupplierModal({ supplierData, applications, userData, re
                                 </button>
 
                                 {/* Hero Image */}
-                                <div className="relative h-48 overflow-hidden rounded-t-2xl">
+                                <div className="relative h-60 overflow-hidden rounded-t-2xl">
                                     {supplierData.supplier_background_image.length > 0 && (
                                         <img
                                             src={supplierData.supplier_background_image}
@@ -196,15 +193,18 @@ export default function SupplierModal({ supplierData, applications, userData, re
                                         />
 
                                     )}
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                                    <div className="absolute bottom-4 left-6 text-white">
-                                        <h1 className="text-2xl font-bold">{supplierData.supplier_name}</h1>
-                                    </div>
+                                    <div className="absolute inset-0 w-full bg-gradient-to-r from-pink-600 via-blue-600 via-100% to-violet-600 rounded-t-lg"></div>
                                 </div>
                             </div>
 
                             {/* Content */}
                             <div className="p-6">
+                                <div className='flex items-center gap-2 mb-2'>
+                                    <h2 className="text-2xl font-bold text-gray-900 ">{supplierData.supplier_name}</h2>
+                                    <span className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium shadow-sm">
+                                        {supplierData?.supplier_type?.label}
+                                    </span>
+                                </div>
                                 {/* Location and Basic Info */}
                                 <div className="flex items-center justify-between space-x-4 mb-4">
                                     <div className='flex gap-3'>
@@ -376,7 +376,7 @@ export default function SupplierModal({ supplierData, applications, userData, re
                                                             <h3 className="text-xl font-bold text-gray-900 mb-2">Booking Details</h3>
                                                             <p className="text-gray-600">Pricing and availability information</p>
                                                         </div>
-                                                        {supplierData.id === auth.currentUser.uid &&  !bookingEdting && (
+                                                        {supplierData.id === auth.currentUser.uid && !bookingEdting && (
                                                             <button onClick={() => setBookingEditing(true)} className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md">
                                                                 <Edit3 size={16} />
                                                                 Edit

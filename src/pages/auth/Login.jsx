@@ -2,26 +2,23 @@ import { Link } from "react-router-dom";
 import { useState } from "react";
 import { auth } from "../../firebase/firebase";
 import { Navigate } from "react-router-dom";
-import useAuth from "../../hooks/useAuth";
+import { useAuthLogin } from "../../hooks/useAuth";
 import { Title } from "react-head";
 
 export default function Login({ user }) {
     const [password, setPassword] = useState('');
     const [email, setEmail] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState(null)
 
-    const { login } = useAuth()
+    const { login, error: errorLogin } = useAuthLogin()
 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        setError(null)
         setIsLoading(true);
 
         try {
-            await login(auth, email, password, setError)
-            setError(setError)
+            await login(auth, email, password)
         }
         catch (error) {
             console.log(error.code)
@@ -55,7 +52,7 @@ export default function Login({ user }) {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                             />
-                            <span className={`mt-1 ml-1 ${error ? 'block text-red-500' : 'hidden'}`}>{error}</span>
+                            <span className={`mt-1 ml-1 ${errorLogin ? 'block text-red-500' : 'hidden'}`}>{errorLogin}</span>
                         </div>
 
                         {/* password */}
@@ -66,7 +63,7 @@ export default function Login({ user }) {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                             />
-                            <span className={`mt-1 ml-1 ${error ? 'block text-red-500' : 'hidden'}`}>{error}</span>
+                            <span className={`mt-1 ml-1 ${errorLogin ? 'block text-red-500' : 'hidden'}`}>{errorLogin}</span>
                         </div>
 
                         <button className={`w-full py-2 rounded-md text-white text-md mt-4 ${isLoading ? 'bg-blue-300' : 'bg-blue-600'}`} disabled={isLoading}>{isLoading ? 'Logging in..' : 'Login'}</button>

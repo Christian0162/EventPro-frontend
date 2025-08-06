@@ -3,7 +3,7 @@ import Cards from "../../components/Cards";
 import { MapPin, Clock, Star, DollarSign, DoorClosed } from "lucide-react";
 import SupplierModal from "../../components/SupplierModal";
 import { useEffect, useState } from "react";
-import { getDocs, collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot } from "firebase/firestore";
 import { db, auth } from "../../firebase/firebase";
 import Loading from "../../components/Loading";
 
@@ -19,7 +19,7 @@ export default function Favorites() {
     useEffect(() => {
         setIsLoading(true)
 
-        const unsubscribe = onSnapshot(collection(db, "Favorites"), (snapshot) => {
+        const unsubscribe = onSnapshot(collection(db, "favorites"), (snapshot) => {
             const userFavorites = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
             const favorites = userFavorites.filter(doc => doc.user_id === auth.currentUser.uid)
 
@@ -131,11 +131,16 @@ export default function Favorites() {
                         <Cards key={shopItem.id || index} className="group cursor-pointer">
                             {/* Image */}
                             <div className="relative overflow-hidden">
-                                <img
-                                    src={shopItem?.supplier_background_image}
-                                    className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                                    alt={`${shopItem.supplier_name} background`}
-                                />
+                                {shopItem.supplier_background_image.length > 0 && (
+                                    <img
+                                        src={shopItem?.supplier_background_image}
+                                        className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                                        alt={`${shopItem.supplier_name} background`}
+                                    />
+                                )}
+                                {shopItem.supplier_background_image.length === 0 && (
+                                    <div className="w-full h-48 bg-gradient-to-r from-pink-500 to-violet-500"></div>
+                                )}
                                 <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg flex items-center space-x-1">
                                     <Star className="text-yellow-400 fill-current" size={14} />
                                     <span className="text-sm font-semibold">{averageRating}</span>
@@ -200,7 +205,7 @@ export default function Favorites() {
                                 </div>
 
                                 {/* Action Button */}
-                                <SupplierModal services={services[shopItem.id]} supplierData={shopItem} reviews={reviewCount} averageRating={averageRating} className={'py-2 rounded-md '} />
+                                <SupplierModal className={`py-2 rounded-lg font-semibold w-full bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2`} services={services[shopItem.id]} supplierData={shopItem} reviews={reviewCount} averageRating={averageRating} />
                             </div>
                         </Cards>
                     );

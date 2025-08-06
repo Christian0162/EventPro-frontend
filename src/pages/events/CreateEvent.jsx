@@ -40,7 +40,7 @@ export default function CreateEvent() {
 
     }, [startTime, endTime])
 
-    const { createEvent } = useEvents()
+    const { addEvent } = useEvents()
 
     const categoriesOptions = [
         { label: 'Floral', value: 'floral' },
@@ -91,7 +91,7 @@ export default function CreateEvent() {
         if (user) {
             setLoading(true)
 
-            await createEvent(user,
+            await addEvent(user,
                 event_name,
                 event_location,
                 event_date,

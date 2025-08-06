@@ -51,7 +51,7 @@ export default function Event({ userData }) {
     useEffect(() => {
 
         const q = query(collection(db, "applications"),
-            where("user_id", "==", auth.currentUser.uid))
+            where("supplier_id", "==", auth.currentUser.uid))
 
         const unsubscribe = onSnapshot(q, (onsnapshot) => {
             const applications = onsnapshot.docs.map(app => ({ id: app.id, ...app.data() }))
@@ -80,16 +80,16 @@ export default function Event({ userData }) {
             if (result.isConfirmed) {
                 try {
                     await addDoc(collection(db, "applications"), {
-                        user_id: auth.currentUser.uid,
+                        supplier_id: auth.currentUser.uid,
                         event_id: event_id,
                         AppliedAt: serverTimestamp(),
                         status: 'Pending'
                     })
 
-                    await addDoc(collection(db, "notications"), {
+                    await addDoc(collection(db, "notifications"), {
                         avatar: auth.currentUser.uid.charAt(0).toUpperCase(),
                         message: `The supplier "${supplierData.supplier_name}" applied to your event.`,
-                        timestamp: serverTimestamp(),
+                        createdAt: serverTimestamp(),
                         title: 'You have a new application for your event.',
                         unread: true,
                         user_id: user_id
@@ -216,7 +216,7 @@ export default function Event({ userData }) {
                                     </div>
 
                                     {/* event name */}
-                                    <div className="flex justify-between items-center mb-7 mt-3">
+                                    <div className="flex flex-col sm:flex-row md:flex-row lg:flex-row justify-between items-center gap-3 mb-7 mt-3">
                                         <span className="block text-3xl font-bold text-gray-900">{events.event_name.length > 10 ? events.event_name.slice(0, 10) + ".." : events.event_name}</span>
                                         <span className={`${events.event_status.value === "upcoming" ? "bg-purple-600" : events.event_status.value === "planning" ? "bg-sky-500" : "bg-green-500"} rounded-full shadow-lg py-1 px-5 text-white`}>{events.event_status.value}</span>
                                     </div>
@@ -232,7 +232,7 @@ export default function Event({ userData }) {
                                         {/* event location */}
                                         <div className="flex space-x-2 items-center gap-2">
                                             <span className="rounded-xl bg-green-200 h-10 w-10 flex items-center justify-center text-green-600"><MapPin /></span>
-                                            <span className="text-gray-700">{events.event_location}</span>
+                                            <span className="text-gray-700 f">{events.event_location}</span>
                                         </div>
 
                                         {/* event budget */}
@@ -247,9 +247,11 @@ export default function Event({ userData }) {
                                                 <Users className="text-gray-600 h-5 w-5" />
                                                 <span className="text-md text-gray-800">Looking for supplier:</span>
                                             </div>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-5 mt-2">
+
+                                            {/* categories */}
+                                            <div className="flex flex-wrap gap-3 mt-2">
                                                 {events.event_categories.map((categories, index) => (
-                                                    <span key={index} className="text-center items-center w-36  sm:w-34 md:w-34 lg:w-30 py-1 rounded-full text-sm font-medium bg-gray-300 text-gray-500">{categories}</span>
+                                                    <span key={index} className="px-3 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full border border-blue-100">{categories}</span>
                                                 ))}
                                             </div>
                                         </div>

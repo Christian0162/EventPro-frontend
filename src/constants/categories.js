@@ -6,6 +6,14 @@ export const SupplierOptions = [
     { label: 'Funeral', value: 'funeral' },
 ]
 
+export const statusOptions = [
+    { label: 'Planning', value: 'planning' },
+    { label: 'Upcoming', value: 'upcoming' },
+    { label: 'In Progress', value: 'in-progress' },
+    { label: 'Complete', value: 'complete' },
+];
+
+
 export const supplierTypeToExpertise = {
     floral: ['Floral', 'Seasonal', 'Exotic Flowers', 'Local Flowers'],
     wedding: ['Wedding', 'Bridal Bouquets', 'Wedding Centerpieces', 'Boutonnieres'],
@@ -13,6 +21,64 @@ export const supplierTypeToExpertise = {
     corporate: ['Corporate', 'Office Decor', 'Executive Gifts', 'Corporate Events'],
     funeral: ['Funeral', 'Sympathy Arrangements', 'Memorial Flowers', 'Wreaths']
 };
+
+export const termsOfCondition = {
+    title: "Penalties for Service Failure",
+    description:
+        "The following penalties apply for delays, non-delivery, or service issues to ensure accountability and protect client interests.",
+    clauses: [
+        {
+            title: "Late Delivery",
+            details: [
+                "Liquidated Damages: A penalty of 0.5% of the total contract value per day of delay will be charged.",
+                "Capped Maximum: Damages shall not exceed 10% to 20% of the total contract amount.",
+            ],
+        },
+        {
+            title: "Non-Delivery / No Service",
+            details: [
+                "Full Refund of payment made.",
+                "Replacement Cost Coverage: Supplier shall shoulder any costs incurred by the client to secure an alternative service.",
+                "Direct Client Cost Recovery: Any additional costs directly resulting from the non-delivery must be reimbursed by the supplier.",
+            ],
+        },
+        {
+            title: "Service Non-Conformity or Damage",
+            details: [
+                "Deduction of Repair or Replacement Costs from the supplier’s payment.",
+                "Based on actual cost incurred by the client.",
+            ],
+        },
+    ],
+};
+
+export const paymentMethods = [
+    {
+        name: "Gcash",
+        method: "GCASH",
+        payment_method_logo: '/payment_methods/gcashlogo.png',
+        type: 'Digital Wallet',
+        process_fee: 0.027,
+        color: 'bg-blue-600'
+    },
+    {
+        name: "Maya",
+        method: "PAYMAYA",
+        payment_method_logo: '/payment_methods/mayalogo.jpg',
+        type: 'Digital Wallet',
+        process_fee: 0.027,
+        color: 'bg-green-400'
+    },
+    {
+        name: "Credit Card",
+        method: "CREDIT_CARD",
+        payment_method_logo: '/payment_methods/creditcardlogo.jpg',
+        type: 'Visa, Mastercard',
+        process_fee: 0.03,
+        color: 'bg-violet-500'
+    }
+]
+
 
 export const responseTimeOptions = [
     { label: 'Within 1 Hour', value: 'within 1 hour' },
@@ -40,8 +106,8 @@ export const idOptions = [
 ]
 
 export const documentOptions = [
-    {label: 'DTI (Department of Trade and Industry', value: 'dti'},
-    {label: 'Business Permit', value: 'business_permit'},
+    { label: 'DTI (Department of Trade and Industry', value: 'dti' },
+    { label: 'Business Permit', value: 'business_permit' },
 ]
 
 export const exampleIds = {

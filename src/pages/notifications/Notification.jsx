@@ -3,26 +3,11 @@ import { Bell, Check } from 'lucide-react';
 import { collection, getDocs, onSnapshot, orderBy, query, updateDoc, where, doc } from 'firebase/firestore';
 import { db, auth } from '../../firebase/firebase';
 import NotificationModal from '../../components/NotificationModal';
+import { useFetchNotificationsById } from '../../hooks/useNotifications';
 
 export default function Notification({ userData }) {
 
-    const [notifications, setNotications] = useState([])
-
-    useEffect(() => {
-
-        const q = query(collection(db, "notifications"),
-            where("user_id", "==", auth.currentUser.uid),
-            orderBy("timestamp", "desc")
-        )
-
-        const unsubscribe = onSnapshot(q, (onsnapshot) => {
-            const notifs = onsnapshot.docs.map(notif => ({ id: notif.id, ...notif.data() }))
-            setNotications(notifs)
-        })
-
-        return () => unsubscribe()
-
-    }, [])
+    const { notifications } = useFetchNotificationsById(userData.id)
 
     const hanldeMarksAllRead = async () => {
         const q = query(collection(db, "notifications"),

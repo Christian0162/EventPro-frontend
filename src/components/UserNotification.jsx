@@ -1,14 +1,19 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useFetchNotificationsById } from "../hooks/useNotifications"
-import { Heart, MessageCircleMore, BellDot, Calendar, X, Check, Trash2, Settings } from "lucide-react";
+import { BellDot, X, Check, Settings, MessageSquare } from "lucide-react";
 import { auth, db } from "../firebase/firebase"
 import { doc, updateDoc } from "firebase/firestore"
 import { Link } from "react-router-dom";
+import { Dialog, DialogPanel } from "@headlessui/react";
+import { formatDistanceToNow } from "date-fns";
 
 export default function UserNotifications() {
     const [isOpen, setIsOpen] = useState(false)
+    const [modalOpen, setModalOpen] = useState(false)
+    const [selectedNotif, setSelectedNotif] = useState(null)
     const { notifications } = useFetchNotificationsById(auth.currentUser?.uid)
     const [isLoading, setIsLoading] = useState(false)
+    const [isReading, setIsReading] = useState(false)
 
     const unreadCount = notifications.filter(notification => notification.unread).length
 
@@ -21,29 +26,44 @@ export default function UserNotifications() {
     const markAllAsRead = async () => {
         const unread = notifications.filter(notification => notification.unread)
 
-        setIsLoading(true)
-
-        for (const updateUnread of unread) {
-            await updateDoc(doc(db, "notifications", updateUnread.id), {
-                unread: false
-            })
+        setIsReading(true)
+        try {
+            for (const updateUnread of unread) {
+                await updateDoc(doc(db, "notifications", updateUnread.id), {
+                    unread: false
+                })
+            }
         }
+        catch (e) {
+            console.error(e)
+        }
+        finally {
+            setIsReading(false)
 
-        setIsLoading(false)
-
-        console.log(unread)
+        }
     }
 
+    const handleNotifClick = (notification) => {
+        markAsRead(notification.id)
+        setSelectedNotif(notification)
+        setModalOpen(true)
+    }
 
     return (
         <>
-            {/* Notification button - dropdown */}
+            {/* Notification button */}
             <div className="relative">
                 <button
                     onClick={() => setIsOpen(!isOpen)}
+                    onKeyDown={(e) => {
+                        if (e.key === "Escape") {
+                            e.preventDefault()
+                            setIsOpen(false)
+                        }
+                    }}
                     className="relative transition-all duration-200 focus:outline-none focus:bg-blue-50 focus:text-blue-700 focus:shadow-sm focus:ring-2 focus:ring-blue-200 text-gray-600 hover:text-gray-900 hover:bg-gray-50 px-4 py-2 rounded-full text-sm flex items-center justify-center group"
                 >
-                    {unreadCount > 0 && (
+                    {unreadCount > 0 && !isReading && (
                         <div className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-xs font-medium rounded-full flex items-center justify-center">
                             {unreadCount > 9 ? '9+' : unreadCount}
                         </div>
@@ -59,40 +79,27 @@ export default function UserNotifications() {
                             onClick={() => setIsOpen(false)}
                         />
 
-                        {/* Popover Panel */}
+                        {/* Dropdown Panel */}
                         <div className="absolute right-0 mt-3 w-96 bg-white border border-gray-200 rounded-xl shadow-2xl z-50 animate-in slide-in-from-top-2 duration-200">
                             {/* Header */}
                             <div className="flex items-center justify-between p-4 border-b border-gray-100">
                                 <div className="flex items-center gap-2">
                                     <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
-                                    {!isLoading && (
-                                        <>
-                                            {unreadCount > 0 && (
-                                                <span className="bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded-full">
-                                                    {unreadCount} new
-                                                </span>
-                                            )}
-                                        </>
+                                    {!isLoading && unreadCount > 0 && (
+                                        <span className="bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded-full">
+                                            {unreadCount} new
+                                        </span>
                                     )}
                                 </div>
                                 <div className="flex items-center gap-1">
                                     {notifications.length > 0 && (
-                                        <>
-                                            <button
-                                                onClick={() => markAllAsRead()}
-                                                className="text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-2 py-1 rounded-md transition-colors duration-150"
-                                                title="Mark all as read"
-                                            >
-                                                <Check size={14} />
-                                            </button>
-                                            {/* <button
-                                                onClick={clearAll}
-                                                className="text-xs text-red-600 hover:text-red-800 hover:bg-red-50 px-2 py-1 rounded-md transition-colors duration-150"
-                                                title="Clear all"
-                                            >
-                                                <Trash2 size={14} />
-                                            </button> */}
-                                        </>
+                                        <button
+                                            onClick={markAllAsRead}
+                                            className="text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-2 py-1 rounded-md transition-colors duration-150"
+                                            title="Mark all as read"
+                                        >
+                                            <Check size={14} />
+                                        </button>
                                     )}
                                     <button
                                         onClick={() => setIsOpen(false)}
@@ -113,60 +120,45 @@ export default function UserNotifications() {
                                     </div>
                                 ) : (
                                     <div className="py-2">
-                                        {!isLoading && (
-                                            <>
-                                                {notifications.map((notification, index) => (
-                                                    <div
-                                                        key={notification.id}
-                                                        onClick={() => markAsRead(notification.id)}
-                                                        className={`relative cursor-pointer hover:bg-gray-50 px-4 py-3 transition-colors duration-150 border-l-4 ${notification.unread
-                                                            ? 'border-transparent bg-white'
-                                                            : 'border-blue-500 bg-blue-50/30'
-                                                            } ${index !== notifications.length - 1 ? 'border-b border-gray-100' : ''}`}
-                                                    >
-                                                        <div className="flex items-start gap-3">
-                                                            <div className="mt-1">
-                                                                {notification.unread && (
-                                                                    <div className={`w-3 h-3 rounded-full flex-shrink-0" bg-blue-500`}></div>
+                                        {!isLoading ? (
+                                            notifications.map((notification, index) => (
+                                                <div
+                                                    key={notification.id}
+                                                    onClick={() => handleNotifClick(notification)}
+                                                    className={`relative cursor-pointer hover:bg-gray-50 px-4 py-3 transition-colors duration-150 border-l-4 ${notification.unread
+                                                        ? 'border-transparent bg-white'
+                                                        : 'border-blue-500 bg-blue-50/30'
+                                                        } ${index !== notifications.length - 1 ? 'border-b border-gray-100' : ''}`}
+                                                >
+                                                    <div className="flex items-start gap-3">
+                                                        <div className="mt-1">
+                                                            {notification.unread && (
+                                                                <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <h4 className={`text-sm font-medium ${notification.unread ? 'text-gray-700' : 'text-gray-900'} truncate`}>
+                                                                {notification.title}
+                                                            </h4>
+                                                            <p className={`text-sm mt-1 ${notification.unread ? 'text-gray-500' : 'text-gray-700'} line-clamp-2`}>
+                                                                {notification.message}
+                                                            </p>
+                                                            <div className="flex items-center justify-between mt-2">
+                                                                <span className="text-xs text-gray-400">
+                                                                    {notification.createdAt.toDate().toLocaleTimeString([], {
+                                                                        hour: '2-digit',
+                                                                        minute: '2-digit',
+                                                                    })}
+                                                                </span>
+                                                                {!notification.unread && (
+                                                                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                                                                 )}
-                                                            </div>
-                                                            <div className="flex-1 min-w-0 group">
-                                                                <div className="flex items-start justify-between gap-2">
-                                                                    <h4 className={`text-sm font-medium ${notification.unread ? 'text-gray-700' : 'text-gray-900'
-                                                                        } truncate`}>
-                                                                        {notification.title}
-                                                                    </h4>
-                                                                    {/* <button
-                                                                onClick={(e) => deleteNotification(notification.id, e)}
-                                                                className="opacity-0 group-hover:opacity-100 text-black hover:text-red-500 transition-all duration-150 p-1 hover:bg-red-50 rounded"
-                                                                title="Delete notification"
-                                                            >
-                                                                <X size={12} />
-                                                            </button> */}
-                                                                </div>
-                                                                <p className={`text-sm mt-1 ${notification.unread ? 'text-gray-500' : 'text-gray-700'
-                                                                    } line-clamp-2`}>
-                                                                    {notification.message}
-                                                                </p>
-                                                                <div className="flex items-center justify-between mt-2">
-                                                                    <span className="text-xs text-gray-400">
-                                                                        {notification.createdAt.toDate().toLocaleTimeString([], {
-                                                                            hour: '2-digit',
-                                                                            minute: '2-digit'
-                                                                        })}
-                                                                    </span>
-                                                                    {!notification.unread && (
-                                                                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                                                                    )}
-                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
-                                                ))}
-                                            </>
-                                        )}
-
-                                        {isLoading && (
+                                                </div>
+                                            ))
+                                        ) : (
                                             <div className="flex justify-center items-center h-[300px]">
                                                 <div className="h-10 w-10 rounded-full border border-t-blue-600 animate-spin"></div>
                                             </div>
@@ -188,6 +180,68 @@ export default function UserNotifications() {
                     </>
                 )}
             </div>
+
+            {/* Notification Modal */}
+            <Dialog as="div" open={modalOpen} onClose={() => setModalOpen(false)} className="relative z-[999]">
+                <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" />
+                <div className="fixed inset-0 flex items-center justify-center p-4">
+                    <DialogPanel
+                        transition
+                        className="w-full max-w-lg rounded-2xl bg-white shadow-2xl p-6 relative transition-all duration-300 ease-out data-closed:scale-95 data-closed:opacity-0"
+                    >
+                        {/* Close button */}
+                        <button
+                            onClick={() => setModalOpen(false)}
+                            className="absolute top-4 right-4 p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition"
+                        >
+                            <X size={18} className="text-gray-600" />
+                        </button>
+
+                        {selectedNotif && (
+                            <div className="text-center">
+                                {/* Icon */}
+                                <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+                                    <MessageSquare size={28} className="text-blue-600" />
+                                </div>
+
+                                {/* Title + Time */}
+                                <h2 className="text-lg font-semibold text-gray-900">{selectedNotif.title}</h2>
+                                <p className="text-xs text-gray-400 mt-1">
+                                    {formatDistanceToNow(new Date(selectedNotif.createdAt.seconds * 1000), { addSuffix: true })}
+                                </p>
+
+                                {/* Message Section */}
+                                <div className="mt-6 text-left">
+                                    <h3 className="text-sm font-medium text-gray-800 mb-2">Message</h3>
+                                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-700 shadow-sm">
+                                        {selectedNotif.message || "No message available."}
+                                    </div>
+                                </div>
+
+                                {/* Feedback Section */}
+                                <div className="mt-6 text-left">
+                                    <h3 className="text-sm font-medium text-gray-800 mb-2">Feedback</h3>
+                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-gray-700 shadow-sm">
+                                        {selectedNotif.feedback || "No feedback provided."}
+                                    </div>
+                                </div>
+
+                                {/* Actions */}
+                                <div className="mt-6 flex justify-center gap-3">
+                                    <button
+                                        onClick={() => setModalOpen(false)}
+                                        className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg text-sm transition"
+                                    >
+                                        Close
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </DialogPanel>
+                </div>
+            </Dialog>
+
+
         </>
     )
 }

@@ -1,12 +1,16 @@
 import { Button, Dialog, DialogPanel, } from '@headlessui/react'
 import { updateDoc, doc } from 'firebase/firestore'
-import { Edit3, X, UserPen, Store, MapPin, Container, MessageSquareWarning, SquarePen, PackagePlus, PhilippinePeso } from 'lucide-react'
+import { Edit3, X, UserPen, Store, MapPin, Container, MessageSquareWarning, SquarePen, PackagePlus, PhilippinePeso, Pencil } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { auth, db } from '../firebase/firebase'
 import Select from 'react-select'
 import { SupplierOptions, planTypeOptions, paymentNoticeOptions } from '../constants/categories'
 import AddressAutocomplete from './AddressAutoComplete'
+import { supplierTypeToExpertise } from '../constants/categories'
 import Swal from 'sweetalert2'
+import { useFetchSupplierServices } from '../hooks/useSupplier'
+import UploadWidget from './UploadWidgen'
+import LoadingOverlay from './LoadingOverlay'
 
 export const AboutOurBusiessEdit = ({ supplierData }) => {
     const [isOpen, setIsOpen] = useState(false)
@@ -16,12 +20,14 @@ export const AboutOurBusiessEdit = ({ supplierData }) => {
     const [supplier_description, setSupplier_description] = useState('')
     const [removedExpertise, setRemovedExpertise] = useState([])
 
+    const supplierType = supplierData?.supplier_type?.value
+
     useEffect(() => {
         setExpertise(supplierData?.supplier_expertise)
-        setSupplier_description(supplierData.supplier_description)
+        setSupplier_description(supplierData?.supplier_description)
     }, [supplierData])
 
-
+    console.log(supplierTypeToExpertise[supplierType])
 
     const handleExpertiseChange = (option) => {
         setExpertise(prev => {
@@ -32,19 +38,6 @@ export const AboutOurBusiessEdit = ({ supplierData }) => {
                 return prev.filter(prev => prev !== option)
             }
             else {
-                return [...prev, option]
-            }
-        })
-    }
-
-    const handleExpertiseRemoved = (option) => {
-        setExpertise(prev => {
-            if (prev.includes(option)) {
-                return prev.filter(prev => prev !== option)
-            }
-            else {
-                setRemovedExpertise(removed => removed.filter(rev => rev !== option))
-
                 return [...prev, option]
             }
         })
@@ -94,7 +87,7 @@ export const AboutOurBusiessEdit = ({ supplierData }) => {
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
                             transition
-                            className="w-full max-w-3xl rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                            className="w-full max-w-3xl rounded-2xl bg-white shadow-2xl mt-18 duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
                         >
                             <div className='relative px-10 py-5 bg-gray-100 rounded-t-xl'>
                                 <button
@@ -141,34 +134,35 @@ export const AboutOurBusiessEdit = ({ supplierData }) => {
                                             {expertise?.length > 0 && (
                                                 <>
                                                     {expertise.map((supplier, index) => (
-                                                        <button type='button' onClick={() => handleExpertiseChange(supplier)} className={`group px-4 py-1 rounded-full bg-green-500 flex items-center text-white hover:bg-red-500 transition-all duration-200 `} key={index}>
+                                                        <button type='button' onClick={() => handleExpertiseChange(supplier)} className={`group px-4 py-1 rounded-full bg-blue-500 flex items-center text-white hover:bg-red-500 transition-all duration-200 `} key={index}>
                                                             {supplier} <span className='ml-2 transition-all duration-200 group-hover:opacity-100 opacity-0 font-bold flex'> - </span>
                                                         </button>
                                                     ))}
                                                 </>
                                             )}
+
+
                                         </div>
+
                                         {expertise?.length === 0 && (
                                             <div className='flex justify-center items-center'>
                                                 <span className='text-gray-600 block text-center'>No expertise</span>
                                             </div>
                                         )}
+
+                                        <span className='block text-gray-800 font-bold mt-3 text-sm'>Available Expertise</span>
+                                        <div className='grid grid-cols-3 gap-2'>
+                                            <>
+                                                {supplierTypeToExpertise[supplierType]?.map((supplier, index) => (
+                                                    <button type='button' onClick={() => handleExpertiseChange(supplier)} className={`group px-4 py-1 rounded-full border flex items-center text-black hover:bg-blue-500 hover:text-white transition-all duration-200 `} key={index}>
+                                                        {supplier} <span className='ml-2 transition-all duration-200 group-hover:opacity-100 opacity-0 font-bold flex'> + </span>
+                                                    </button>
+                                                ))}
+                                            </>
+                                        </div>
                                     </div>
 
-                                    {removedExpertise.length > 0 && (
-                                        <div className='flex flex-col gap-3'>
-                                            <span className='block text-gray-800 font-bold mt-3 text-sm'>Removed</span>
-                                            <div className='flex gap-2'>
-                                                <>
-                                                    {removedExpertise.map((supplier, index) => (
-                                                        <button type='button' onClick={() => handleExpertiseRemoved(supplier)} className={`group px-4 py-1 rounded-full bg-yellow-500 flex items-center text-white hover:bg-green-500 transition-all duration-200 `} key={index}>
-                                                            {supplier} <span className='ml-2 transition-all duration-200 group-hover:opacity-100 opacity-0 font-bold flex'> + </span>
-                                                        </button>
-                                                    ))}
-                                                </>
-                                            </div>
-                                        </div>
-                                    )}
+
 
                                     <button
                                         disabled={isSubmitting}
@@ -247,7 +241,7 @@ export const SupplierDetails = ({ supplierData }) => {
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
                             transition
-                            className="w-full max-w-3xl rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                            className="w-full max-w-3xl mt-15 rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
                         >
                             <div className='relative px-10 py-5 bg-gray-100 rounded-t-xl'>
                                 <button
@@ -322,6 +316,7 @@ export const ServiceEdit = ({ supplierData, service_id, services }) => {
     const [price, setPrice] = useState('')
     const [payment_notice, setPayment_notice] = useState(null)
     const [error, setError] = useState('')
+    const { services: service } = useFetchSupplierServices()
 
     useEffect(() => {
         setService_plan(services.service_plan)
@@ -335,10 +330,25 @@ export const ServiceEdit = ({ supplierData, service_id, services }) => {
     }
     function close() {
         setIsOpen(false)
+        setService_plan("")
     }
+
+    const supplierService = service[supplierData.id]
+
+    // Filter out options that already exist
+    const existingPlans = supplierService
+        ? Object.values(supplierService).map(service => service.service_plan.value.toLowerCase())
+        : []
+
+    const filteredPlanOptions = planTypeOptions.filter(
+        option => !existingPlans.includes(option.value.toLowerCase())
+    )
 
     const handleInclusions = (inclusions) => {
         try {
+            const trimmed = inclusions.trim()
+            if (!trimmed) return
+
             setAllInclusions(prev => {
                 if (prev.includes(inclusions)) {
                     setError('The item is already in the list.')
@@ -353,9 +363,6 @@ export const ServiceEdit = ({ supplierData, service_id, services }) => {
         }
         catch (e) {
             console.error(e)
-        }
-        finally {
-            setInclusions('')
         }
 
     }
@@ -423,7 +430,7 @@ export const ServiceEdit = ({ supplierData, service_id, services }) => {
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
                             transition
-                            className="w-full max-w-3xl rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                            className="w-full max-w-3xl mt-17 rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
                         >
                             <div className='relative px-10 py-7 bg-gray-100 rounded-t-xl'>
                                 <button
@@ -449,7 +456,7 @@ export const ServiceEdit = ({ supplierData, service_id, services }) => {
                                                 <SquarePen size={20} className='text-blue-600' />
                                                 <label htmlFor="" className='text-gray-700 font-bold'>Service Plan Type</label>
                                             </div>
-                                            <Select onChange={setService_plan} value={service_plan} options={planTypeOptions} placeholder="e.g Basic Plan" required />
+                                            <Select onChange={setService_plan} value={service_plan} options={filteredPlanOptions} placeholder="e.g Basic Plan" required />
                                         </div>
 
                                         <div className='flex flex-col gap-2'>
@@ -509,6 +516,90 @@ export const ServiceEdit = ({ supplierData, service_id, services }) => {
                     </div>
                 </div>
             </Dialog>
+        </>
+    )
+}
+
+export const UpdateProfile = ({ userData }) => {
+    const [isOpen, setIsOpen] = useState(false)
+    const [isProfileLoading, setIsProfileLoading] = useState(false)
+    const [profile, setProfile] = useState('')
+
+    function open() {
+        setIsOpen(true)
+    }
+
+    function close() {
+        setIsOpen(false)
+    }
+
+    const handleSubmit = async () => {
+        setIsProfileLoading(true)
+        try {
+            await updateDoc(doc(db, "userProfiles", userData.id), {
+                profile_pic: profile
+            })
+        }
+        catch (e) {
+            console.error(e)
+        }
+        finally {
+            setIsProfileLoading(false)
+            close()
+            setProfile('')
+        }
+    }
+
+    return (
+        <>
+            <Button onClick={open} className={'transition-all absolute hover:ring-2 hover:ring-blue-600 -bottom-2 -right-2 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center'}>
+
+                <Pencil className="w-4 h-4 text-gray-800" />
+            </Button>
+
+            <Dialog open={isOpen} as='div' className={'z-50 relative focus:outline-none'} onClose={close}>
+                <div className="fixed inset-0 bg-black/25 " />
+                <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
+                    <div className="flex min-h-full items-center justify-center p-4">
+                        <DialogPanel
+                            transition
+                            className="w-full max-w-xl mt-18 rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                        >
+                            <div className='relative px-8 py-4 bg-gray-100 rounded-t-xl'>
+                                <button
+                                    onClick={close}
+                                    className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/80 hover:bg-white transition-colors duration-200"
+                                >
+                                    <X size={20} className="text-gray-600" />
+                                </button>
+
+                                <div className="flex items-center gap-3 mb-2">
+                                    <h2 className="text-xl font-bold text-blue-600">
+                                        Update Profile
+                                    </h2>
+                                </div>
+                            </div>
+
+                            <div className='p-8'>
+                                <UploadWidget className={'py-2'} setPicture={setProfile} />
+                                <div className="flex justify-end mt-6">
+                                    <button
+                                        onClick={() => handleSubmit()}
+                                        disabled={!profile}
+                                        className={`transition-all duration-75 px-4 h-10 rounded-md text-white ${profile ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-300'
+                                            }`}
+                                    >
+                                        Submit
+                                    </button>
+                                </div>
+                                {isProfileLoading && (
+                                    <LoadingOverlay isLoading={isProfileLoading} message="Processing.." />
+                                )}
+                            </div>
+                        </DialogPanel>
+                    </div>
+                </div >
+            </Dialog >
         </>
     )
 }

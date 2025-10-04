@@ -3,6 +3,7 @@ import { Star, BadgeCheck, Badge } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { db } from '../firebase/firebase';
+import { useFetchUserProfileById } from '../hooks/useProfile';
 
 export default function Profile({ userData }) {
 
@@ -13,6 +14,7 @@ export default function Profile({ userData }) {
     const [email_address, setEmail_address] = useState('')
     const [contact_number, setContact_number] = useState('')
     const [description, setDescription] = useState('')
+    const { userProfile } = useFetchUserProfileById(userData?.id)
 
     const reviews = [
         {
@@ -61,9 +63,9 @@ export default function Profile({ userData }) {
         const unsubscribe = onSnapshot(doc(db, "userProfiles", userData.id), (onsnapshot) => {
             const userProfile = onsnapshot.data()
 
-            setContact_number(userProfile.contact_number)
-            setEmail_address(userProfile.email_address)
-            setDescription(userProfile.description)
+            setContact_number(userProfile?.contact_number)
+            setEmail_address(userProfile?.email_address)
+            setDescription(userProfile?.description)
         })
 
         return () => unsubscribe()
@@ -118,26 +120,29 @@ export default function Profile({ userData }) {
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
                 <div className="flex items-center gap-3">
-                    <div className='text-2xl h-15 w-15 rounded-full bg-gradient-to-r from-blue-600 to-pink-600 text-white flex items-center justify-center'><span>{userData.first_name.charAt(0).toUpperCase()}</span></div>
-                    <div>
+                    {userProfile.profile_pic ? (
+                        <img src={userProfile.profile_pic} alt="" className='h-20 w-20 rounded-full object-cover' />
+                    ) : (
+                        <div className='text-5xl h-20 w-20 rounded-full bg-gradient-to-r from-blue-600 to-pink-600 text-white flex items-center justify-center'><span>{userData.first_name.charAt(0).toUpperCase()}</span></div>
+                    )}                    <div>
                         <div className='flex items-center gap-2'>
                             <h1 className="text-2xl font-bold text-gray-900 capitalize">{userData.first_name}</h1>
-                            {userData.status === 'verified' && (
+                            {userData.verification_status === 'verified' && (
                                 <BadgeCheck className='text-blue-600 mt-1' />
                             )}
                         </div>
                         <p className="text-md text-gray-500">{userData.role}</p>
                     </div>
                 </div>
-                {(userData.status === 'unverified' || userData.status === 'rejected' || userData.role === 'Event Planner') && (
-                    <Link to={'/verify'} className="px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-colors">
+                {(userData.verification_status === 'unverified' || userData.verification_status === 'rejected') && (
+                    <a href={'/verify'} className="px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-colors">
                         Verify
-                    </Link>
+                    </a>
                 )}
 
-                {userData?.status === 'pending' && (
-                    <span className="px-4 py-2 border border-yellow-400 text-yellow-400 text-sm font-medium rounded-lg">
-                        Pending
+                {userData.verification_status === "pending" && (
+                    <span className="flex group items-center gap-2 bg-yellow-50 border border-yellow-200 rounded-full px-4 py-2">
+                        <span className={`text-yellow-700 font-medium text-sm`}>Pending</span>
                     </span>
                 )}
             </div>
@@ -194,7 +199,7 @@ export default function Profile({ userData }) {
                                         onChange={(e) => setEmail_address(e.target.value)}
                                         value={email_address}
                                         disabled={!contactInformationEditing}
-                                        className={`w-full p-3 rounded-lg bg-gray-50 text-gray-700 ${contactInformationEditing ? 'border-2 border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent' : 'border border-gray-300'}`}
+                                        className={`w-full p-3 rounded-lg bg-gray-50 text-gray-700 ${contactInformationEditing ? 'border border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent' : 'border border-gray-300'}`}
                                         placeholder='e.g test@gmail.com'
                                     />
                                 </div>
@@ -208,7 +213,7 @@ export default function Profile({ userData }) {
                                         onChange={(e) => setContact_number(e.target.value)}
                                         value={contact_number}
                                         disabled={!contactInformationEditing}
-                                        className={`w-full p-3 rounded-lg bg-gray-50 text-gray-700 ${contactInformationEditing ? 'border-2 border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent' : 'border border-gray-300'}`}
+                                        className={`w-full p-3 rounded-lg bg-gray-50 text-gray-700 ${contactInformationEditing ? 'border border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent' : 'border border-gray-300'}`}
                                         placeholder="e.g 09487623432"
                                     />
                                 </div>

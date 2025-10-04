@@ -16,7 +16,6 @@ export const useFetchReviews = () => {
                     const reviewSnapShot = await getDocs(collection(db, "shops", suppliers.id, "reviews"))
 
                     reviewData[suppliers.id] = reviewSnapShot.docs.map(review => ({ id: review.id, ...review.data() }))
-
                 }))
 
 
@@ -26,15 +25,14 @@ export const useFetchReviews = () => {
             fetchAllReviews()
 
         }
-
         catch (e) {
             console.error(e)
             setIsLoading(false)
         }
-
         finally {
             setIsLoading(false)
         }
+
     }, [suppliers])
 
     return { reviews, isLoading }
@@ -50,6 +48,7 @@ export const useFetchReviewsById = (id) => {
                 setReviews(onsnapshot.docs.map(review => ({ id: review.id, ...review.data() })))
             })
 
+            setIsLoading(false)
             return () => unsubscribe()
         }
 
@@ -58,10 +57,7 @@ export const useFetchReviewsById = (id) => {
             setIsLoading(false)
         }
 
-        finally {
-            setIsLoading(false)
-        }
     }, [id])
 
-    return {reviews, isLoading}
+    return { reviews, isLoading }
 }

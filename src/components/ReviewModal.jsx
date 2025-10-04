@@ -2,7 +2,7 @@ import { Button, Dialog, DialogPanel, } from '@headlessui/react'
 import { useState } from 'react'
 import { X, Star, ThumbsUp, MessageSquare } from 'lucide-react'
 import { addDoc, updateDoc, collection, serverTimestamp, doc, query, where, deleteDoc, getDocs } from 'firebase/firestore'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useRouteLoaderData } from 'react-router-dom'
 import { auth, db } from '../firebase/firebase'
 import Swal from 'sweetalert2'
 
@@ -53,9 +53,9 @@ export const Review = ({ supplier_id, event_name }) => {
         }).then(async (result) => {
             try {
                 if (result.isConfirmed) {
-                    await addDoc(collection(db, "shops", supplier_id, 'reviews'), {
+                    await addDoc(collection(db, 'reviews'), {
                         event_id: auth.currentUser.uid,
-                        event_name: event_name,
+                        reviewer_name: event_name,
                         supplier_id: supplier_id,
                         rating: rating,
                         comment: reviewText,
@@ -228,7 +228,7 @@ export const Review = ({ supplier_id, event_name }) => {
     )
 }
 
-export const RejectReview = ({ id, event_id, supplier_id, event_name, supplier, className }) => {
+export const RejectReview = ({ id, event_id, supplier_id, userData, event_name, supplier, className }) => {
     const [isOpen, setIsOpen] = useState(false)
     const [reviewText, setReviewText] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -247,7 +247,6 @@ export const RejectReview = ({ id, event_id, supplier_id, event_name, supplier, 
 
     const handleSubmit = async (e) => {
         e.preventDefault()
-        setIsSubmitting(true)
         Swal.fire({
             title: 'Reject this submission?',
             text: 'Are you sure you want to reject this request? This action cannot be undone.',
@@ -257,14 +256,16 @@ export const RejectReview = ({ id, event_id, supplier_id, event_name, supplier, 
             cancelButtonText: 'Cancel'
         }).then(async (result) => {
             try {
+                setIsSubmitting(true)
+
                 if (result.isConfirmed) {
-                    if (!supplier) {
+                    if (userData.role === "Admin") {
                         await updateDoc(doc(db, "verification", id), {
-                            status: 'rejected'
+                            is_verified: false
                         })
 
                         await updateDoc(doc(db, "users", id), {
-                            status: 'rejected'
+                            verification_status: 'rejected'
                         })
 
                         await addDoc(collection(db, "notifications"), {
@@ -277,6 +278,7 @@ export const RejectReview = ({ id, event_id, supplier_id, event_name, supplier, 
                             unread: true
                         })
                     }
+
                     else {
                         const q = query(collection(db, "applications"),
                             where("event_id", "==", event_id),
@@ -284,29 +286,24 @@ export const RejectReview = ({ id, event_id, supplier_id, event_name, supplier, 
                         const snapShotApplications = await getDocs(q)
                         const applications = snapShotApplications.docs.map(app => ({ id: app.id, ...app.data() }))
 
-                        for (const app of applications) {
-                            await deleteDoc(doc(db, "applications", app.id));
+                        await addDoc(collection(db, "notifications"), {
+                            user_id: applications[0]?.supplier_id,
+                            avatar: event_name.charAt(0).toUpperCase(),
+                            title: 'Application Rejected',
+                            message: `We're sorry, your application for the event "${event_name}" has been rejected.`,
+                            feedback: reviewText,
+                            createdAt: serverTimestamp(),
+                            unread: true
+                        });
 
-                            await addDoc(collection(db, "notifications"), {
-                                user_id: app?.supplier_id,
-                                avatar: 'A',
-                                title: 'Application Rejected',
-                                message: `We're sorry, your application for the event "${event_name}" has been rejected.`,
-                                feedback: reviewText,
-                                timestamp: serverTimestamp(),
-                                unread: true
-                            });
-                        }
-
-                        console.log("ni gana")
-
-
+                        await deleteDoc(doc(db, "applications", applications[0].id));
 
 
                     }
 
                     Swal.fire('Rejected', 'The review has been rejected.', 'success');
                     close()
+
                     if (!supplier) {
                         navigate('/admin/dashboard', { replace: true })
                     }

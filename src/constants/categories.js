@@ -1,10 +1,19 @@
 export const SupplierOptions = [
-    { label: 'Floral', value: 'floral' },
-    { label: 'Wedding', value: 'wedding' },
-    { label: 'Events', value: 'events' },
-    { label: 'Corporate', value: 'corporate' },
-    { label: 'Funeral', value: 'funeral' },
+    { label: 'Floral (Flowers & Arrangements)', value: 'floral' },
+    { label: 'Wedding (Planners & Services)', value: 'wedding' },
+    { label: 'Events (General Event Services)', value: 'events' },
+    { label: 'Corporate (Business Functions)', value: 'corporate' },
+    { label: 'Catering (Food & Beverages)', value: 'catering' },
+    { label: 'Photography (Photo & Video)', value: 'photography' },
+    { label: 'Music & Entertainment (Bands, DJs, Performers)', value: 'entertainment' },
+    { label: 'Lighting & Sound (Audio/Visual Setup)', value: 'lighting' },
+    { label: 'Decor & Styling (Design & Decorations)', value: 'decor' },
+    { label: 'Venue (Event Locations)', value: 'venue' },
+    { label: 'Transportation (Guest & Event Transport)', value: 'transportation' },
+    { label: 'Makeup & Styling (Hair & Beauty)', value: 'makeup' },
+    { label: 'Invitations & Printing (Cards & Materials)', value: 'printing' }
 ]
+
 
 export const statusOptions = [
     { label: 'Planning', value: 'planning' },
@@ -13,14 +22,29 @@ export const statusOptions = [
     { label: 'Complete', value: 'complete' },
 ];
 
+export const createStatusOptions = [
+    { label: 'Planning', value: 'planning' },
+    { label: 'Upcoming', value: 'upcoming' },
+    { label: 'In Progress', value: 'in-progress' },
+];
+
 
 export const supplierTypeToExpertise = {
-    floral: ['Floral', 'Seasonal', 'Exotic Flowers', 'Local Flowers'],
-    wedding: ['Wedding', 'Bridal Bouquets', 'Wedding Centerpieces', 'Boutonnieres'],
-    events: ['Events', 'Corporate Events', 'Social Events', 'Special Occasions'],
-    corporate: ['Corporate', 'Office Decor', 'Executive Gifts', 'Corporate Events'],
-    funeral: ['Funeral', 'Sympathy Arrangements', 'Memorial Flowers', 'Wreaths']
+    floral: ['Floral', 'Seasonal Arrangements', 'Exotic Flowers', 'Local Flowers', 'Bouquets', 'Centerpieces'],
+    wedding: ['Wedding Planning', 'Bridal Bouquets', 'Wedding Centerpieces', 'Ceremony Setup', 'Reception Styling'],
+    events: ['Event Planning', 'Corporate Events', 'Social Gatherings', 'Special Occasions', 'Festivals'],
+    corporate: ['Corporate Functions', 'Office Decor', 'Executive Gifts', 'Team Building', 'Business Conferences'],
+    catering: ['Catering', 'Buffet Services', 'Plated Meals', 'Beverage Service', 'Desserts & Pastries'],
+    photography: ['Photography', 'Videography', 'Photo Editing', 'Event Coverage', 'Portrait Sessions'],
+    entertainment: ['Live Bands', 'DJs', 'Performers', 'Hosts/MCs', 'Cultural Shows'],
+    lighting: ['Lighting Setup', 'Sound Systems', 'Stage Effects', 'Audio/Visual Equipment'],
+    decor: ['Decor Styling', 'Stage Design', 'Table Arrangements', 'Thematic Decorations', 'Balloon & Props'],
+    venue: ['Banquet Halls', 'Outdoor Venues', 'Hotels & Resorts', 'Conference Rooms', 'Private Spaces'],
+    transportation: ['Guest Transportation', 'Shuttle Services', 'Luxury Cars', 'Bridal Cars', 'Logistics Support'],
+    makeup: ['Bridal Makeup', 'Hairstyling', 'Grooming', 'Special Occasion Looks', 'On-site Services'],
+    printing: ['Invitations', 'Event Cards', 'Menus & Programs', 'Signage', 'Souvenirs & Giveaways']
 };
+
 
 export const termsOfCondition = {
     title: "Penalties for Service Failure",

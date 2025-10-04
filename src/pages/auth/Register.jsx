@@ -17,7 +17,7 @@ export default function Register({ user }) {
     const [errorPassword, setErrorPassword] = useState('')
     const [currentStep, setCurrentStep] = useState(1)
 
-    const { register, isLoading, error: registerError} = useAuthRegister()
+    const { register, isLoading, error: registerError } = useAuthRegister()
 
     console.log(isLoading)
 

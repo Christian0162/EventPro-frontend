@@ -1,46 +1,51 @@
 import { useEffect, useState } from "react";
-import { addDoc, collection, doc, getDocs, onSnapshot, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
+import { addDoc, collection, doc, getDocs, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
 import { db } from "../../firebase/firebase";
 import { useParams } from "react-router-dom";
 import { Title } from "react-head";
 import PrimaryButton from "../../components/PrimaryButton";
-import useSupplier from "../../hooks/useSupplier";
+import { useFetchSupplierById } from "../../hooks/useSupplier";
 import { Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { termsOfCondition } from "../../constants/categories";
+import { useFetchSupplierServices } from "../../hooks/useSupplier";
+import { useFetchEvents } from "../../hooks/useEvents";
 
 export default function EventContract() {
 
     const { eventId, supplierId } = useParams()
     const navigate = useNavigate()
-    const { getSupplier } = useSupplier()
+    const { supplier } = useFetchSupplierById(supplierId)
 
-    const [isLoading, setIsLoading] = useState(false)
+    const [isLoading, setIsLoading] = useState(true);
+    const [countdown, setCountdown] = useState(2)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [currentStep, setCurrentStep] = useState(1)
     const [selectedService, setSelectedService] = useState(null)
-    const [services, setServices] = useState([])
     const [error, setError] = useState(false)
-    const [supplier, setSupplier] = useState([])
     const [application, setApplication] = useState([])
     const [additional_information, setAdditional_Information] = useState("")
+    const { services: shopServices } = useFetchSupplierServices()
+    const { events } = useFetchEvents()
+
+    const currentEvent = events.find(event => event.id === eventId)
+
+    const services = shopServices[supplierId]
 
     useEffect(() => {
-        setIsLoading(true)
-        try {
-            const unsubscribeService = onSnapshot(collection(db, "shops", supplierId, "services"), (onsnapshot) => {
-                const services = onsnapshot.docs.map(service => ({ id: service.id, ...service.data() }))
-                setServices(services)
-            })
-            const fetchSupplier = async () => {
-                const supplier = await getSupplier(supplierId)
-                if (supplier) {
-                    setSupplier(supplier)
-                    setIsLoading(false)
-                }
-            }
+        if (countdown <= 0) { return setIsLoading(false) }
 
+        const countDown = setInterval(() => {
+            setCountdown(prev => prev - 1)
+        }, [1000])
+
+        return () => clearInterval(countDown)
+    }, [countdown])
+
+    useEffect(() => {
+
+        try {
             const fetchApplication = async () => {
                 const q = query(collection(db, "applications"),
                     where("event_id", "==", eventId),
@@ -51,15 +56,12 @@ export default function EventContract() {
             }
 
             fetchApplication()
-            fetchSupplier()
-
-            return () => unsubscribeService();
-
         }
 
         catch (e) {
             console.error(e)
         }
+
 
     }, [supplierId])
 
@@ -77,62 +79,84 @@ export default function EventContract() {
         setError(false)
     }
 
-    console.log(application)
+    console.log(isLoading)
 
     const handleSubmit = async () => {
-        Swal.fire({
-            title: 'Send Contract Offer?',
-            text: "You're about to send a contract offer to the selected supplier. This action confirms your proposed terms and initiates the agreement process.",
-            showConfirmButton: true,
-            confirmButtonText: 'Send Offer & Approve',
-            showCancelButton: true,
-        }).then(async (result) => {
-            try {
-                setIsSubmitting(true)
-                const applicationRef = application[0].id
+        // Swal.fire({
+        //     title: 'Send Contract Offer?',
+        //     text: "You're about to send a contract offer to the selected supplier. This action confirms your proposed terms and initiates the agreement process.",
+        //     showConfirmButton: true,
+        //     confirmButtonText: 'Send Offer & Approve',
+        //     showCancelButton: true,
+        // }).then(async (result) => {
+        try {
+            setIsSubmitting(true)
+            const applicationRef = application[0]?.id
 
-                if (result.isConfirmed) {
-                    addDoc(collection(db, "contracts"), {
-                        supplier_id: supplierId,
-                        event_id: eventId,
-                        service_plan: selectedService,
-                        penalty_clauses: termsOfCondition,
-                        additional_information: additional_information,
-                        created_at: serverTimestamp(),
-                        status: 'Pending'
-                    })
+            addDoc(collection(db, "contracts"), {
+                supplier_id: supplierId,
+                event_id: eventId,
+                service_plan: selectedService,
+                penalty_clauses: termsOfCondition,
+                additional_information: additional_information,
+                created_at: serverTimestamp(),
+                status: 'Pending'
+            })
 
-                    updateDoc(doc(db, "applications", applicationRef), {
-                        status: "Approved",
-                        ApproveAt: serverTimestamp()
-                    })
-
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Offer Sent Successfully',
-                        text: 'Your offer has been sent to the supplier. You will be notified once it is approved.',
-                        confirmButtonText: 'OK',
-                        timer: 2000,
-                    });
-
-                    setIsSubmitting(false)
-
-                    return navigate(`/events/edit/${eventId}`)
-                }
+            if (!applicationRef) {
+                await addDoc(collection(db, "applications"), {
+                    supplier_id: supplierId,
+                    event_id: eventId,
+                    AppliedAt: serverTimestamp(),
+                    status: 'Pending'
+                })
             }
-            catch (e) {
-                console.error(e)
+
+            if (applicationRef) {
+                updateDoc(doc(db, "applications", applicationRef), {
+                    status: "Approved",
+                    ApproveAt: serverTimestamp()
+                })
             }
-        })
+
+            await addDoc(collection(db, "notifications"), {
+                avatar: currentEvent.event_name.charAt(0).toUpperCase(),
+                message: `The event planner for "${currentEvent.event_name}" applied for your service.`,
+                createdAt: serverTimestamp(),
+                title: 'New service application received.',
+                unread: true,
+                user_id: supplierId
+            })
+            Swal.fire({
+                icon: 'success',
+                title: 'Offer Sent Successfully',
+                text: 'Your offer has been sent to the supplier. You will be notified once it is approved.',
+                confirmButtonText: 'OK',
+                timer: 2000,
+            });
+
+            setIsSubmitting(false)
+
+            return navigate(`/events/edit/${eventId}`)
+
+        }
+        catch (e) {
+            console.error(e)
+            setIsSubmitting(false)
+
+        }
+        finally {
+            setIsSubmitting(false)
+        }
+        // })
     }
 
     return (
         <>
             <Title>Contract</Title>
             {isLoading && (
-                <div className="flex justify-center items-center mt-55  ">
-                    <div className="rounded-full h-10 w-10 animate-spin border-t-2 border-blue-600"></div>
-
+                <div className="flex justify-center items-center py-[13rem]">
+                    <div className="rounded-full h-10 w-10 animate-spin border border-t-blue-600"></div>
                 </div>
             )}
 
@@ -154,12 +178,12 @@ export default function EventContract() {
 
                                 {/* Role Selection Cards */}
                                 <div className="w-full flex gap-3 max-w-5xl mb-6">
-                                    {services.map((service, index) => {
+                                    {services?.map((service, index) => {
                                         const selected = service.service_plan === selectedService?.service_plan
                                         return (
                                             <button
                                                 key={index}
-                                                className={`w-full flex flex-col bg-gray-50 border-2 rounded-lg transition-all duration-200 hover:border-blue-500 hover:shadow-md ${selected
+                                                className={`w-full h-100 flex flex-col bg-gray-50 border-2 rounded-lg transition-all duration-200 hover:border-blue-500 hover:shadow-md ${selected
                                                     ? 'border-blue-600 bg-blue-50'
                                                     : error
                                                         ? 'border-red-300'
@@ -288,7 +312,7 @@ export default function EventContract() {
                                                 Submitting..
                                             </span>
                                         </div>
-                                        : 'Send Offer & Approve'}
+                                        : 'Send Offer'}
                                     </button>
                                 </div>
                             </div>

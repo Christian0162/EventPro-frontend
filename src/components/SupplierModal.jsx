@@ -1,6 +1,6 @@
 import { Button, Dialog, DialogPanel, Tab, TabGroup, TabList, TabPanel, TabPanels } from '@headlessui/react'
 import { useEffect, useState } from 'react'
-import { MapPin, DollarSign, Clock, Phone, Mail, X, MessageCircleMore, Heart, ChevronsLeftRightEllipsis } from 'lucide-react'
+import { MapPin, CircleCheckBig, Clock, Phone, Mail, X, MessageCircleMore, Heart, ChevronsLeftRightEllipsis } from 'lucide-react'
 import { db, auth } from '../firebase/firebase'
 import { doc, addDoc, where, serverTimestamp, onSnapshot, collection, deleteDoc, query, getDocs, updateDoc } from 'firebase/firestore'
 import { useNavigate } from 'react-router-dom'
@@ -12,6 +12,10 @@ import { responseTimeOptions } from '../constants/categories'
 import ServiceModal from './ServiceModal'
 import Select from 'react-select'
 import { AboutOurBusiessEdit } from './UpdateModal'
+import Swal from 'sweetalert2'
+import { useFetchEventsById } from '../hooks/useEvents'
+import { useFetchContract } from '../hooks/useContract'
+import LoadingOverlay from './LoadingOverlay'
 
 export default function SupplierModal({ supplierData, applications, userData, reviews, services, averageRating, className }) {
 
@@ -24,10 +28,19 @@ export default function SupplierModal({ supplierData, applications, userData, re
     const [response_time, setResponse_time] = useState(null)
     const [contactLoading, setContactLoading] = useState(false)
     const [bookingLoading, setBookingLoading] = useState(false)
+    const [isCreatingContact, setIsCreatingContact] = useState(false)
+    const [isCreatingFavorites, setIsCreatingFavorites] = useState(false)
     const [contact_number, setContact_number] = useState('')
     const [email_address, setEmail_address] = useState('')
     const [availability, setAvailability] = useState('')
     const [supplier_price, setSupplier_price] = useState('')
+    const { contracts } = useFetchContract()
+
+    const { events } = useFetchEventsById(userData?.id)
+
+    const activeContracts = contracts.filter(cont => events.some(event => cont.event_id === event.id))
+
+    console.log(activeContracts)
 
     function open() {
         setIsOpen(true)
@@ -67,54 +80,116 @@ export default function SupplierModal({ supplierData, applications, userData, re
 
     const handleFavorites = async (e) => {
         e.preventDefault()
+        setIsCreatingFavorites(true)
+        try {
+            if (isLiked) {
+                const q = query(collection(db, "favorites"),
+                    where("user_id", "==", auth.currentUser.uid),
+                    where("supplier_id", "==", supplierData.id)
+                )
+                const querySnapshot = await getDocs(q)
+                querySnapshot.forEach(async (docSnapshot) => {
+                    await deleteDoc(doc(db, "favorites", docSnapshot.id))
+                })
+                setIsLiked(false)
+            }
+            else {
+                await addDoc(collection(db, "favorites"), {
+                    user_id: auth.currentUser.uid,
+                    supplier_id: supplierData.id,
+                    isActive: true,
+                    createdAt: serverTimestamp(),
+                })
+                setIsLiked(true)
+            }
+        }
+        catch (e) {
+            console.error(e)
+        }
+        finally {
+            setIsCreatingFavorites(false)
+        }
+    }
 
-        if (isLiked) {
-            const q = query(collection(db, "favorites"),
-                where("user_id", "==", auth.currentUser.uid),
-                where("supplier_id", "==", supplierData.id)
-            )
-            const querySnapshot = await getDocs(q)
-            querySnapshot.forEach(async (docSnapshot) => {
-                await deleteDoc(doc(db, "favorites", docSnapshot.id))
-            })
-            setIsLiked(false)
-        }
-        else {
-            await addDoc(collection(db, "favorites"), {
-                user_id: auth.currentUser.uid,
-                supplier_id: supplierData.id,
-                isActive: true,
-                createdAt: serverTimestamp(),
-            })
-            setIsLiked(true)
-        }
+    const handleBookNow = async () => {
+        const eventOptions = events.map(
+            (event, index) => `
+          <div class="flex items-center gap-2 mb-2">
+            <input type="radio" id="event-${index}" name="events" value="${event.id}" class="swal2-checkbox">
+            <label for="event-${index}" class="text-sm">${event.event_name} (${event.event_date.date_value})</label>
+          </div>
+        `
+        ).join("")
+
+        Swal.fire({
+            title: 'Select Events to Book',
+            html: `
+            <div class="text-left max-h-60 overflow-y-auto px-2">
+                ${eventOptions}
+            </div>
+        `,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Book Now',
+            preConfirm: () => {
+                const selected = document.querySelector('input[name="events"]:checked')?.value
+
+                console.log(selected)
+
+                if (!selected) {
+                    Swal.showValidationMessage('Please select at least one event')
+                }
+
+                if (activeContracts.some(cont => cont.event_id === selected)) {
+                    Swal.showValidationMessage('The selected event already has an active contract with this supplier')
+                    return false
+                }
+
+                return selected
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                console.log("Selected Events:", result.value)
+
+                const firstEventId = result.value
+                return navigate(`/events/${firstEventId}/contract/${supplierData.id}`)
+            }
+        })
     }
 
     const handleChat = async (e) => {
         e.preventDefault()
+        setIsCreatingContact(true)
+        try {
+            const q = query(collection(db, "contacts"),
+                where("user_id", "==", auth.currentUser.uid),
+                where("contact_id", "==", supplierData.id)
+            )
 
-        const q = query(collection(db, "contacts"),
-            where("user_id", "==", auth.currentUser.uid),
-            where("contact_id", "==", supplierData.id)
-        )
+            const querySnapShot = await getDocs(q)
 
-        const querySnapShot = await getDocs(q)
+            if (querySnapShot.empty) {
+                await addDoc(collection(db, "contacts"), {
+                    user_id: auth.currentUser.uid,
+                    contact_id: supplierData.id,
+                    name: supplierData.supplier_name,
+                    avatar: supplierData.supplier_name.slice(0, 1).toUpperCase(),
+                    last_message: "",
+                    isActive: false,
+                    createdAt: serverTimestamp()
 
-        if (querySnapShot.empty) {
-            await addDoc(collection(db, "contacts"), {
-                user_id: auth.currentUser.uid,
-                contact_id: supplierData.id,
-                name: supplierData.supplier_name,
-                avatar: supplierData.supplier_name.slice(0, 1).toUpperCase(),
-                last_message: "",
-                isActive: false,
-                createdAt: serverTimestamp()
-
-            })
-            navigate(`/chats/`)
+                })
+                navigate(`/chats/`)
+            }
+            else {
+                navigate(`/chats/`)
+            }
         }
-        else {
-            navigate(`/chats/`)
+        catch (e) {
+            console.error(e)
+        }
+        finally {
+            setIsCreatingContact(false)
         }
     }
 
@@ -174,6 +249,10 @@ export default function SupplierModal({ supplierData, applications, userData, re
                             transition
                             className="w-full max-w-5xl mt-20 rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
                         >
+                            {(isCreatingContact || isCreatingFavorites) && (
+                                <LoadingOverlay isLoading={isCreatingContact || isCreatingFavorites} message='Processing..' />
+                            )}
+
                             {/* Header with close button */}
                             <div className="relative">
                                 <button
@@ -204,6 +283,11 @@ export default function SupplierModal({ supplierData, applications, userData, re
                                     <span className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium shadow-sm">
                                         {supplierData?.supplier_type?.label}
                                     </span>
+
+                                    <span className="flex group items-center gap-2 bg-green-50 border border-green-200 rounded-full px-4 py-2">
+                                        <span className={`text-green-700 font-medzium text-sm`}>Verified</span>
+                                        <CircleCheckBig size={16} className="text-green-600" />
+                                    </span>
                                 </div>
                                 {/* Location and Basic Info */}
                                 <div className="flex items-center justify-between space-x-4 mb-4">
@@ -220,11 +304,13 @@ export default function SupplierModal({ supplierData, applications, userData, re
 
                                     <div className='flex gap-5'>
                                         <div className="relative space-x-2">
-                                            <form onSubmit={handleFavorites}>
-                                                <button className='group transparent'>
-                                                    <Heart className={`transition-all duration-200 ${isLiked ? 'fill-red-600 opacity-100 text-red-600' : 'opacity-50 text-gray-800 group-hover:text-red-600 group-hover:opacity-60 group-hover:scale-115'}`} size={21} />
-                                                </button>
-                                            </form>
+                                            {userData.role === "Event Planner" && (
+                                                <form onSubmit={handleFavorites}>
+                                                    <button className='group transparent'>
+                                                        <Heart className={`transition-all duration-200 ${isLiked ? 'fill-red-600 opacity-100 text-red-600' : 'opacity-50 text-gray-800 group-hover:text-red-600 group-hover:opacity-60 group-hover:scale-115'}`} size={21} />
+                                                    </button>
+                                                </form>
+                                            )}
                                         </div>
 
                                         <div className="relative space-x-2">
@@ -253,7 +339,7 @@ export default function SupplierModal({ supplierData, applications, userData, re
                                     <TabPanels>
                                         {/* About Tab Panel */}
                                         <TabPanel className="focus:outline-none text-sm">
-                                            <div className="grid md:grid-cols-2 gap-8">
+                                            <div className="grid md:grid-cols-2 gap-5">
                                                 {/* Description Card */}
                                                 <ShopCards className="md:col-span-2">
                                                     <div className="flex justify-between items-start mb-6">
@@ -399,20 +485,6 @@ export default function SupplierModal({ supplierData, applications, userData, re
                                                     {!bookingLoading && (
                                                         <form onSubmit={handleBookingSubmit}>
                                                             <div className="space-y-6">
-                                                                <div className="flex items-center gap-4">
-                                                                    <div className="p-2 bg-green-100 rounded-lg">
-                                                                        <DollarSign size={24} className="text-green-600" />
-                                                                    </div>
-                                                                    <div>
-                                                                        <h4 className="font-bold text-gray-900 mb-1">Starting Price</h4>
-                                                                        {!bookingEdting ? (
-                                                                            <p className="text-xl font-bold text-green-600">₱{supplierData.supplier_price}</p>
-                                                                        ) : (
-                                                                            <input type="number" value={supplier_price} onChange={(e) => setSupplier_price(e.target.value)} placeholder='e.g ₱5000' className='border border-gray-300 focus:outline-none px-4 py-2 rounded-md text-sm' />
-                                                                        )}
-
-                                                                    </div>
-                                                                </div>
 
                                                                 <div className="flex items-center gap-4">
                                                                     <div className="p-2 bg-purple-100 rounded-lg">
@@ -466,7 +538,7 @@ export default function SupplierModal({ supplierData, applications, userData, re
                                                             <h2 className='text-2xl font-bold text-gray-800 '>Services</h2>
                                                             <p className='text-md text-gray-600'>Services Built Around Your Needs</p>
                                                         </div>
-                                                        <ServiceModal supplierData={supplierData} />
+                                                        <ServiceModal userData={userData} supplierData={supplierData} />
                                                     </div>
                                                     {!services?.length > 0 && (
                                                         <span className='text-lg text-gray-400 my-10 mt-15 block text-center'>No Service</span>
@@ -491,8 +563,11 @@ export default function SupplierModal({ supplierData, applications, userData, re
                                                                                 ))}
                                                                             </ul>
                                                                         </div>
-                                                                        <hr className='border-t border-gray-300 my-3' />
 
+                                                                    </div>
+
+                                                                    <div className='flex flex-col px-5'>
+                                                                        <hr className='border-t border-gray-300' />
                                                                         <p className='text-gray-500 mt-3'>Note: {services.service_payment_notice.label}</p>
                                                                         <div className="mt-auto pt-6">
                                                                             <ServiceEdit supplierData={supplierData} service_id={services.id} services={services} />
@@ -579,6 +654,7 @@ export default function SupplierModal({ supplierData, applications, userData, re
 
                                         {applications?.some(app => app.user_id === supplierData.id) || userData?.role === "Event Planner" && (
                                             <Button
+                                                onClick={() => handleBookNow()}
                                                 className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                                             >
                                                 Book Now

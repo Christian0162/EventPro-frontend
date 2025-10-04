@@ -4,10 +4,11 @@ import { useState } from 'react'
 import Select from 'react-select'
 import { planTypeOptions, paymentNoticeOptions } from '../constants/categories'
 import { addDoc, collection } from 'firebase/firestore'
-import { auth, db } from '../firebase/firebase'
+import { db } from '../firebase/firebase'
 import Swal from 'sweetalert2'
+import { useFetchSupplierServices } from '../hooks/useSupplier'
 
-export default function ServiceModal({ supplierData }) {
+export default function ServiceModal({ userData, supplierData }) {
 
     const [isOpen, setIsOpen] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -17,6 +18,7 @@ export default function ServiceModal({ supplierData }) {
     const [price, setPrice] = useState('')
     const [payment_notice, setPayment_notice] = useState(null)
     const [error, setError] = useState('')
+    const { services } = useFetchSupplierServices()
 
     function open() {
         setIsOpen(true)
@@ -29,8 +31,23 @@ export default function ServiceModal({ supplierData }) {
         setIsOpen(false)
     }
 
+    const supplierService = services[supplierData.id]
+
+    // Filter out options that already exist
+    const existingPlans = supplierService
+        ? Object.values(supplierService).map(service => service.service_plan.value.toLowerCase())
+        : []
+
+    const filteredPlanOptions = planTypeOptions.filter(
+        option => !existingPlans.includes(option.value.toLowerCase())
+    )
+
+
     const handleInclusions = (inclusions) => {
         try {
+            const trimmed = inclusions.trim()
+            if (!trimmed) return
+
             setAllInclusions(prev => {
                 if (prev.includes(inclusions)) {
                     setError('The item is already in the list.')
@@ -46,12 +63,15 @@ export default function ServiceModal({ supplierData }) {
         catch (e) {
             console.error(e)
         }
+        finally {
+            setInclusions('')
+        }
     }
 
     const removeInclusion = (inclusion) => {
         try {
             setAllInclusions(prev => {
-                if (prev.includes(inclusions)) {
+                if (prev.includes(inclusion)) {
                     setError('')
                     return prev.filter(remove => remove !== inclusion)
                 }
@@ -69,7 +89,7 @@ export default function ServiceModal({ supplierData }) {
         setIsSubmitting(true)
 
         try {
-            await addDoc(collection(db, "shops", auth.currentUser.uid, "services"), {
+            await addDoc(collection(db, "shops", supplierData.id, "services"), {
                 service_plan: service_plan,
                 service_price: price,
                 service_inclusions: allInclusions,
@@ -89,10 +109,10 @@ export default function ServiceModal({ supplierData }) {
         }
     }
 
-    console.log(supplierData)
+    console.log(supplierService)
     return (
         <>
-            {supplierData?.id === auth.currentUser.uid && (
+            {userData?.id === supplierData?.id && (
                 <Button
                     onClick={open}
                     className="flex items-center ml-auto gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md"
@@ -108,7 +128,7 @@ export default function ServiceModal({ supplierData }) {
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
                             transition
-                            className="w-full max-w-3xl rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                            className="w-full max-w-3xl rounded-2xl mt-17 bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
                         >
                             <div className='relative px-10 py-7 bg-gray-100 rounded-t-xl'>
                                 <button
@@ -134,7 +154,7 @@ export default function ServiceModal({ supplierData }) {
                                                 <SquarePen size={20} className='text-blue-600' />
                                                 <label htmlFor="" className='text-gray-700 font-bold'>Service Plan Type</label>
                                             </div>
-                                            <Select onChange={setService_plan} value={service_plan} options={planTypeOptions} placeholder="e.g Basic Plan" required />
+                                            <Select onChange={setService_plan} value={service_plan} options={filteredPlanOptions} placeholder="e.g Basic Plan" required />
                                         </div>
 
                                         <div className='flex flex-col gap-2'>
@@ -151,7 +171,7 @@ export default function ServiceModal({ supplierData }) {
                                                 <label htmlFor="" className='text-gray-700 font-bold'>List Inclusions</label>
                                             </div>
                                             <div className='flex gap-3'>
-                                                <input type="text" className='w-full px-4 py-2 rounded-md focus:outline-none border border-gray-400' onChange={(e) => setInclusions(e.target.value)} required placeholder='e.g One Free Tiramisu' />
+                                                <input type="text" className='w-full px-4 py-2 rounded-md focus:outline-none border border-gray-400' onChange={(e) => setInclusions(e.target.value)} value={inclusions} required placeholder='e.g One Free Tiramisu' />
                                                 <button onClick={() => handleInclusions(inclusions)} className='w-1/3 bg-blue-600 hover:bg-blue-700 transition-all duration-200 rounded-md text-white' type='button'>Add</button>
                                             </div>
                                             {error && (
@@ -160,13 +180,24 @@ export default function ServiceModal({ supplierData }) {
 
                                             {allInclusions?.length > 0 && (
                                                 <>
-                                                    <span className='text-sm font-bold text-gray-600 mt-3'>Added inclusions</span>
-                                                    <div className='flex gap-2'>
+                                                    <span className="text-sm font-semibold text-gray-600 mt-2">
+                                                        Added inclusions
+                                                    </span>
+                                                    <div className="flex flex-wrap gap-2">
                                                         {allInclusions.map((inclusion, index) => (
-                                                            <button onClick={() => removeInclusion(inclusion)} type='button' className='px-5 flex text-white py-1 rounded-full bg-blue-600 hover:bg-red-500 transition-all duration-200 group' key={index}>
+                                                            <span
+                                                                key={index}
+                                                                className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-blue-100 text-blue-700 font-medium text-sm"
+                                                            >
                                                                 {inclusion}
-                                                                <span className='ml-3 block font-bold opacity-0 group-hover:opacity-100 transition-all duration-200'>-</span>
-                                                            </button>
+                                                                <button
+                                                                    onClick={() => removeInclusion(inclusion)}
+                                                                    type="button"
+                                                                    className="text-blue-600 hover:text-red-500 transition"
+                                                                >
+                                                                    ×
+                                                                </button>
+                                                            </span>
                                                         ))}
                                                     </div>
                                                 </>

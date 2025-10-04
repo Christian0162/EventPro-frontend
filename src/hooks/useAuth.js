@@ -1,5 +1,8 @@
 import { signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } from "firebase/auth";
 import { setDoc, doc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { useFetchUsers } from "./useUsers";
+import { useFetchEvents } from "./useEvents";
+import { useFetchSuppliers } from "./useSupplier";
 import { db } from "../firebase/firebase";
 import bcrypt from "bcryptjs";
 import Swal from "sweetalert2";
@@ -8,6 +11,9 @@ import { useState } from "react";
 export const useAuthLogin = () => {
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState('')
+    const { users } = useFetchUsers()
+    const { events } = useFetchEvents()
+    const { suppliers } = useFetchSuppliers()
 
     const login = async (auth, email, password) => {
         try {
@@ -15,7 +21,12 @@ export const useAuthLogin = () => {
 
             const user = await signInWithEmailAndPassword(auth, email, password);
 
+
             if (user) {
+
+                const userData = users.find(users => users.id === user.user.uid)
+                const userEvents = events.filter(event => event.user_id === user.user.uid)
+
                 Swal.fire({
                     icon: 'success',
                     title: 'Signed in',
@@ -24,9 +35,30 @@ export const useAuthLogin = () => {
                     showConfirmButton: false
                 })
 
+                if (userData.status === "deactivated" && userData.role === "Event Planner") {
+                    for (const event of userEvents) {
+                        await updateDoc(doc(db, "events", event.id), { status: 'active' });
+                    }
+
+                    await updateDoc(doc(db, "users", userData.id), {
+                        status: 'active'
+                    })
+                }
+                else if (userData.status === "deactivated" && userData.role === "Supplier") {
+                    await updateDoc(doc(db, "shops", user.user.uid), {
+                        status: 'active'
+                    })
+
+                    await updateDoc(doc(db, "users", userData.id), {
+                        status: 'active'
+                    })
+                }
+
                 await updateDoc(doc(db, "users", user.user.uid), {
                     lastLoginAt: serverTimestamp()
                 })
+
+
 
             }
             else {
@@ -36,9 +68,22 @@ export const useAuthLogin = () => {
             }
         }
         catch (e) {
-            if (e.code === 'auth/invalid-credential' || e.code === 'auth/invalid-credentials') {
-                setError("invalid credentials")
+            if (
+                e.code === 'auth/invalid-credential' ||
+                e.code === 'auth/invalid-credentials' ||
+                e.code === 'auth/user-not-found' ||
+                e.code === 'auth/wrong-password'
+            ) {
+                setError("Invalid email or password");
             }
+            else if (e.code === 'auth/too-many-requests') {
+                setError("Too many attempts. Please try again later.");
+            }
+            else {
+                setError("Something went wrong. Please try again.");
+            }
+
+            console.error(e)
         }
 
         finally {
@@ -99,7 +144,11 @@ export const useAuthRegister = () => {
                     email_address: email,
                     password: hashedPassword,
                     role: userData?.role,
-                    status: userData?.role === "Event Planner" ? 'unverified' : '',
+                    status: 'active',
+                    verification_status: 'unverified',
+                    deactivated_at: null,
+                    deactivation_reason: null,
+                    deactivation_history: [],
                     createdAt: serverTimestamp()
                 })
 
@@ -123,6 +172,8 @@ export const useAuthRegister = () => {
                 return
             }
             else { setError('') }
+
+            console.error(e``)
         }
 
         finally {

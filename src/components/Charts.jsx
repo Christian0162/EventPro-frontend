@@ -26,6 +26,8 @@ ChartJS.register(
     Title
 );
 
+ChartJS.defaults.animation = false;
+
 export const LineChart = () => {
     const data = {
         labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'],
@@ -54,15 +56,24 @@ export const LineChart = () => {
     );
 };
 
-export const PieChart = ({ className }) => {
+export const PieChart = ({
+    className,
+    labels = [],
+    dataValues = [],
+    backgroundColors = [],
+    borderColors = [],
+    title = "",
+    options: customOptions = {}
+}) => {
+
     const data = {
-        labels: ["Approved", "Pending", "Rejected"],
+        labels,
         datasets: [
             {
-                label: "Shops Status",
-                data: [10, 5, 3],
-                backgroundColor: ["#4ade80", "#facc15", "#f87171"],
-                borderColor: ["#22c55e", "#eab308", "#ef4444"],
+                label: title,
+                data: dataValues,
+                backgroundColor: backgroundColors,
+                borderColor: borderColors,
                 borderWidth: 2,
             },
         ],
@@ -72,69 +83,47 @@ export const PieChart = ({ className }) => {
         responsive: true,
         plugins: {
             legend: { position: "bottom" },
-            title: { display: true, text: "Shop Approval Status" },
+            title: { display: !!title, text: title },
         },
+        ...customOptions,
     };
 
     return (
-        <div className={`${className}`}>
+        <div className={className}>
             <Pie data={data} options={options} />
         </div>
     );
 };
 
-export const BarChart = ({ className }) => {
+export const BarChart = ({ className, labels = [], datasets = [], title = "", xLabel = "", yLabel = "", options: customOptions = {} }) => {
+
     const data = {
-        labels: ["Mon", "Tue", "Wed", "Thu", "Fri"],
-        datasets: [
-            {
-                label: "Approved Shops",
-                data: [3, 6, 4, 5, 2,],
-                backgroundColor: "#60a5fa",
-                borderRadius: 5,
-            },
-            {
-                label: "Rejected Shops",
-                data: [1, 2, 3, 2, 1],
-                backgroundColor: "#f87171", // Red-400
-                borderRadius: 5,
-            },
-            {
-                label: "Rejected Shops",
-                data: [1, 2, 3, 4, 5],
-                backgroundColor: "#61289b", // Red-400
-                borderRadius: 5,
-            },
-        ],
+        labels,
+        datasets,
     };
 
     const options = {
         responsive: true,
         plugins: {
             legend: { position: "top" },
-            title: { display: true, text: "Approved Shops This Week" },
-            font: { size: 18, weight: 'bold' },
+            title: { display: !!title, text: title },
         },
         scales: {
             y: {
                 beginAtZero: true,
-                title: {
-                    display: true,
-                    text: 'Number of Shops',
-                }
+                title: { display: !!yLabel, text: yLabel },
             },
             x: {
-                title: {
-                    display: true,
-                    text: 'Day of the Week',
-                }
-            }
-        }
+                title: { display: !!xLabel, text: xLabel },
+            },
+        },
+        ...customOptions,
     };
 
     return (
-        <div className={`${className}`}>
+        <div className={className}>
             <Bar data={data} options={options} />
         </div>
     );
 };
+

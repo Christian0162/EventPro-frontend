@@ -1,25 +1,27 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { onAuthStateChanged } from "firebase/auth";
 import { useEffect, useState, lazy, Suspense } from "react";
-import { auth } from "./firebase/firebase";
-import { doc, getDoc, onSnapshot } from "firebase/firestore";
-import { db } from "./firebase/firebase";
+import { auth, db } from "./firebase/firebase";
+import { doc, onSnapshot } from "firebase/firestore";
 import Loading from "./components/Loading";
 import { HeadProvider } from "react-head";
 import Verification from "./pages/verify/Verification";
 import Profile from "./profile/Profile";
+import PaymentSuccess from "./components/SuccessPayment.jsx";
 
 const GuestLayout = lazy(() => import("./layouts/GuestLayout"))
+const EventContract = lazy(() => import("./pages/events/EventContract"))
 const AuthLayout = lazy(() => import("./layouts/AuthLayout"))
 const HomePage = lazy(() => import("./pages/HomePage"))
 const Register = lazy(() => import("./pages/auth/Register"));
 const Login = lazy(() => import("./pages/auth/Login"));
-const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Dashboard = lazy(() => import("./pages/Dashboard.jsx"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const Review = lazy(() => import("./pages/admin/Review"));
-const Event = lazy(() => import("./pages/events/Event"));
 const CreateEvent = lazy(() => import("./pages/events/CreateEvent"));
 const EditEvent = lazy(() => import("./pages/events/EditEvent"));
+const Settings = lazy(() => import("./settings/Settings.jsx"))
+const Event = lazy(() => import("./pages/events/Event.jsx"))
 const Supplier = lazy(() => import("./pages/suppliers/Supplier"));
 const SupplierShop = lazy(() => import("./pages/suppliers/SupplierShop"));
 const Favorites = lazy(() => import("./pages/favorites/Favorites"));
@@ -35,7 +37,6 @@ function App() {
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             try {
-                setIsLoading(true);
                 if (user) {
                     setUser(user);
                     const unsubscribeUsers = onSnapshot(doc(db, "users", auth.currentUser.uid), async (onsnapshot) => {
@@ -90,9 +91,14 @@ function App() {
                             }></Route>
 
                             <Route path="/login" element={
-                                <GuestLayout user={user} userData={userData}>
-                                    <Login user={user} />
-                                </GuestLayout>}>
+                                !user ? (
+                                    <GuestLayout user={user} userData={userData}>
+                                        <Login user={user} />
+                                    </GuestLayout>
+                                ) : (
+                                    <Navigate to="/dashboard" />
+                                )
+                            }>
                             </Route>
 
                             <Route path="/dashboard" element={user ?
@@ -122,7 +128,7 @@ function App() {
 
                             <Route path="/events/create" element={user ?
                                 <AuthLayout user={user} userData={userData}>
-                                    <CreateEvent user={user} />
+                                    <CreateEvent user={user} userData={userData} />
                                 </AuthLayout> : <Navigate to={'/login'} />}></Route>
 
                             <Route path="/events/edit/:id" element={user ?
@@ -130,9 +136,19 @@ function App() {
                                     <EditEvent user={user} userData={userData} />
                                 </AuthLayout> : <Navigate to={'/login'} />}></Route>
 
+                            <Route path="/events/:eventId/contract/:supplierId" element={user ?
+                                <AuthLayout user={user} userData={userData}>
+                                    <EventContract user={user} userData={userData} />
+                                </AuthLayout> : <Navigate to={'/login'} />}></Route>
+
                             <Route path="/profile" element={user ?
                                 <AuthLayout user={user} userData={userData}>
                                     <Profile user={user} userData={userData} />
+                                </AuthLayout> : <Navigate to={'/login'} />}></Route>
+
+                            <Route path="/settings" element={user ?
+                                <AuthLayout user={user} userData={userData}>
+                                    <Settings user={user} userData={userData} />
                                 </AuthLayout> : <Navigate to={'/login'} />}></Route>
 
                             <Route path="/suppliers" element={user ?
@@ -164,6 +180,11 @@ function App() {
                             <Route path="/notification" element={user ?
                                 <AuthLayout user={user} userData={userData}>
                                     <Notification user={user} userData={userData} />
+                                </AuthLayout> : <Navigate to={'/login'} />}></Route>
+
+                            <Route path="/payment/success" element={user ?
+                                <AuthLayout user={user} userData={userData}>
+                                    <PaymentSuccess user={user} userData={userData} />
                                 </AuthLayout> : <Navigate to={'/login'} />}></Route>
 
                             <Route path="*" element={<Error404 user={user} userData={userData} />}></Route>

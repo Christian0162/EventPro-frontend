@@ -4,18 +4,17 @@ import { auth } from "../../firebase/firebase";
 import { Navigate } from "react-router-dom";
 import { useAuthLogin } from "../../hooks/useAuth";
 import { Title } from "react-head";
+import LoadingOverlay from "../../components/LoadingOverlay";
 
 export default function Login({ user }) {
     const [password, setPassword] = useState('');
     const [email, setEmail] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
-    const { login, error: errorLogin } = useAuthLogin()
+    const { login, error: errorLogin, isLoading: isLoginLoading } = useAuthLogin()
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
-        setIsLoading(true);
 
         try {
             await login(auth, email, password)
@@ -34,6 +33,10 @@ export default function Login({ user }) {
     return (
         <>
             <Title>Login</Title>
+
+            {isLoginLoading && (
+                <LoadingOverlay isLoading={isLoginLoading} message="Processing.." />
+            )}
 
             <div className="flex w-full h-full justify-center items-center mt-10">
                 <form onSubmit={handleSubmit}>

@@ -1,5 +1,5 @@
-import { addDoc, collection, serverTimestamp } from "firebase/firestore"
-import { useState, useRef,  } from "react"
+import { setDoc, serverTimestamp, updateDoc, doc, addDoc, collection } from "firebase/firestore"
+import { useState, useRef, } from "react"
 import { db } from "../firebase/firebase"
 import Swal from "sweetalert2"
 
@@ -7,9 +7,9 @@ export const useCreatePayment = () => {
     const [isProcessing, setIsProcessing] = useState(false)
     const payment_window_ref = useRef()
 
-    const createPayment = async (payment_data) => {
+    const createPayment = async (payment_data, supplierData) => {
 
-        // console.log(payment_data)
+        console.log(payment_data)
         setIsProcessing(true)
 
         const payment_terms = await Swal.fire({
@@ -56,12 +56,12 @@ export const useCreatePayment = () => {
 
         if (payment_terms.isConfirmed) {
             try {
-                const response = await fetch("http://127.0.0.1:8000/create-checkout-session", {
+                const response = await fetch("http://127.0.0.1:8000/api/v1/create-checkout-session", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         external_id: payment_data.external_id,
-                        net_amount: payment_data.net_amount,
+                        net_amount: payment_data.amount,
                         payer_email: payment_data.event_email,
                         payment_method: payment_data.payment_method,
                     })
@@ -72,43 +72,56 @@ export const useCreatePayment = () => {
                 console.log(data)
                 const invoice_id = data?.data?.id
 
-                // window.location.href = data.invoice_url
                 payment_window_ref.current = window.open(data.invoice_url, "_blank")
 
                 const checkStatus = setInterval(async () => {
-                    const res = await fetch(`http://127.0.0.1:8000/check-status?id=${invoice_id}`)
+                    const res = await fetch(`http://127.0.0.1:8000/api/v1/payment/check-status?id=${invoice_id}`)
                     const status = await res.json()
+
+                    await setDoc(doc(db, "transactions", invoice_id), {
+                        external_id: payment_data.external_id,
+                        contract_id: payment_data.contract_id || null,
+                        user_id: payment_data.user_id,
+                        payment_method: payment_data.payment_method,
+                        event_id: payment_data.event_id,
+                        event_email: payment_data.event_email,
+                        event_contact: payment_data.contact_number ?? 0,
+                        amount: payment_data.amount,
+                        process_fee: payment_data.process_fee,
+                        type: "ESCROW",
+                        status: "PENDING",
+                        created_at: serverTimestamp()
+                    })
 
                     try {
                         if (status.status === "PAID") {
                             setIsProcessing(false)
-                            // await updateDoc(doc(db, "contracts", payment_data.contract_id), {
-                            //     status: "PAID"
-                            // })
+                            updateDoc(doc(db, "transactions", invoice_id), {
+                                status: "COMPLETED"
+                            })
                             Swal.fire('Payment Successful', 'Your payment has been processed successfully.', 'success')
 
-                            await addDoc(collection(db, "contracts", payment_data.contract_id, "payments"), {
-                                external_id: payment_data.external_id,
-                                contract_id: payment_data.contract_id,
-                                event_name: payment_data.event_name,
-                                event_id: payment_data.event_id,
-                                supplier_id: payment_data.supplier_id,
-                                payment_method: payment_data.payment_method,
-                                event_email: payment_data.event_email,
-                                event_contact: payment_data.contact_number ?? 0,
-                                total_amount: payment_data.total_amount,
-                                service_fee: payment_data.service_fee,
-                                process_fee: payment_data.process_fee,
-                                net_amount: payment_data.net_amount,
-                                status: "PAID",
-                                created_at: serverTimestamp()
+                            await addDoc(collection(db, "notifications"), {
+                                avatar: payment_data.event_name.charAt(0).toUpperCase(),
+                                message: `The event "${payment_data.event_name}" has successfully completed the partial payment for Contract ID: ${contract[0].id}.`,
+                                createdAt: serverTimestamp(),
+                                reference_id: supplierData.id,
+                                title: 'Payment Received',
+                                unread: true,
+                                user_id: supplierData.id
                             })
+
                             clearInterval(checkStatus)
+
                         }
 
                         else if (status.status === "EXPIRED") {
                             setIsProcessing(false)
-                            Swal.fire('Payment Expired', 'Your payment link has expired. Please try again.', 'error')
+
+                            updateDoc(doc(db, "transactions", invoice_id), {
+                                status: "FAILED"
+                            })
+
                             clearInterval(checkStatus)
                         }
                     }
@@ -123,6 +136,11 @@ export const useCreatePayment = () => {
             }
             catch (e) {
                 console.error(e)
+                Swal.fire(
+                    'Something went wrong',
+                    'There was a problem processing your payment. Please try again.',
+                    'error'
+                )
                 setIsProcessing(false)
 
             }

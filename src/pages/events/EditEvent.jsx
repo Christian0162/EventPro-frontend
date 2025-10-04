@@ -1,24 +1,22 @@
 import { useState, useEffect } from "react"
-import { useParams } from "react-router-dom";
 import AddressAutoComplete from "../../components/AddressAutoComplete";
 import Select from "react-select"
 import { X } from "lucide-react";
 import PrimaryButton from "../../components/PrimaryButton";
-import { Link } from "react-router-dom";
-import useEvents from "../../hooks/useEvents";
-import Loading from "../../components/Loading";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "../../firebase/firebase";
 import Swal from "sweetalert2";
+import { useFetchEvents, useUpdateEvent } from "../../hooks/useEvents";
 import SupplierModal from "../../components/SupplierModal";
 import { Review } from '../../components/ReviewModal'
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams, Link } from "react-router-dom";
 import { useFetchReviews } from "../../hooks/useReviews";
 import { useFetchSupplierServices, useFetchSuppliers } from "../../hooks/useSupplier";
 import ContractModal from "../../components/ContractModal";
 import { useFetchContract } from "../../hooks/useContract";
 import { statusOptions, SupplierOptions } from "../../constants/categories";
 import { RejectReview } from "../../components/ReviewModal";
+import LoadingOverlay from "../../components/LoadingOverlay";
 
 export default function EditEvent({ userData }) {
 
@@ -39,15 +37,24 @@ export default function EditEvent({ userData }) {
     const [isLoading, setIsLoading] = useState(true)
     const [applications, setApplications] = useState([])
     const [eventData, setEventData] = useState([])
-    const { updateEvent, getEvent } = useEvents()
     const { contracts } = useFetchContract()
     const { reviews } = useFetchReviews()
     const { services } = useFetchSupplierServices()
     const { suppliers } = useFetchSuppliers()
+    const { events } = useFetchEvents(userData.id)
+    const [suggestedEvents, setSuggestedEvents] = useState([])
+    const { updateEvent, isLoading: isUpdating } = useUpdateEvent()
     const [countdown, setCoutdown] = useState(2)
 
-    console.log(contracts)
+    const data = events.find(event => event.id === id)
 
+    console.log(tags)
+
+    useEffect(() => {
+        const suggestedEvents = suppliers
+            .filter(supplier => tags.includes(supplier.supplier_type?.value))
+        setSuggestedEvents(suggestedEvents)
+    }, [suppliers, tags])
     const addTag = () => {
         if (categories?.value.trim() && !tags.includes(categories?.value.trim())) {
             setTags([...tags, categories.value])
@@ -87,34 +94,21 @@ export default function EditEvent({ userData }) {
 
 
     useEffect(() => {
-        const loadEvent = async () => {
-            try {
-                const data = await getEvent(id);
-
-                if (data) {
-                    setEventData(data)
-                    setEvent_name(data.event_name)
-                    setEvent_location(data.event_location)
-                    setEvent_date(data.event_date)
-                    setEvent_status(data.event_status)
-                    setEvent_type(data.event_type)
-                    setEvent_budget(data.event_budget)
-                    setEvent_description(data.event_description)
-                    setTags(data.event_categories)
-                    setStartTime(data.event_time.valueStartAndEnd[0])
-                    setEndTime(data.event_time.valueStartAndEnd[1])
-                }
-            }
-
-            catch (e) {
-                console.log(e)
-            }
+        if (data) {
+            setEventData(data)
+            setEvent_name(data.event_name)
+            setEvent_location(data.event_location)
+            setEvent_date(data.event_date)
+            setEvent_status(data.event_status)
+            setEvent_type(data.event_type)
+            setEvent_budget(data.event_budget)
+            setEvent_description(data.event_description)
+            setTags(data.event_categories)
+            setStartTime(data.event_time.valueStartAndEnd[0])
+            setEndTime(data.event_time.valueStartAndEnd[1])
         }
 
-        if (id) {
-            loadEvent()
-        }
-    }, [id])
+    }, [data])
 
     const handleDate = (e) => {
         const dateString = e.target.value;
@@ -122,7 +116,7 @@ export default function EditEvent({ userData }) {
 
         const years = date.getFullYear();
         const months = date.toLocaleDateString([], { month: 'long' })
-        const days = date.toLocaleDateString([], { weekday: 'long' })
+        const days = date.getDate()
 
         const previewDate = [years, months, days]
 
@@ -133,15 +127,19 @@ export default function EditEvent({ userData }) {
 
     }
 
-    // const handlePayment = (price) => {
-    //     console.log(price)
-    //     createPayment(price)
-    // }
-
     const handleSubmit = async (e) => {
         e.preventDefault();
 
         try {
+            if (startTime === endTime) {
+                Swal.fire({
+                    title: "Invalid Time",
+                    text: "Start time and end time cannot be the same.",
+                    icon: "error",
+                });
+                return; // stop submission
+            }
+
             const previewStartAndEnd = [
                 new Date(`1970-01-01T${startTime}`).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }),
                 new Date(`1970-01-01T${endTime}`).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })
@@ -151,20 +149,25 @@ export default function EditEvent({ userData }) {
 
             const newTime = ({ previewStartAndEnd, valueStartAndEnd })
 
-            await updateEvent(id,
-                event_name,
-                event_location,
-                event_date,
-                newTime,
-                event_status,
-                event_type,
-                event_budget,
-                event_description,
-                tags)
+            const data = {
+                event_name: event_name,
+                event_location: event_location,
+                event_date: event_date,
+                event_time: newTime,
+                event_status: event_status,
+                event_type: event_type,
+                event_budget: event_budget,
+                event_description: event_description,
+                event_categories: tags,
+            }
+
+            updateEvent(id, data)
         }
+
         catch (e) {
-            console.log(e)
+            console.error(e)
         }
+
     }
 
     const handleApprove = async (supplier) => {
@@ -195,7 +198,7 @@ export default function EditEvent({ userData }) {
     return (
         <>
             {isLoading && (
-                <div className="flex justify-center items-center mt-[230px]">
+                <div className="flex justify-center items-center py-[12rem]">
                     <div className="h-12 w-12 border border-t-blue-600 rounded-full animate-spin "></div>
 
                 </div>
@@ -357,6 +360,10 @@ export default function EditEvent({ userData }) {
                                 </div>
                             </div>
 
+                            {isUpdating && (
+                                <LoadingOverlay isLoading={isUpdating} message="Processing.." />
+                            )}
+
                             <div className="w-full sm:w-full md:w-full lg:w-[40rem] grid grid-cols-1 sm:grid-cols-2 gap-5">
                                 <PrimaryButton>Update Event</PrimaryButton>
                                 <Link to={'/events'} className="flex items-center py-2 w-full text-center justify-center border-1 hover:boder-1 hover:border-blue-500 rounded-sm">
@@ -365,13 +372,120 @@ export default function EditEvent({ userData }) {
                             </div>
                         </form>
 
+                        {/* Filtered Suppliers Section */}
+                        <div className="mt-8">
+                            <h3 className="text-md font-semibold mb-3">Suppliers Matching Your Categories</h3>
+
+                            {tags.length === 0 ? (
+                                <p className="text-gray-500">No categories selected. Please add categories above to see suppliers.</p>
+                            ) : (
+                                <>
+                                    {suppliers.filter(supplier =>
+                                        tags.includes(supplier.supplier_type?.value)
+                                    ).length > 0 ? (
+                                        <div className="space-y-3">
+                                            {suggestedEvents
+                                                .map((supplier) => {
+                                                    const averageRating = calculateAverageRating(supplier.id);
+
+                                                    return (
+                                                        <div
+                                                            key={supplier.id}
+                                                            className="flex items-center justify-between p-4 bg-white rounded-lg border"
+                                                        >
+                                                            <div className="flex items-center space-x-3">
+                                                                <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium">
+                                                                    {supplier.supplier_name.charAt(0).toUpperCase()}
+                                                                </div>
+                                                                <div>
+                                                                    <p className="font-medium text-gray-900">{supplier.supplier_name}</p>
+                                                                    <SupplierModal
+                                                                        className="text-sm text-gray-600 hover:text-blue-600"
+                                                                        supplierData={supplier}
+                                                                        applications={applications}
+                                                                        userData={userData}
+                                                                        services={services[supplier.id]}
+                                                                        reviews={reviews[supplier.id]}
+                                                                        averageRating={averageRating}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                        </div>
+                                    ) : (
+                                        <div className="text-gray-500">
+                                            No suppliers match your selected categories.
+                                        </div>
+                                    )}
+
+                                </>
+                            )}
+                        </div>
                         {/* Event Suppliers Section */}
                         <div className="mt-8 space-y-4">
-                            <h3 className="text-md font-semibold">Event Suppliers</h3>
-                            {suppliers.length > 0 &&
-                                <div className="space-y-3">
-                                    {suppliers.filter(supplier => applications.some(app => app.supplier_id === supplier.id && app.status === "Approved") &&
-                                        contracts.some(contracts => contracts.status === "Approved" && supplier.id === contracts.supplier_id)).map((supplier) => {
+
+                            <div>
+                                <h3 className="text-md font-semibold">Recents Suppliers</h3>
+                                {suppliers.length > 0 &&
+                                    <div className="space-y-3 mt-3">
+                                        {suppliers.filter(supplier => applications.some(app => app.supplier_id === supplier.id && app.status === "Approved") &&
+                                            contracts.some(contracts => contracts.status === "Completed" && supplier.id === contracts.supplier_id)).map((supplier) => {
+
+                                                const averageRating = calculateAverageRating(supplier.id);
+
+                                                return (
+                                                    <div key={supplier.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
+                                                        <div className="flex items-center space-x-3">
+                                                            <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium">
+                                                                {supplier.supplier_name.charAt(0).toUpperCase()}
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-medium relative top-1 text-gray-900">{supplier.supplier_name}</p>
+                                                                <SupplierModal className={'text-sm text-gray-600 hover:text-blue-600'} supplierData={supplier} applications={applications} userData={userData.role} services={services[supplier.id]} reviews={reviews[supplier.id]} averageRating={averageRating} />
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex gap-3">
+                                                            <div className="flex items-center space-x-2">
+                                                                <ContractModal userData={userData} event_id={id} user_id={userData.id} supplier_id={supplier.id} eventData={eventData} supplierData={supplier} />
+                                                            </div>
+
+                                                            <div className="flex items-center text-sm gap-3">
+                                                                {reviews[supplier.id] && reviews[supplier.id].some(
+                                                                    rev => rev.supplier_id === supplier.id
+                                                                ) ? (
+                                                                    <span className="text-white py-1 px-4 rounded-md text-sm bg-gray-400">Reviewed</span>
+                                                                ) : (
+                                                                    <Review supplier_id={supplier.id} event_name={event_name} />
+                                                                )}
+                                                            </div>
+                                                        </div>
+
+                                                    </div>
+                                                )
+                                            })}
+                                    </div>
+                                }
+                            </div>
+
+                            {!isLoading && suppliers.filter(supplier => applications.some(app => app.supplier_id === supplier.id && app.status === "Approved") &&
+                                contracts.some(contracts => contracts.status === "Completed" && supplier.id === contracts.supplier_id)).length === 0 && (
+                                    <div className="text-center py-6 text-gray-500">
+                                        <p>No new supplier applications for this event.</p>
+                                    </div>
+                                )}
+
+                            {/* event suppliers */}
+                            <div>
+                                <h3 className="text-md font-semibold">Event Suppliers</h3>
+                                {suppliers.length > 0 &&
+                                    <div className="space-y-3 mt-3">
+                                        {suppliers.filter(supplier =>
+                                            applications.some(app => app.supplier_id === supplier.id && app.status === "Approved") &&
+                                            contracts.filter(c => c.supplier_id === supplier.id).every(c => c.status === "Approved")
+                                        ).map((supplier) => {
 
                                             const averageRating = calculateAverageRating(supplier.id);
 
@@ -388,25 +502,23 @@ export default function EditEvent({ userData }) {
                                                     </div>
 
                                                     <div className="flex items-center space-x-2">
-                                                        <ContractModal event_id={id} supplier_id={supplier.id} eventData={eventData} supplierData={supplier} />
-                                                    </div>
-
-                                                    <div className="flex items-center text-sm gap-3">
-                                                        <Review supplier_id={supplier.id} event_name={event_name} />
+                                                        <ContractModal userData={userData} event_id={id} user_id={userData.id} supplier_id={supplier.id} eventData={eventData} supplierData={supplier} />
                                                     </div>
 
                                                 </div>
                                             )
                                         })}
-                                </div>
-                            }
+                                    </div>
+                                }
+                            </div>
+
                             {isLoading && (
                                 <div className="flex justify-center">
                                     <div className="border border-t-2 rounded-full h-8 w-8 border-blue animate-spin"></div>
                                 </div>
                             )}
                             {!isLoading && suppliers.filter(supplier => applications.some(app => app.supplier_id === supplier.id && app.status === "Approved") &&
-                                contracts.some(contracts => contracts.status === "Approved" && supplier.id === contracts.supplier_id)).length === 0 && (
+                                contracts.filter(contracts => supplier.id === contracts.supplier_id).every(c => c.status === "Approved")).length === 0 && (
                                     <div className="text-center py-6 text-gray-500">
                                         <p>No new supplier applications for this event.</p>
                                     </div>
@@ -441,7 +553,7 @@ export default function EditEvent({ userData }) {
                                                             Approve
                                                         </button>
 
-                                                        <RejectReview className={`px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition-colors`} event_id={id} event_name={event_name} supplier_id={supplier.id} supplier={supplier}/>
+                                                        <RejectReview className={`px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition-colors`} userData={userData} event_id={id} event_name={event_name} supplier_id={supplier.id} supplier={supplier} />
                                                     </div>
                                                 </div>
                                             )
@@ -468,7 +580,7 @@ export default function EditEvent({ userData }) {
                                         {suppliers.filter(supplier =>
                                             applications.some(app => app.supplier_id === supplier.id && app.status === "Approved") &&
                                             contracts.some(contracts => contracts.status === "Pending" && supplier.id === contracts.supplier_id))
-                                            .map((supplier, index) => {
+                                            .map((supplier) => {
                                                 const averageRating = calculateAverageRating(supplier.id);
 
                                                 return (
@@ -485,7 +597,7 @@ export default function EditEvent({ userData }) {
 
 
                                                         <div className="flex items-center space-x-2">
-                                                            <ContractModal event_id={id} supplier_id={supplier.id} eventData={eventData} supplierData={supplier} />
+                                                            <ContractModal userData={userData} event_id={id} supplier_id={supplier.id} eventData={eventData} supplierData={supplier} />
                                                         </div>
                                                     </div>
                                                 )

@@ -6,18 +6,18 @@ import { IdCard } from "lucide-react";
 import AddressAutocomplete from "../../components/AddressAutoComplete";
 import Select from 'react-select'
 import { FileText } from "lucide-react";
-import { Link } from "react-router-dom";
 import Loading from "../../components/Loading";
 import Swal from "sweetalert2";
 import { RejectReview } from "../../components/ReviewModal";
+import LoadingOverlay from "../../components/LoadingOverlay";
 
-export default function Review() {
+export default function Review({ userData }) {
 
     const [isLoading, setIsLoading] = useState(false);
     const [reviewData, setReviewData] = useState(null)
     const [user, setUser] = useState([])
-    const [submitLoading, setSubmitLoading] = useState(false)
-    const [showModal, setShowModal] = useState(false)
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [isSumitted, setIsSubmitted] = useState(false)
 
     const { id } = useParams();
 
@@ -29,14 +29,17 @@ export default function Review() {
 
             setIsLoading(true)
             const onSnapShotVerification = await getDoc(doc(db, 'verification', id))
-            const onSnapShotUser = await (getDoc(doc(db, "users", id)))
+
+            const onSnapShotUser = await getDoc(doc(db, "users", id))
 
             setUser(onSnapShotUser.data())
             setReviewData(onSnapShotVerification.data())
             setIsLoading(false)
 
         }
+
         fetchReviewData()
+
     }, [id])
 
     const handleSubmit = async (e) => {
@@ -54,24 +57,52 @@ export default function Review() {
         try {
             if (result.isConfirmed) {
 
-                setIsLoading(true)
+                setIsSubmitting(true)
 
-                await updateDoc(doc(db, 'shops', id), {
-                    isApproved: "verified"
-                })
+                if (user.role === "Event Planner") {
 
-                await updateDoc(doc(db, 'verification', id), {
-                    isApproved: "verified"
-                })
+                    await updateDoc(doc(db, "users", id), {
+                        verification_status: 'verified'
+                    })
 
-                await addDoc(collection(db, "notifications"), {
-                    user_id: id,
-                    avatar: 'A',
-                    title: 'Your Verification Has Been approved!',
-                    message: "You're verified! Your business is now publicly visible to planners in the Suppliers directory!",
-                    createdAt: serverTimestamp(),
-                    unread: true
-                })
+                    await updateDoc(doc(db, 'verification', id), {
+                        is_verified: true
+                    })
+
+                    await addDoc(collection(db, "notifications"), {
+                        user_id: id,
+                        avatar: 'A',
+                        title: 'Verification Approved!',
+                        message: "Congratulations! Your account is now verified. You can now post events and showcase your plans to suppliers!",
+                        createdAt: serverTimestamp(),
+                        unread: true
+                    });
+
+                }
+
+                else {
+                    await updateDoc(doc(db, "users", id), {
+                        verification_status: 'verified'
+                    })
+
+                    await updateDoc(doc(db, 'shops', id), {
+                        is_verified: true
+                    })
+
+                    await updateDoc(doc(db, 'verification', id), {
+                        is_verified: true
+                    })
+
+                    await addDoc(collection(db, "notifications"), {
+                        user_id: id,
+                        avatar: 'A',
+                        title: 'Your Verification Has Been approved!',
+                        message: "You're verified! Your business is now publicly visible to planners in the Suppliers directory!",
+                        createdAt: serverTimestamp(),
+                        unread: true
+                    })
+
+                }
 
                 await Swal.fire({
                     title: 'Success',
@@ -81,133 +112,218 @@ export default function Review() {
                     showConfirmButton: false
                 });
 
-                setIsLoading(false)
-                setSubmitLoading(true)
+                setIsSubmitting(false)
+                setIsSubmitted(true)
             }
         }
         catch (e) {
             console.log(e)
             await Swal.fire('Error', 'Something went wrong!', 'error');
-            setSubmitLoading(false);
+            setIsSubmitting(false)
+            setIsSubmitted(false);
+        }
+
+        finally {
+            setIsSubmitting(false)
+            setIsSubmitted(true)
         }
     }
 
 
-    if (submitLoading) {
+    if (isSumitted || reviewData?.is_verified) {
         return <Navigate to={'/dashboard'} />
     }
 
-    console.log(submitLoading)
+
+    console.log(isSumitted)
     return (
         <>
             {isLoading && (
                 <Loading />
             )}
 
-            {showModal && (
-                <RejectReview open={showModal} id={id} />
+            {isSubmitting && (
+                <LoadingOverlay isLoading={isSubmitting} message="Proccesing.." />
             )}
-            <div className="bg-white rounded-xl shadow-2xl border border-gray-200 py-10 px-15">
-                <Link to={'/dashboard'} className="transition-all duration-75 text-white bg-blue-600 px-7 py-1 rounded-xl hover:bg-blue-700">Cancel</Link>
 
-                <div className="flex items-center space-x-5 mt-5">
-                    <span className="text-3xl font-semibold">{user.role === 'Event Planner' ? 'Planner Verification' : 'Supplier Verification'}</span>
-                    <IdCard size={50} strokeWidth={1} />
-                </div>
-                <span className="block text-gray-600">Submit your business information for verification to get verified</span>
-
-                <form onSubmit={handleSubmit} className="mt-8">
-                    {/* business name */}
-                    {user.role === 'Supplier' ? (
-                        <div className="flex flex-col">
-                            <label htmlFor="business_name">Business Name</label>
-                            <input disabled value={reviewData?.supplier_name || ''} type="text" name="business_name" placeholder="Floral Design" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black" />
+            {!isLoading && (
+                <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-10 max-w-5xl mx-auto">
+                    {/* Header */}
+                    <div className="flex justify-between items-center mb-6 border-b pb-4">
+                        <div className="flex items-center gap-3">
+                            <IdCard size={40} strokeWidth={1.5} className="text-blue-600" />
+                            <span className="text-2xl font-bold">
+                                {user.role === "Event Planner"
+                                    ? "Planner Verification Request"
+                                    : "Supplier Verification Request"}
+                            </span>
                         </div>
-                    ) : (
-                        <>
-                            <div className="flex flex-col mb-5">
-                                <label htmlFor="contact_number">First Name</label>
-                                <input disabled value={user?.first_name || ''} type="text" name="first_name" placeholder="e.g Juan Dela" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black" />
-                            </div>
-
-                            <div className="flex flex-col mb-5">
-                                <label htmlFor="contact_number">Last Name</label>
-                                <input disabled value={user?.last_name || ''} type="text" name="last_name" placeholder="e.g Cruz" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black" />
-                            </div>
-
-                            <div className="flex flex-col mb-5">
-                                <label htmlFor="contact_number">Email Address</label>
-                                <input disabled value={user?.email_address || ''} type="email" name="email_addess" placeholder="e.g test@gmail.com" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black" />
-                            </div>
-                        </>
-                    )}
-
-                    {/* address */}
-                    <div className="flex flex-col mt-5">
-                        <label htmlFor="address">Address</label>
-                        <AddressAutocomplete disabled={true} default_location={reviewData?.supplier_location ? reviewData?.supplier_location || '' : reviewData?.location || ''} className={'mt-2 rounded-md py-1 ring ring-black'} />
+                        <span
+                            className={`px-3 py-1 text-sm rounded-full ${user.role === "Supplier"
+                                ? "bg-purple-100 text-purple-700"
+                                : "bg-green-100 text-green-700"
+                                }`}
+                        >
+                            {user.role}
+                        </span>
                     </div>
 
-                    {/* contact number */}
-                    <div className="flex flex-col mt-5">
-                        <label htmlFor="contact_number">Contact number</label>
-                        <input disabled value={reviewData?.supplier_number ? reviewData?.supplier_number || '' : reviewData?.contact_number || ''} type="tel" name="contact_number" maxLength={11} placeholder="09XXXX" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black" />
-                    </div>
+                    <p className="text-gray-500 mb-10">
+                        Review the details below before approving or rejecting the verification
+                        request.
+                    </p>
 
-                    {/* supplier type */}
-                    {user.role === 'Supplier' && (
-                        < div className="flex flex-col mt-5">
-                            <label htmlFor="supplier_type" className="mb-2">Supplier Type</label>
-                            <Select
-                                value={reviewData?.supplier_type}
-                                isDisabled
-                                isClearable
+                    <form onSubmit={handleSubmit} className="space-y-10">
+                        {/* Info Section */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {user.role === "Supplier" ? (
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Business Name</label>
+                                    <input
+                                        disabled
+                                        value={reviewData?.supplier_name || ""}
+                                        className="w-full rounded-lg border border-gray-300 px-3 py-2 bg-gray-100 text-gray-700"
+                                    />
+                                </div>
+                            ) : (
+                                <>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">First Name</label>
+                                        <input
+                                            disabled
+                                            value={user?.first_name || ""}
+                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 bg-gray-100 text-gray-700"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Last Name</label>
+                                        <input
+                                            disabled
+                                            value={user?.last_name || ""}
+                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 bg-gray-100 text-gray-700"
+                                        />
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <label className="block text-sm font-medium mb-1">Email</label>
+                                        <input
+                                            disabled
+                                            value={user?.email_address || ""}
+                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 bg-gray-100 text-gray-700"
+                                        />
+                                    </div>
+                                </>
+                            )}
+
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-medium mb-1">Address</label>
+                                <AddressAutocomplete
+                                    disabled
+                                    default_location={
+                                        reviewData?.supplier_location || reviewData?.location || ""
+                                    }
+                                    className="w-full rounded-lg border border-gray-300 px-3 py-2 bg-gray-100"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Contact Number</label>
+                                <input
+                                    disabled
+                                    value={reviewData?.supplier_number || reviewData?.contact_number || ""}
+                                    className="w-full rounded-lg border border-gray-300 px-3 py-2 bg-gray-100 text-gray-700"
+                                />
+                            </div>
+
+                            {user.role === "Supplier" && (
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Supplier Type</label>
+                                    <Select value={reviewData?.supplier_type} isDisabled isClearable />
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Additional Info */}
+                        <div>
+                            <label className="block text-sm font-medium mb-1">
+                                Additional Information
+                            </label>
+                            <textarea
+                                disabled
+                                value={
+                                    reviewData?.additional_information ||
+                                    "No additional information provided."
+                                }
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2 h-28 bg-gray-100 text-gray-700"
                             />
                         </div>
-                    )}
 
-                    {/* additional information */}
-                    <div className="flex flex-col w-full mt-5">
-                        <label htmlFor="addtional_information">Additional Information (Optional)</label>
-                        <textarea disabled value={reviewData?.additional_information} name="addtional_information" id="addtional_information" className="resize-none mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-38 py-2 ring-black"
-                        ></textarea>
-                    </div>
-
-                    <div className="flex flex-col mt-10">
-                        <div className="flex items-center space-x-1 mb-2">
-                            <FileText size={21} />
-                            <span className="block font-semibold">Upload Your Valid ID</span>
+                        {/* ID Upload */}
+                        <div className="pt-6 border-t">
+                            <div className="flex items-center gap-2 mb-3">
+                                <FileText className="text-blue-600" size={20} />
+                                <span className="font-semibold">Uploaded Valid IDs</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                {reviewData?.valid_id?.length ? (
+                                    reviewData.valid_id.map((id, idx) => (
+                                        <img
+                                            key={idx}
+                                            src={id}
+                                            alt={`ID ${idx + 1}`}
+                                            className="rounded-lg border shadow-sm object-contain h-64 w-full"
+                                        />
+                                    ))
+                                ) : (
+                                    <p className="text-gray-400 text-sm col-span-2">
+                                        No IDs uploaded by the user.
+                                    </p>
+                                )}
+                            </div>
                         </div>
-                        <span className="block text-gray-600 mb-2 text-sm">To verify your business credentials, please upload a clear photo or scanned copy of a valid government-issued ID (e.g., Passport, Driver’s License, or National ID).</span>
-                        <div className="h-[300px] w-full flex items-center justify-center gap-3 mt-4">
-                            <img src={reviewData?.id_picture[0]} alt="" className="object-contain w-1/2 h-full" />
-                            <img src={reviewData?.id_picture[1]} alt="" className="object-contain w-1/2 h-full" />
+
+                        {/* Documents Upload */}
+                        <div className="pt-6 border-t">
+                            <div className="flex items-center gap-2 mb-3">
+                                <FileText className="text-blue-600" size={20} />
+                                <span className="font-semibold">Uploaded Documents</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                {reviewData?.documents_information ? (
+                                    <img
+                                        src={reviewData?.documents_information}
+                                        alt="Business Document"
+                                        className="rounded-lg border shadow-sm object-contain h-64 w-full"
+                                    />
+                                ) : (
+                                    <p className="text-gray-400 text-sm col-span-2">
+                                        No documents uploaded by the user.
+                                    </p>
+                                )}
+                            </div>
                         </div>
-                    </div>
 
-                    <div className="flex flex-col mt-10">
-                        <div className="flex items-center space-x-1 mb-2">
-                            <FileText size={21} />
-                            <span className="block font-semibold">Document Upload</span>
+                        {/* Action Buttons */}
+                        <div className="flex justify-center gap-4 pt-6">
+                            <RejectReview
+                                className="px-6 py-2 rounded-lg flex items-center gap-2 transition-all border border-red-500 text-red-500 hover:bg-red-500 hover:text-white"
+                                userData={userData}
+                                id={id}
+                            />
+                            <button
+                                disabled={isLoading}
+                                className={`px-6 py-2 rounded-lg flex items-center gap-2 transition font-semibold ${isLoading
+                                    ? "bg-blue-300 cursor-not-allowed text-white"
+                                    : "bg-blue-600 hover:bg-blue-700 text-white"
+                                    }`}
+                            >
+                                {isLoading ? "Processing..." : "Approve"}
+                            </button>
                         </div>
-                        <span className="block text-gray-600 mb-2 text-sm">Upload documents to verify your business credentials</span>
-                        <div className="h-[300px] w-full flex items-center justify-center gap-3 mt-4">
-                            <img src={reviewData?.documents_information} alt="" className="object-contain w-1/2 h-full" />
-                        </div>
-                    </div>
+                    </form>
+                </div>
+            )}
 
-                    {/* cancel/submit */}
-                    <div className="flex space-x-3 justify-center text-white mt-15">
-                        <button disabled={isLoading} className={`${isLoading ? 'bg-blue-300' : 'bg-blue-600 hover:bg-blue-700'} transition-all duration-75 px-7 py-2 rounded-xl flex space-x-3`}>
-                            <span>{isLoading ? 'Loading..' : 'Approve'}</span>
-                        </button>
 
-                        <RejectReview id={id} />
-
-                    </div>
-                </form >
-
-            </div >
         </>
     )
 }

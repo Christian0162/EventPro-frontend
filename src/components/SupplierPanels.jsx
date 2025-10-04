@@ -1,16 +1,19 @@
 import { useEffect, useState } from 'react'
 import ShopCards from '../components/ShopCards'
 import { TabList, Tab, TabPanel, TabPanels, TabGroup } from '@headlessui/react'
-import { Edit3, Mail, Phone, DollarSign, Clock7, CircleCheck, Star, Container } from 'lucide-react'
+import { Edit3, Mail, Phone, DollarSign, Clock7, CircleCheck, Star, Check, Trash2 } from 'lucide-react'
 import { AboutOurBusiessEdit } from './UpdateModal'
 import Select from 'react-select'
-import { doc, updateDoc } from 'firebase/firestore'
+import { deleteDoc, doc, updateDoc } from 'firebase/firestore'
 import { db, auth } from '../firebase/firebase'
 import { responseTimeOptions } from '../constants/categories'
 import ServiceModal from './ServiceModal'
 import { ServiceEdit } from './UpdateModal'
+import { formatDistanceToNow } from 'date-fns'
+import Swal from 'sweetalert2'
+import LoadingOverlay from './LoadingOverlay'
 
-export default function SupplierPanels({ shop, reviews, services, averageRating, userData }) {
+export default function SupplierPanels({ userData, shop, reviews, services, averageRating }) {
 
     const [contactEditing, setContactEditing] = useState(false)
     const [bookingEdting, setBookingEditing] = useState(false)
@@ -21,6 +24,7 @@ export default function SupplierPanels({ shop, reviews, services, averageRating,
     const [email_address, setEmail_address] = useState('')
     const [availability, setAvailability] = useState('')
     const [supplier_price, setSupplier_price] = useState('')
+    const [isDeleting, setIsDeleting] = useState(false)
 
     useEffect(() => {
         setSupplier_price(shop?.supplier_price)
@@ -53,6 +57,48 @@ export default function SupplierPanels({ shop, reviews, services, averageRating,
         }
     }
 
+    const handleDelete = async (service) => {
+
+        console.log(service)
+        setIsDeleting(true)
+        try {
+            const result = await Swal.fire({
+                title: 'Are you sure?',
+                text: "You won't be able to revert this!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Yes, delete it!',
+                cancelButtonText: 'Cancel'
+            })
+
+            if (result.isConfirmed) {
+                try {
+                    await deleteDoc(doc(db, "shops", shop.id, "services", service?.id));
+                    Swal.fire(
+                        'Deleted!',
+                        'Service has been deleted successfully.',
+                        'success'
+                    );
+                } catch (e) {
+                    console.error(e);
+                    Swal.fire('Error', 'Failed to delete service.', 'error');
+                }
+            }
+
+        }
+
+        catch (e) {
+            console.error(e)
+        }
+
+        finally {
+            setIsDeleting(false)
+        }
+
+    }
+
     const handleBookingSubmit = async () => {
         setBookingLoading(true)
         try {
@@ -72,7 +118,7 @@ export default function SupplierPanels({ shop, reviews, services, averageRating,
         }
     }
 
-    console.log(services)
+    console.log(reviews)
 
     return (
         <>
@@ -116,10 +162,7 @@ export default function SupplierPanels({ shop, reviews, services, averageRating,
                                         {shop?.supplier_expertise?.map((skill, index) => (
                                             <span
                                                 key={index}
-                                                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${index === 0
-                                                    ? 'bg-blue-500 text-white shadow-sm'
-                                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                                    }`}
+                                                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 bg-gray-100 text-gray-700 hover:bg-gray-200`}
                                             >
                                                 {skill}
                                             </span>
@@ -243,21 +286,6 @@ export default function SupplierPanels({ shop, reviews, services, averageRating,
                                     <form onSubmit={handleBookingSubmit}>
                                         <div className="space-y-6">
                                             <div className="flex items-center gap-4">
-                                                <div className="p-2 bg-green-100 rounded-lg">
-                                                    <DollarSign size={24} className="text-green-600" />
-                                                </div>
-                                                <div>
-                                                    <h4 className="font-bold text-gray-900 mb-1">Starting Price</h4>
-                                                    {!bookingEdting ? (
-                                                        <p className="text-xl font-bold text-green-600">₱{shop?.supplier_price}</p>
-                                                    ) : (
-                                                        <input type="number" value={supplier_price} onChange={(e) => setSupplier_price(e.target.value)} placeholder='e.g ₱5000' className='border border-gray-300 focus:outline-none px-4 py-2 rounded-md text-sm' />
-                                                    )}
-
-                                                </div>
-                                            </div>
-
-                                            <div className="flex items-center gap-4">
                                                 <div className="p-2 bg-purple-100 rounded-lg">
                                                     <Clock7 size={24} className="text-purple-600" />
                                                 </div>
@@ -309,7 +337,7 @@ export default function SupplierPanels({ shop, reviews, services, averageRating,
                                         <h2 className='text-2xl font-bold text-gray-800 '>Services</h2>
                                         <p className='text-md text-gray-600'>Services Built Around Your Needs</p>
                                     </div>
-                                    <ServiceModal supplierData={shop}/>
+                                    <ServiceModal userData={userData} supplierData={shop} />
                                 </div>
                                 {!services?.length > 0 && (
                                     <span className='text-lg text-gray-400 my-10 mt-15 block text-center'>No Service</span>
@@ -317,30 +345,52 @@ export default function SupplierPanels({ shop, reviews, services, averageRating,
                                 {services && (
                                     <div className="grid md:grid-cols-2 gap-6 mt-5">
                                         {services?.map((services, index) => (
-                                            <div key={index} className={`bg-gradient-to-br rounded-xl flex flex-col justify-between  h-full min-h-[420px]  ${services.service_plan.label === 'Premium Plan' ? 'from-blue-50 to-indigo-50 border border-blue-100' : 'from-green-50 to-emerald-50 border border-green-100'} `}>
-                                                <h4 className={`font-bold text-white py-7 rounded-t-md text-center ${services.service_plan.label === 'Premium Plan' ? 'bg-blue-600' : 'bg-green-600'}`}>{services.service_plan.label}</h4>
-                                                <div className='p-6 flex flex-col flex-1'>
-                                                    <div className="mb-4">
-                                                        <span className='font-bold text-gray-600'>Price</span>
-                                                        <span className="text-2xl font-bold text-blue-600 block">₱{services.service_price}</span>
+                                            <div
+                                                key={index}
+                                                className={`h-100 relative flex flex-col bg-gray-50 border border-gray-200 rounded-lg transition-all duration-200 shadow-lg`}
+                                            >
+                                                <LoadingOverlay isLoading={isDeleting} message='Processing..' />
+
+                                                <button
+                                                    onClick={() => handleDelete(services)}
+                                                    className="block absolute right-[-10px] top-[-15px] px-4 py-2 bg-gray-500 hover:bg-red-600 text-white rounded-lg font-medium text-sm transition-all duration-200"
+                                                >
+                                                    <Trash2 size={20} />
+                                                </button>
+                                                <div>
+                                                    <div className="rounded-t-md bg-blue-600 text-white">
+                                                        <h3 className="font-bold text-2xl text-center py-5">{services.service_plan.label}</h3>
                                                     </div>
 
-                                                    <hr className='border-t border-gray-300 my-3' />
-
-                                                    <div className='flex flex-col gap-2 my-4'>
-                                                        <ul className='list-disc pl-5 flex text-gray-800 flex-col gap-2'>
-                                                            {services?.service_inclusions?.map((inclusion, index) => (
-                                                                <li key={index} >{inclusion}</li>
-                                                            ))}
-                                                        </ul>
+                                                    <div className="flex items-center justify-center">
+                                                        <p className="text-gray-900 text-2xl font-bold leading-relaxed mt-3">
+                                                            ₱{services.service_price}.0/deliver
+                                                        </p>
                                                     </div>
-                                                    <hr className='border-t border-gray-300 my-3' />
+                                                </div>
 
-                                                    <p className='text-gray-500 mt-3'>Note: {services.service_payment_notice.label}</p>
+                                                <div className="flex flex-col justify-between gap-3 h-full space-x-4">
 
-                                                    <div className="mt-auto pt-6">
-                                                        <ServiceEdit supplierData={shop} service_id={services.id} services={services}/>
+                                                    <div className="text-left px-6 mt-3">
+                                                        {services?.service_inclusions?.map((inclusion, index) => (
+                                                            <div className="flex gap-3 space-y-3" key={index}>
+                                                                <Check className="text-green-400" />
+                                                                <span className="flex text-sm text-gray-600" >{inclusion}</span>
+                                                            </div>
+                                                        ))}
                                                     </div>
+
+                                                    <div>
+                                                        <div className="px-6 text-left">
+                                                            <hr className="border-b-0 border-gray-400 mb-1" />
+                                                            <span className="text-left text-sm text-gray-600">Note: {services.service_payment_notice.label}</span>
+                                                        </div>
+
+                                                    </div>
+                                                </div>
+
+                                                <div className="pt-6 pl-2 py-2 mr-2">
+                                                    <ServiceEdit supplierData={shop} service_id={services.id} services={services} />
                                                 </div>
                                             </div>
                                         ))}
@@ -390,7 +440,7 @@ export default function SupplierPanels({ shop, reviews, services, averageRating,
                                                                     />
                                                                 ))}
                                                             </div>
-                                                            <span className="text-sm text-gray-500">{review.date || 'Recent'}</span>
+                                                            <span className="text-sm text-gray-500">{review?.createdAt ? formatDistanceToNow(new Date(review.createdAt.seconds * 1000), { addSuffix: true }) : 'Recent'}</span>
                                                         </div>
                                                         <p className="text-gray-700">{review.comment || 'Great service!'}</p>
                                                     </div>

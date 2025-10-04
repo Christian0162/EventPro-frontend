@@ -16,6 +16,7 @@ export default function AIModal({ ai_response, ai_shops }) {
     }
 
     function close() {
+        setError('')
         setIsOpen(false)
     }
 
@@ -34,10 +35,6 @@ export default function AIModal({ ai_response, ai_shops }) {
             // Get all shops (no category filter)
             const q = query(collection(db, "shops"));
             const snapShop = await getDocs(q);
-            const shops = snapShop.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-            ai_shops([]);
-            ai_response('');
 
             const shopData = await Promise.all(snapShop.docs.map(async (doc) => {
                 const data = doc.data();
@@ -120,7 +117,7 @@ export default function AIModal({ ai_response, ai_shops }) {
             const sortedShops = [...filteredShops].sort((a, b) => b.avg_rating - a.avg_rating);
 
             // Send data to AI recommendation endpoint
-            const response = await fetch("https://eventpro-backend.onrender.com/recommend", {
+            const response = await fetch("http://localhost:8000/api/v1/recommend", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -131,20 +128,22 @@ export default function AIModal({ ai_response, ai_shops }) {
 
             const data = await response.json();
 
-            // Update state with results
-            setRecommendations(data.recommendations);
-            ai_response(data.recommendations);
+            if (data) {
+                // Update state with results
+                setRecommendations(data.recommendations);
+                ai_response(data.recommendations);
 
-            // Map back to full shop objects for display
-            const recommendedShops = sortedShops.filter(shop =>
-                data.recommendations.includes(shop.name)
-            );
-            ai_shops(recommendedShops);
+                // Map back to full shop objects for display
+                const recommendedShops = sortedShops.filter(shop =>
+                    data.recommendations.includes(shop.name)
+                );
+                ai_shops(recommendedShops);
+            }
 
             setIsSubmitting(false);
             close();
         }
-         catch (error) {
+        catch (error) {
             console.error("Error during AI search:", error);
             setError("An error occurred while processing your request.");
             setIsSubmitting(false);

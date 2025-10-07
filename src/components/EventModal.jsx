@@ -1,26 +1,43 @@
-import { Button, Dialog, DialogPanel, } from '@headlessui/react'
-import { MapPin, X, Eye, CalendarDays, CircleDollarSign, Users, Mail } from 'lucide-react'
-import { useState } from 'react'
+import { Button, Dialog, DialogPanel } from '@headlessui/react';
+import { MapPin, X, Eye, CalendarDays, CircleDollarSign, Mail, User } from 'lucide-react';
+import { useState } from 'react';
+import { useFetchUserProfiles } from '../hooks/useProfile';
+import { useFetchReviews } from '../hooks/useReviews';
+import { useFetchUsers } from '../hooks/useUsers';
+import { formatDistanceToNow } from 'date-fns';
+import ProfileHover from './ProfileHover';
+import { createPortal } from "react-dom";
 
-export default function EventModal({ eventData }) {
+export default function EventModal({ eventData, event_purpose }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const [hoveredReviewerId, setHoveredReviewerId] = useState(null)
+    const { userProfiles } = useFetchUserProfiles()
+    const { reviews } = useFetchReviews()
+    const { users } = useFetchUsers()
 
-    const [isOpen, setIsOpen] = useState(false)
+    const userProfile = userProfiles.find(user => user.id === eventData.user_id)
 
-    function open() {
-        setIsOpen(true)
-    }
+    const userReviews = reviews.filter(rev => rev.reviewed_id === eventData.user_id)
+    console.log(userProfile)
 
-    function close() {
-        setIsOpen(false)
-    }
+    const open = () => setIsOpen(true);
+    const close = () => setIsOpen(false);
 
     return (
         <>
             <Button
                 onClick={open}
+                className={`${event_purpose === "dashboard"
+                    ? "h-7 text-white hover:bg-blue-700 transition-all duration-100 rounded-md px-4 bg-blue-600 text-sm"
+                    : ""}`}
             >
-                <Eye size={24} className='transition-all duration-200 text-gray-400 group-hover:text-green-600' />
+                {event_purpose === "dashboard" ? (
+                    "View Event"
+                ) : (
+                    <Eye size={24} className='transition-all duration-200 text-gray-400 group-hover:text-green-600' />
+                )}
             </Button>
+
 
             <Dialog open={isOpen} as="div" className="relative z-50 focus:outline-none" onClose={close}>
                 <div className="fixed inset-0 bg-black/25 backdrop-blur-sm" />
@@ -28,81 +45,117 @@ export default function EventModal({ eventData }) {
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
                             transition
-                            className="w-full max-w-2xl rounded-2xl mt-18 bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                            className="w-full max-w-4xl mt-18 rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
                         >
-                            <div className="relative">
+                            {/* HEADER */}
+                            <div className="relative h-56 rounded-t-2xl overflow-hidden">
+                                {/* Background Image */}
+                                <img
+                                    src={eventData?.event_background || "/default-event.jpg"} // fallback image
+                                    alt={eventData?.event_name || "Event Image"}
+                                    className="w-full h-full object-cover"
+                                />
+
+                                {/* Overlay for dim effect */}
+                                <div className="absolute inset-0 bg-black/30"></div>
+
+                                {/* Close Button */}
                                 <button
                                     onClick={close}
-                                    className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/80 hover:bg-white transition-colors duration-200"
+                                    className="absolute top-4 right-4 z-50 p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors duration-200"
                                 >
-                                    <X size={20} className="text-gray-600" />
+                                    <X size={20} className="text-white" />
                                 </button>
-                            </div>
 
-                            {/* Content */}
-                            <div className="p-6">
-                                {/* Company Name */}
-                                <div className="mb-4">
-                                    <h2 className="text-xl font-bold text-gray-900 mb-2 text-center">
-                                        {eventData?.event_name.toUpperCase()}
+                                {/* Event Info (kept in the middle) */}
+                                <div className="absolute inset-0 flex flex-col items-center justify-center z-20 text-white space-y-3">
+                                    {/* Profile Picture / Initials */}
+                                    <div className="w-20 h-20 rounded-full bg-white ring-4 ring-blue-500 overflow-hidden flex items-center justify-center text-blue-600 font-bold text-2xl">
+
+                                        {userProfile && userProfile?.profile_pic?.length > 0 ? (
+                                            <img
+                                                src={userProfile?.profile_pic || "/default-event.jpg"} // fallback image
+                                                alt={eventData?.event_name || "Event Image"}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            eventData?.event_name?.[0]?.toUpperCase() || "E"
+                                        )}
+                                    </div>
+
+                                    {/* Event Name */}
+                                    <h2 className="text-2xl font-bold text-center">
+                                        {eventData?.event_name?.toUpperCase()}
                                     </h2>
 
-                                    <div className="flex flex-col mb-4">
-                                        <span className='text-sm font-bold text-gray-900 mb-2'>Event Budget:</span>
-                                        <div className="flex items-center text-gray-600 text-sm">
-                                            <MapPin size={16} className="mr-1" />
-                                            <span>{eventData?.event_location || "Our Lady of Consolation Paris, San Roque, Philippines"}</span>
+                                    {/* Host / Creator */}
+                                    <p className="text-sm flex items-center gap-2">
+                                        <User size={16} />
+                                        {userProfile?.first_name + " " + userProfile?.last_name.charAt(0).toUpperCase() + userProfile?.last_name.slice(1) || "Event Organizer"}
+                                    </p>
+                                </div>
+                            </div>
+
+
+
+                            {/* BODY */}
+                            <div className="p-6 space-y-6">
+
+                                {/* Location */}
+                                <div className="flex items-center gap-2 text-gray-600 text-sm">
+                                    <MapPin size={16} className="text-blue-500" />
+                                    <span>{eventData?.event_location || "Our Lady of Consolation Parish, San Roque, Philippines"}</span>
+                                </div>
+
+                                {/* Budget */}
+                                <div className="bg-gray-50 p-4 rounded-xl shadow-sm">
+                                    <h3 className="text-sm font-semibold text-gray-700 mb-1 flex items-center gap-2">
+                                        <CircleDollarSign size={16} className="text-green-600" />
+                                        Event Budget
+                                    </h3>
+                                    <p className="text-2xl font-bold text-green-600">
+                                        ₱{eventData?.event_budget || "5900"}
+                                    </p>
+                                </div>
+
+                                {/* Event Categories */}
+                                {eventData?.event_categories?.length > 0 && (
+                                    <div>
+                                        <h3 className="text-sm font-semibold text-gray-700 mb-2">Looking for Suppliers</h3>
+                                        <div className="flex flex-wrap gap-2">
+                                            {eventData.event_categories.map((category, index) => (
+                                                <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                                                    {category.label}
+                                                </span>
+                                            ))}
                                         </div>
                                     </div>
-                                </div>
+                                )}
 
-                                {/* Pricing */}
-                                <div className="mb-6">
-                                    <div className="flex items-baseline flex-col font-bold text-gray-900">
-                                        <span className='text-sm mb-1'>Event Budget:</span>
-                                        <span className="text-2xl font-bold text-green-600">
-                                            ₱{eventData?.event_budget || "5900"}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <div className="mb-6">
-                                    <h3 className="text-sm font-semibold text-gray-900 mb-3">Look for Supplier:</h3>
-                                    <div className="flex flex-wrap gap-2">
-                                        {eventData?.event_categories &&
-                                            eventData.event_categories.map((category, index) => (
-                                                <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-                                                    {category}
-                                                </span>
-                                            ))
-                                        }
-                                    </div>
-                                </div>
-
-                                {/* About Section */}
-                                <div className="mb-6">
-                                    <h3 className="text-sm font-semibold text-gray-900 mb-2">Description</h3>
-                                    <p className="text-gray-600 text-sm">
+                                {/* Description */}
+                                <div>
+                                    <h3 className="text-sm font-semibold text-gray-700 mb-2">Description</h3>
+                                    <p className="text-gray-600 text-sm leading-relaxed">
                                         {eventData?.event_description || "Professional event planning and floral arrangement services for corporate events, weddings, and special occasions."}
                                     </p>
                                 </div>
 
-                                {/* Contact Information */}
-                                <div className="mb-6">
-                                    <h3 className="text-sm font-semibold text-gray-900 mb-2">Contact Information</h3>
-                                    <div className="flex items-center text-gray-600 text-sm">
-                                        <Mail size={16} className="mr-2" />
+                                {/* Contact Info */}
+                                <div>
+                                    <h3 className="text-sm font-semibold text-gray-700 mb-2">Contact Information</h3>
+                                    <div className="flex items-center text-gray-600 text-sm gap-2">
+                                        <Mail size={16} className="text-blue-500" />
                                         <span>{eventData?.contact_email || "test123@example.com"}</span>
                                     </div>
                                 </div>
 
-                                {/* Event Details (if available) */}
+                                {/* Event Date and Time */}
                                 {eventData?.event_date && (
-                                    <div className="mb-6">
-                                        <h3 className="text-sm font-semibold text-gray-900 mb-2">Event Details</h3>
-                                        <div className="space-y-2 text-sm text-gray-600">
-                                            <div className="flex items-center">
-                                                <CalendarDays size={16} className="mr-2" />
+                                    <div>
+                                        <h3 className="text-sm font-semibold text-gray-700 mb-2">Event Schedule</h3>
+                                        <div className="text-sm text-gray-600">
+                                            <div className="flex items-center gap-2">
+                                                <CalendarDays size={16} className="text-blue-500" />
                                                 <span>{eventData.event_date.date_preview?.join(", ")}</span>
                                             </div>
                                             {eventData.event_time && (
@@ -114,18 +167,95 @@ export default function EventModal({ eventData }) {
                                     </div>
                                 )}
 
-                                {/* Close Button */}
-                                <button
-                                    onClick={close}
-                                    className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-                                >
-                                    Close
-                                </button>
+                                {/* Reviews */}
+                                {userReviews?.length > 0 && (
+                                    <div>
+                                        <h3 className="text-sm font-semibold text-gray-700 mb-4">Reviews of Event Planner</h3>
+                                        <div className="max-h-64 overflow-y-auto space-y-4">
+                                            {userReviews.map((review, index) => {
+                                                // Generate stars
+                                                const stars = Array.from({ length: 5 }, (_, i) => (
+                                                    <svg
+                                                        key={i}
+                                                        className={`w-4 h-4 ${i < review.rating ? "text-yellow-400" : "text-gray-300"}`}
+                                                        fill="currentColor"
+                                                        viewBox="0 0 20 20"
+                                                    >
+                                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.957a1 1 0 00.95.69h4.168c.969 0 1.371 1.24.588 1.81l-3.374 2.455a1 1 0 00-.364 1.118l1.287 3.957c.3.921-.755 1.688-1.54 1.118l-3.374-2.455a1 1 0 00-1.175 0l-3.374 2.455c-.784.57-1.838-.197-1.539-1.118l1.286-3.957a1 1 0 00-.364-1.118L2.037 9.384c-.783-.57-.38-1.81.588-1.81h4.168a1 1 0 00.95-.69l1.286-3.957z" />
+                                                    </svg>
+                                                ));
+
+                                                const userProfile = userProfiles.find(user => user.id === review.user_id)
+                                                const reviewerDetail = users.find(user => user.id === review.user_id)
+
+                                                return (
+                                                    <div
+                                                        key={index}
+                                                        className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl shadow-md border border-gray-200"
+                                                    >
+                                                        {/* Reviewer Profile */}
+                                                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm overflow-hidden">
+                                                            {userProfile && userProfile?.profile_pic?.length > 0 ? (
+                                                                <img
+                                                                    src={userProfile?.profile_pic || "/default-event.jpg"} // fallback image
+                                                                    alt={eventData?.event_name || "Event Image"}
+                                                                    className="w-full h-full object-cover"
+                                                                />
+                                                            ) : (
+                                                                review?.reviewer_name?.[0]?.toUpperCase() || "E"
+                                                            )}
+                                                        </div>
+
+                                                        {/* Reviewer Info */}
+                                                        <div className="flex-1">
+                                                            <div className="flex justify-between items-center mb-1">
+                                                                <div
+                                                                    className="relative inline-block"
+                                                                    onMouseEnter={() => setHoveredReviewerId(review.id)}
+                                                                    onMouseLeave={() => setHoveredReviewerId(null)}
+                                                                >
+                                                                    <div className='flex flex-col'>
+                                                                        <div className='flex items-baseline gap-3 mb-1'>
+                                                                            <h2 className="font-medium text-gray-900 cursor-pointer">
+                                                                                {reviewerDetail?.first_name} {reviewerDetail?.last_name}
+                                                                            </h2>
+                                                                            <p className="text-xs text-gray-500">{review?.createdAt ? formatDistanceToNow(new Date(review.createdAt.seconds * 1000), { addSuffix: true }) : 'Recent'}</p>
+                                                                        </div>
+                                                                        <h2 className="font-medium text-xs text-gray-600 cursor-pointer">
+                                                                            {reviewerDetail?.role === "Event Planner" ? 'Event' : 'Shop'}: {review.reviewer_name}
+                                                                        </h2>
+                                                                    </div>
+                                                                    {hoveredReviewerId === review.id && (
+                                                                        <ProfileHover hoveredReviewer={userProfile} user={reviewerDetail} review={review} />
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex">{stars}</div>
+                                                            </div>
+                                                            <p className="text-gray-600 text-sm leading-relaxed">{review.comment || "No comment provided."}</p>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+
+
+
+                                {/* Footer Button */}
+                                <div className="pt-1">
+                                    <button
+                                        onClick={close}
+                                        className="w-full bg-gray-400 hover:opacity-90 text-white font-medium py-3 rounded-lg transition-all duration-200"
+                                    >
+                                        Close
+                                    </button>
+                                </div>
                             </div>
                         </DialogPanel>
                     </div>
                 </div>
             </Dialog>
         </>
-    )
+    );
 }

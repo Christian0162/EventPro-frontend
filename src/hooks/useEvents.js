@@ -2,6 +2,7 @@ import Swal from "sweetalert2";
 import { addDoc, collection, updateDoc, doc, deleteDoc, serverTimestamp, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "../firebase/firebase";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export const useFetchEvents = () => {
     const [events, setEvents] = useState([]);
@@ -60,8 +61,10 @@ export const useFetchEventsById = (id) => {
 
 export const useAddEvent = () => {
     const [isLoading, setIsLoading] = useState(false);
+    const navigate = useNavigate()
 
     const addEvent = async (id, data) => {
+        setIsLoading(true);
         try {
             await addDoc(collection(db, "events"), {
                 user_id: id,
@@ -74,6 +77,7 @@ export const useAddEvent = () => {
                 event_budget: data.event_budget,
                 event_description: data.event_description,
                 event_categories: data.event_categories,
+                event_background: data.event_background || "",
                 status: "active",
                 createdAt: serverTimestamp(),
             });
@@ -89,6 +93,8 @@ export const useAddEvent = () => {
             setIsLoading(false);
         } finally {
             setIsLoading(false);
+            navigate('/events')
+
         }
     };
 

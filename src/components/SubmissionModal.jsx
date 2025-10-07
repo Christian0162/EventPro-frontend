@@ -30,6 +30,8 @@ export default function SubmissionModal({ contract, supplierData, eventData }) {
                 supplier_id: contract[0].supplier_id,
                 status: "Pending",
                 submitted_at: serverTimestamp(),
+                delivered_date: serverTimestamp(),
+                planned_date: eventData.date,
                 confirmed_at: null,
                 notes: note,
                 proof: picture,

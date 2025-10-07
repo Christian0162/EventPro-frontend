@@ -61,32 +61,23 @@ export const useFetchSupplierById = (supplier_id) => {
 }
 
 export const useFetchSupplierServices = () => {
-    const [services, setServices] = useState({})
-    const [isLoading, setIsLoading] = useState(true)
-    const { suppliers } = useFetchSuppliers()
+    const [services, setServices] = useState([])
+    const [isLoading, setIsLoading] = useState(false)
 
     useEffect(() => {
-        if (!suppliers || suppliers.length === 0) return
-
-        const unsubscribes = suppliers.map((supplier) =>
-            onSnapshot(collection(db, "shops", supplier.id, "services"), (snapshot) => {
-                const serviceData = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data(),
-                }))
-
-                setServices((prev) => ({
-                    ...prev,
-                    [supplier.id]: serviceData,
-                }))
+        setIsLoading(true)
+        try {
+            const unsubscribe = onSnapshot(collection(db, "services"), (onsnapshot) => {
+                setServices(onsnapshot.docs.map(serv => ({ id: serv.id, ...serv.data() })))
                 setIsLoading(false)
             })
 
-        )
-
-        // cleanup
-        return () => unsubscribes.forEach((unsub) => unsub())
-    }, [suppliers])
+            return () => unsubscribe()
+        }
+        catch (e) {
+            console.error(e)
+        }
+    }, [])
 
     return { services, isLoading }
 }

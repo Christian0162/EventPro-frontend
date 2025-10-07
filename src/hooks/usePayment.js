@@ -99,17 +99,19 @@ export const useCreatePayment = () => {
                             updateDoc(doc(db, "transactions", invoice_id), {
                                 status: "COMPLETED"
                             })
-                            Swal.fire('Payment Successful', 'Your payment has been processed successfully.', 'success')
 
                             await addDoc(collection(db, "notifications"), {
                                 avatar: payment_data.event_name.charAt(0).toUpperCase(),
-                                message: `The event "${payment_data.event_name}" has successfully completed the partial payment for Contract ID: ${contract[0].id}.`,
+                                message: `The event "${payment_data.event_name}" has successfully completed the partial payment for Contract ID: ${payment_data.contract_id}.`,
                                 createdAt: serverTimestamp(),
                                 reference_id: supplierData.id,
                                 title: 'Payment Received',
                                 unread: true,
                                 user_id: supplierData.id
                             })
+
+                            Swal.fire('Payment Successful', 'Your payment has been processed successfully.', 'success')
+
 
                             clearInterval(checkStatus)
 

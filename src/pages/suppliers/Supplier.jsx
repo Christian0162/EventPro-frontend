@@ -10,7 +10,6 @@ import { useFetchSuppliers, useFetchSupplierServices } from "../../hooks/useSupp
 import { useFetchReviews } from "../../hooks/useReviews";
 import { useFetchAllApplication } from "../../hooks/useApplication";
 import { useFetchEventsById } from "../../hooks/useEvents";
-import { ClipLoader } from "react-spinners";
 import PageLoading from "../../components/PageLoading";
 
 export default function Supplier({ userData }) {
@@ -19,40 +18,25 @@ export default function Supplier({ userData }) {
     const [filteredShops, setFilteredShops] = useState([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [ai_response, setAi_response] = useState('')
-    const { services } = useFetchSupplierServices()
-    const { reviews } = useFetchReviews()
+    const { services, isLoading: isServicesLoading } = useFetchSupplierServices()
+    const { reviews, isLoading: isReviewsLoading } = useFetchReviews()
     const { suppliers, isLoading: isSupplierLoading } = useFetchSuppliers()
-    const [isLoading, setIsLoading] = useState(true);
-    const [countdown, setCountdown] = useState(1)
     const { applications, isLoading: isApplicationLoading } = useFetchAllApplication()
     const { events, isLoading: isEventsLoading } = useFetchEventsById(userData.id)
 
-    console.log(userData.id)
-    const isAllLoading = isSupplierLoading && isEventsLoading
+    const isAllLoading = isSupplierLoading || isEventsLoading || isApplicationLoading || isServicesLoading || isReviewsLoading
 
     useEffect(() => {
-        const filteredSupplier = suppliers.filter(
-            supplier =>
-                supplier.is_verified &&
-                supplier.status === "active" &&
-                services[supplier.id] && // must have services
-                services[supplier.id].length > 0
+        const filteredSupplier = suppliers.filter(supplier =>
+            supplier.is_verified &&
+            supplier.status === "active" &&
+            services.some(serv => serv.supplier_id === supplier.id)
         );
 
         setShop(filteredSupplier);
     }, [suppliers, services]);
 
     console.log(events)
-
-    // useEffect(() => {
-    //     if (countdown <= 0) { return setIsLoading(false) }
-
-    //     const countDown = setInterval(() => {
-    //         setCountdown(prev => prev - 1)
-    //     }, [1000])
-
-    //     return () => clearInterval(countDown)
-    // }, [countdown])
 
     useEffect(() => {
         let filtered = shop;
@@ -80,7 +64,7 @@ export default function Supplier({ userData }) {
     }, [searchTerm, category, shop]);
 
     const calculateAverageRating = (shopId) => {
-        const shopReviews = reviews[shopId] || [];
+        const shopReviews = reviews.filter(r => r.reviewed_id === shopId);
         const validRatings = shopReviews
             .map(review => Number(review.rating))
             .filter(rating => !isNaN(rating) && rating > 0);
@@ -92,7 +76,7 @@ export default function Supplier({ userData }) {
     };
 
     const getReviewCount = (shopId) => {
-        const shopReviews = reviews[shopId] || [];
+        const shopReviews = reviews.filter(r => r.reviewed_id === shopId);
         return shopReviews.length;
     };
 
@@ -150,7 +134,7 @@ export default function Supplier({ userData }) {
                 </div>
             </div>
 
-            {ai_response.length > 0 && (
+            {ai_response?.length > 0 && (
                 <div className="mb-8 max-w-[800px] px-4">
                     <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 shadow-md rounded-2xl p-6 relative">
 
@@ -191,7 +175,7 @@ export default function Supplier({ userData }) {
                             const averageRating = calculateAverageRating(shopItem.id);
                             const reviewCount = getReviewCount(shopItem.id);
 
-
+                            const userServices = services.filter(serv => serv.supplier_id === shopItem.id)
                             return (
                                 <Cards key={shopItem.id || index} className="group cursor-pointer flex flex-col justify-between">
                                     {/* Header - Applied Badge */}
@@ -255,7 +239,7 @@ export default function Supplier({ userData }) {
                                             <div className="flex justify-between items-center mb-5 gap-7">
                                                 <div className="flex items-center space-x-1">
                                                     <PhilippinePeso className="text-green-600" size={18} />
-                                                    <span className="text-lg font-bold text-gray-900">{shopItem.supplier_price}</span>
+                                                    <span className="text-lg font-bold text-gray-900">{userServices[0].service_price}</span>
                                                     <span className="text-sm text-gray-500">/service</span>
                                                 </div>
                                                 <div className="flex items-center space-x-2">
@@ -288,10 +272,10 @@ export default function Supplier({ userData }) {
                                         {/* Action Button */}
                                         <SupplierModal
                                             className={'py-2 rounded-lg font-semibold w-full bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'}
-                                            services={services[shopItem.id]}
+                                            services={userServices}
                                             supplierData={shopItem}
                                             userData={userData}
-                                            reviews={reviews[shopItem.id]}
+                                            reviews={reviews.filter(r => r.reviewed_id === shopItem.id)}
                                             averageRating={averageRating}
                                         />
                                     </div>

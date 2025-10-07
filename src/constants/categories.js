@@ -19,7 +19,7 @@ export const statusOptions = [
     { label: 'Planning', value: 'planning' },
     { label: 'Upcoming', value: 'upcoming' },
     { label: 'In Progress', value: 'in-progress' },
-    { label: 'Complete', value: 'complete' },
+    { label: 'Completed', value: 'completed' },
 ];
 
 export const createStatusOptions = [

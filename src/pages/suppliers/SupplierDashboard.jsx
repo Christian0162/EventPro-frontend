@@ -1,31 +1,75 @@
 import DashboardCard from "../../components/DashboardCards"
-import { Eye, PhilippinePeso, CalendarPlus, Calendar, Star } from "lucide-react"
+import { Eye, PhilippinePeso, CalendarPlus, Calendar, Star, TrendingUp, ChartNoAxesCombined, Package } from "lucide-react"
 import { TabGroup, TabPanel, TabPanels, TabList, Tab } from "@headlessui/react"
 import { Title } from "react-head"
-import { where, query, collection, onSnapshot, serverTimestamp, addDoc, getDocs, getDoc, doc } from "firebase/firestore"
+import { where, query, collection, onSnapshot, serverTimestamp, addDoc, getDocs } from "firebase/firestore"
 import { db, auth } from "../../firebase/firebase"
-import { useEffect, useState } from "react"
+import { act, useEffect, useState } from "react"
 import { LineChart, PieChart, BarChart } from "../../components/Charts"
-import { useFetchReviewsById } from "../../hooks/useReviews"
+import { useFetchReviews } from "../../hooks/useReviews"
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
-import { formatDistanceToNow } from "date-fns"
 import { useFetchContract } from "../../hooks/useContract"
 import { useFetchEvents } from "../../hooks/useEvents"
 import ContractModal from "../../components/ContractModal"
-import { useFetchSupplierById } from "../../hooks/useSupplier"
+import { useFetchSupplierById, useFetchSuppliers, useFetchSupplierServices } from "../../hooks/useSupplier"
 import { useMemo } from "react";
 import Swal from "sweetalert2"
+import { Review } from "../../components/ReviewModal"
+import { useFetchUserProfiles } from "../../hooks/useProfile"
+import PageLoading from "../../components/PageLoading"
+import { useFetchDeliveries } from "../../hooks/useDeliveries"
 
 export default function SupplierDashboard({ userData }) {
 
     const [applications, setApplications] = useState([])
-    const { reviews } = useFetchReviewsById(userData.id)
+    const { reviews: reviewed } = useFetchReviews()
     const { contracts } = useFetchContract()
-    const { events } = useFetchEvents()
-    const { supplier } = useFetchSupplierById(userData.id)
+    const { events, isLoading: isEventLoading } = useFetchEvents()
+    const { services, isLoading: isServicesLoading } = useFetchSupplierServices()
+    const { supplier, isLoading: isSupplierLoading } = useFetchSupplierById(userData.id)
+    const { suppliers, isLoading: isSuppliersLoading } = useFetchSuppliers()
     const [now, setNow] = useState(new Date())
+    const { userProfiles } = useFetchUserProfiles()
+    const { deliveries, isLoading: isDeliveriesLoading } = useFetchDeliveries()
 
+    const isAllLoading = isSupplierLoading || isEventLoading || isDeliveriesLoading || isSuppliersLoading
+
+    const userDeliveries = deliveries.filter(del => del.supplier_id === userData.id)
+
+    // price competitive 
+    const suppleirsWithSameType = suppliers.filter(sup => sup.supplier_type?.value === supplier.supplier_type?.value && sup.id != userData.id)
+    const supplierSameTypeServices = services.filter(serv => suppleirsWithSameType.some(supp => serv.supplier_id === supp.id))
+    const avgPrice = supplierSameTypeServices.length
+        ? supplierSameTypeServices.reduce((sum, s) => sum + parseFloat(s.service_price || 0), 0) /
+        supplierSameTypeServices.length
+        : 0;
+
+    const price = parseFloat(supplier?.service_price || 0);
+    const competitiveness = avgPrice
+        ? ((avgPrice - price) / avgPrice) * 100
+        : 0;
+
+    // ontime deliveries
+    const onTimeDeliveries = userDeliveries.filter(
+        d => d.delivered_date.toDate() <= new Date(d.planned_date)
+    ).length;
+    const totalDeliveries = userDeliveries.length;
+    const onTimeRate = totalDeliveries ? (onTimeDeliveries / totalDeliveries) * 100 : 0;
+
+    // barchar data
+    const labels = ["Price Competitiveness", "On-Time Delivery"];
+    const datasets = [
+        {
+            label: "Performance (%)",
+            data: [competitiveness, onTimeRate],
+            backgroundColor: ["#60a5fa", "#34d399"],
+            borderRadius: [10, 10],
+        },
+    ];
+
+
+    const reviews = reviewed.filter(rev => rev.reviewed_id === userData.id)
     const pendingContracts = useMemo(() =>
         contracts.filter(contract => contract?.status === "Pending"),
         [contracts]);
@@ -34,10 +78,13 @@ export default function SupplierDashboard({ userData }) {
         contracts.filter(contract => contract?.status === "Approved" && contract.supplier_id === userData.id),
         [contracts, userData.id]);
 
+    const activeEventsContracts = useMemo(() =>
+        events.filter(event => activeContracts.some(cont => event.id === cont.event_id)),
+        [events, activeContracts])
+
     const completeContracts = useMemo(() =>
         contracts.filter(contract => contract?.status === "Completed" && contract.supplier_id === userData.id),
         [contracts, userData.id]);
-
 
     const contractEventsforPending = useMemo(() =>
         pendingContracts.map(contract =>
@@ -51,7 +98,24 @@ export default function SupplierDashboard({ userData }) {
         ).filter(Boolean),
         [activeContracts, events]);
 
-    console.log(activeContracts)
+    const contractEventsforComplete = useMemo(() =>
+        completeContracts.map(contract =>
+            events.find(event => event.id === contract.event_id)
+        ).filter(Boolean),
+        [completeContracts, events]);
+
+    const monthlyRatings = Array(12).fill(null).map((_, i) => {
+        const monthlyReviews = reviews?.filter(rev => {
+            const date = rev.createdAt?.toDate ? rev.createdAt.toDate() : null;
+            return date && date.getMonth() === i;
+        });
+
+        if (monthlyReviews.length === 0) return null;
+        const avg = monthlyReviews.reduce((sum, rev) => sum + rev.rating, 0) / monthlyReviews.length;
+        return avg;
+    });
+
+
 
     useEffect(() => {
 
@@ -120,6 +184,7 @@ export default function SupplierDashboard({ userData }) {
     }, [activeContracts, contractEventsforActive, now, supplier?.id, supplier?.supplier_name]);
 
 
+
     useEffect(() => {
         try {
             const q = query(collection(db, "applications"),
@@ -140,9 +205,6 @@ export default function SupplierDashboard({ userData }) {
 
     }, [])
 
-
-
-
     const AppliedColor = (status) => {
 
         const colors = {
@@ -156,321 +218,316 @@ export default function SupplierDashboard({ userData }) {
 
     return (
         <>
-            <Title>Dashboard</Title>
-            {/* Header Section */}
-            <div className="flex justify-between items-start flex-col lg:flex-row gap-4 mb-6 sm:mb-8">
-                <div className="w-full lg:w-auto">
-                    <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent text-left">
-                        Supplier Dashboard
-                    </h1>
-                    <span className="text-sm text-gray-600">
-                        Welcome back, <span className="font-bold">{userData?.first_name}</span>
-                    </span>
-                </div>
-            </div>
+            <Title>Supplier Dashboard</Title>
 
-            {/* Main Dashboard Content */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
-
-                {/* Stats Cards Section */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 gap-4 sm:gap-5">
-
-                    {/* Profile Views */}
-                    <DashboardCard className="py-6 sm:py-8">
-                        <div className="flex flex-col space-y-1">
-                            <span className="block text-base sm:text-lg text-gray-800 font-bold">Profile Views</span>
-                            <span className="block text-xl sm:text-2xl text-gray-900 font-bold">24</span>
-                            <span className="block text-gray-600 text-xs sm:text-sm">from last month</span>
+            {isAllLoading ? (
+                <PageLoading />
+            ) : (
+                <div className="bg-gradient-to-br ">
+                    {/* Header */}
+                    <div className="flex flex-col lg:flex-row justify-between items-start gap-4 mb-10">
+                        <div>
+                            <h1 className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-blue-600 to-violet-600 bg-clip-text text-transparent">
+                                Supplier Dashboard
+                            </h1>
+                            <p className="text-gray-600 text-sm sm:text-base mt-1">
+                                Welcome back, <span className="font-semibold text-gray-800">{userData?.first_name}</span>
+                            </p>
                         </div>
-                        <span className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-full py-1 px-1 flex-shrink-0">
-                            <Eye width={40} height={40} className="sm:w-[50px] sm:h-[50px] p-2 sm:p-3 text-white" />
-                        </span>
-                    </DashboardCard>
-
-                    {/* Revenue */}
-                    <DashboardCard className="py-6 sm:py-8">
-                        <div className="flex flex-col space-y-1">
-                            <span className="block text-base sm:text-lg text-gray-800 font-bold">Revenue</span>
-                            <span className="block text-xl sm:text-2xl text-gray-900 font-bold">24</span>
-                            <span className="block text-gray-600 text-xs sm:text-sm">from last month</span>
-                        </div>
-                        <span className="bg-gradient-to-r from-green-500 to-green-600 rounded-full py-1 px-1 flex-shrink-0">
-                            <PhilippinePeso width={40} height={40} className="sm:w-[50px] sm:h-[50px] p-2 sm:p-3 text-white" />
-                        </span>
-                    </DashboardCard>
-
-                    {/* Bookings */}
-                    <DashboardCard className="py-6 sm:py-8 sm:col-span-2 lg:col-span-1 xl:col-span-2">
-                        <div className="flex flex-col space-y-1">
-                            <span className="block text-base sm:text-lg text-gray-800 font-bold">Bookings</span>
-                            <span className="block text-xl sm:text-2xl text-gray-900 font-bold">24</span>
-                            <span className="block text-gray-600 text-xs sm:text-sm">from last month</span>
-                        </div>
-                        <span className="bg-gradient-to-r from-violet-500 to-violet-600 rounded-full py-1 px-1 flex-shrink-0">
-                            <CalendarPlus width={40} height={40} className="sm:w-[50px] sm:h-[50px] p-2 sm:p-3 text-white" />
-                        </span>
-                    </DashboardCard>
-                </div>
-
-                {/* Chart Section */}
-                <div className="p-4 sm:p-5 sm:px-7 bg-white rounded-xl border border-gray-300 shadow-xl flex flex-col w-full">
-                    <span className="font-bold text-sm sm:text-md text-gray-800 mb-4 sm:mb-5">Rating Trend</span>
-                    <div className="flex-1 min-h-[200px] sm:min-h-[250px]">
-                        <LineChart />
                     </div>
-                </div>
-            </div>
 
-            {/* Tabs Section */}
-            <div className="mt-6 grid grid-cols-2 gap-3">
-                <TabGroup className="mt-6 sm:mt-8">
-                    <TabList className="flex gap-2 sm:gap-4 mb-3 overflow-x-auto pb-2">
-                        <Tab className="rounded-full px-3 sm:px-5 py-2 sm:py-3 text-xs sm:text-sm font-semibold text-gray-700 focus:outline-none data-selected:bg-white shadow-xl data-selected:text-gray-800 data-hover:bg-gray-100 transition-colors whitespace-nowrap">
-                            Applied Events
-                        </Tab>
-
-                        <Tab className="rounded-full px-3 sm:px-5 py-2 sm:py-3 text-xs sm:text-sm font-semibold text-gray-700 focus:outline-none data-selected:bg-white shadow-xl data-selected:text-gray-800 data-hover:bg-white transition-colors whitespace-nowrap">
-                            Reviews
-                        </Tab>
-
-                        <Tab className="rounded-full px-3 sm:px-5 py-2 sm:py-3 text-xs sm:text-sm font-semibold text-gray-700 focus:outline-none data-selected:bg-white shadow-xl data-selected:text-gray-800 data-hover:bg-white transition-colors whitespace-nowrap">
-                            Calendars
-                        </Tab>
-
-                        <Tab className="rounded-full px-3 sm:px-5 py-2 sm:py-3 text-xs sm:text-sm font-semibold text-gray-700 focus:outline-none data-selected:bg-white shadow-xl data-selected:text-gray-800 data-hover:bg-white transition-colors whitespace-nowrap">
-                            Offers
-                        </Tab>
-
-                        <Tab className="rounded-full px-3 sm:px-5 py-2 sm:py-3 text-xs sm:text-sm font-semibold text-gray-700 focus:outline-none data-selected:bg-white shadow-xl data-selected:text-gray-800 data-hover:bg-white transition-colors whitespace-nowrap">
-                            Contracts
-                        </Tab>
-                    </TabList>
-
-                    <TabPanels className="rounded-xl border border-gray-300 bg-white shadow-xl">
-                        {/* Applied Events Tab */}
-                        <TabPanel className="p-3 sm:p-5 sm:px-7">
-                            <div className="flex flex-col space-y-3 sm:space-y-4">
-                                {applications.map((application) => (
-                                    <div key={application.id}>
-                                        <div className={`flex flex-col sm:flex-row gap-3 sm:gap-2 justify-between ${AppliedColor(application.status)} items-start sm:items-center p-3 sm:py-4 rounded-lg sm:px-5`}>
-                                            <div className="flex items-start sm:items-center space-x-3 flex-1">
-                                                <Calendar size={20} className="sm:size-6 text-blue-600 bg-gray-200 rounded-full h-8 w-8 sm:h-9 sm:w-9 p-1.5 sm:p-2 flex-shrink-0 mt-0.5 sm:mt-0" />
-                                                <div className="flex flex-col min-w-0 flex-1">
-                                                    <span className="font-medium text-gray-900 text-sm sm:text-base break-words">
-                                                        Event name: {events.find(events => events.id === application.event_id)?.event_name}
-                                                    </span>
-                                                    <span className="text-gray-500 text-xs sm:text-sm">
-                                                        Applied: {application.AppliedAt?.toDate().toLocaleDateString([], {
-                                                            year: 'numeric',
-                                                            month: 'long',
-                                                            day: 'numeric'
-                                                        })}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <button
-                                                className={`px-3 sm:px-4 py-1 sm:py-1.5 rounded-lg text-white text-xs sm:text-sm flex-shrink-0 w-full sm:w-auto ${application.status === 'Approved'
-                                                    ? 'bg-green-600 hover:bg-green-700'
-                                                    : application.status === 'Pending'
-                                                        ? 'bg-yellow-500 hover:bg-yellow-600'
-                                                        : 'bg-red-500 hover:bg-red-600'
-                                                    } transition-colors`}
-                                            >
-                                                {application.status}
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                                {applications.length === 0 && (
-                                    <div className="text-center py-8 text-gray-500 text-sm sm:text-base">
-                                        No applications found
-                                    </div>
-                                )}
+                    {/* Overview Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                        {[
+                            { title: "On-Time Delivery", value: onTimeRate.toFixed(0) + "%", icon: Package, color: "from-blue-500 to-blue-600" },
+                            {
+                                title: "Price Competitiveness", value: competitiveness >= 0 ? competitiveness.toFixed(1) + "%" : competitiveness.toFixed(1) + "%", icon: ChartNoAxesCombined, color: "from-yellow-500 to-yellow-600"
+                            },
+                            { title: "Revenue", value: "₱24,000", icon: PhilippinePeso, color: "from-green-500 to-green-600" },
+                            { title: "Bookings", value: "12", icon: CalendarPlus, color: "from-violet-500 to-violet-600" },
+                        ].map(({ title, value, icon: Icon, color }, i) => (
+                            <div
+                                key={i}
+                                className="bg-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all border border-gray-100 flex justify-between items-center"
+                            >
+                                <div>
+                                    <p className="text-sm text-gray-500">{title}</p>
+                                    <p className="text-2xl font-bold text-gray-800">{value}</p>
+                                </div>
+                                <div className={`p-3 rounded-full bg-gradient-to-r ${color}`}>
+                                    <Icon className="text-white w-6 h-6" />
+                                </div>
                             </div>
-                        </TabPanel>
+                        ))}
+                    </div>
 
-                        {/* Reviews Tab */}
-                        <TabPanel>
-                            {reviews && reviews.length > 0 ? (
-                                <div className="px-3 sm:px-5 py-3 sm:py-5">
-                                    <div className="space-y-4 sm:space-y-6">
-                                        {reviews.map((review, index) => (
-                                            <div key={index} className="border-b border-gray-100 bg-gray-100 p-3 sm:p-5 rounded-md pb-4 sm:pb-6 last:border-b-0">
-                                                <div className="flex items-start gap-3 sm:gap-4">
-                                                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold text-sm sm:text-base flex-shrink-0">
-                                                        {review.event_name?.charAt(0).toUpperCase() || 'A'}
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
-                                                            <h4 className="font-semibold text-gray-900 text-sm sm:text-base break-words">
-                                                                {review.event_name || 'Anonymous'}
-                                                            </h4>
-                                                            <div className="flex items-center gap-1 sm:gap-2">
-                                                                <div className="flex items-center gap-0.5 sm:gap-1">
-                                                                    {[...Array(5)].map((_, i) => (
-                                                                        <Star
-                                                                            key={i}
-                                                                            size={14}
-                                                                            className={`sm:size-4 ${i < review.rating ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'}`}
-                                                                        />
-                                                                    ))}
-                                                                </div>
-                                                                <span className="text-xs sm:text-sm text-gray-500 whitespace-nowrap">
-                                                                    {review?.createdAt ? formatDistanceToNow(new Date(review.createdAt.seconds * 1000), { addSuffix: true }) : 'Recent'}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                        <p className="text-gray-700 text-sm sm:text-base break-words">
-                                                            {review.comment || 'Great service!'}
+                    {/* Charts */}
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-10">
+                        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-md hover:shadow-lg transition-all">
+                            <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2"><ChartNoAxesCombined /> Performance Metrics</h3>
+                            <BarChart
+                                labels={labels}
+                                datasets={datasets}
+                                title="Supplier Performance"
+                                yLabel="%"
+                            />
+
+                        </div>
+                        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-md hover:shadow-lg transition-all">
+                            <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2"><TrendingUp /> Raiting Trends</h3>
+                            <LineChart
+                                className="w-full h-64"
+                                dataPoints={monthlyRatings}
+                                labels={['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']}
+                                label="Average Rating"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Tabs Section */}
+                    <TabGroup>
+                        <TabList className="flex flex-wrap gap-2 sm:gap-3 mb-6">
+                            {["Applied Events", "Reviews", "Calendar", "Offers", "Contracts"].map((tab, i) => (
+                                <Tab
+                                    key={i}
+                                    className="rounded-full px-5 py-2 text-sm font-medium border border-gray-200 bg-white hover:bg-gray-100 data-[selected]:bg-gradient-to-r data-[selected]:from-blue-500 data-[selected]:to-violet-600 data-[selected]:text-white shadow-sm transition-all"
+                                >
+                                    {tab}
+                                </Tab>
+                            ))}
+                        </TabList>
+
+                        <TabPanels className="bg-white border border-gray-200 rounded-2xl shadow-md p-3 transition-all">
+                            {/* Applied Events */}
+                            <TabPanel>
+                                {applications.length ? (
+                                    <div className="space-y-3">
+                                        {applications.map((app) => (
+                                            <div
+                                                key={app.id}
+                                                className={`p - 4 rounded - xl flex justify - between items - center border ${AppliedColor(app.status)} hover:shadow-lg transition-all`}
+                                            >
+                                                <div className="flex gap-3 items-center">
+                                                    <Calendar className="text-blue-500" />
+                                                    <div>
+                                                        <p className="font-semibold text-gray-800">
+                                                            {events.find((ev) => ev.id === app.event_id)?.event_name}
+                                                        </p>
+                                                        <p className="text-gray-500 text-xs">
+                                                            Applied:{" "}
+                                                            {app.AppliedAt?.toDate().toLocaleDateString("en-US", {
+                                                                month: "long",
+                                                                day: "numeric",
+                                                                year: "numeric",
+                                                            })}
                                                         </p>
                                                     </div>
                                                 </div>
+                                                <span
+                                                    className={`px-3 py-1 text-xs rounded-full font-medium ${app.status === "Approved"
+                                                        ? "bg-green-100 text-green-700"
+                                                        : app.status === "Pending"
+                                                            ? "bg-yellow-100 text-yellow-700"
+                                                            : "bg-red-100 text-red-700"
+                                                        }`}
+                                                >
+                                                    {app.status}
+                                                </span>
                                             </div>
                                         ))}
                                     </div>
-                                </div>
-                            ) : (
-                                <div className="text-center py-8 text-gray-500 text-sm sm:text-base">
-                                    <span className="block font-semibold">No reviews yet.</span>
-                                </div>
-                            )}
-                        </TabPanel>
+                                ) : (
+                                    <p className="text-center text-gray-500 py-10">No applications found.</p>
+                                )}
+                            </TabPanel >
 
-                        {/* Calendar Tab */}
-                        <TabPanel>
-                            <div className="p-3 sm:p-6 lg:p-10">
-                                <div className="overflow-x-auto">
-                                    <div className="min-w-[300px]">
-                                        <FullCalendar
-                                            plugins={[dayGridPlugin]}
-                                            initialView="dayGridMonth"
-                                            height="auto"
-                                            aspectRatio={window.innerWidth < 768 ? 1 : 1.35}
-                                            headerToolbar={{
-                                                left: 'prev,next',
-                                                center: 'title',
-                                                right: window.innerWidth < 640 ? '' : 'today'
-                                            }}
-                                            titleFormat={window.innerWidth < 640 ? { month: 'short', year: 'numeric' } : { month: 'long', year: 'numeric' }}
-                                            events={[
-                                                { title: 'Wedding', date: '2025-06-18' },
-                                                { title: 'Party', date: '2025-06-21' }
-                                            ]}
-                                        />
+                            {/* Reviews */}
+                            < TabPanel >
+                                {
+                                    reviews.length ? (
+                                        <div className="space-y-4">
+                                            {reviews.map((rev, i) => (
+                                                <div
+                                                    key={i}
+                                                    className="p-4 rounded-xl border border-gray-100 bg-gray-50 hover:bg-gray-100 transition-all shadow-sm"
+                                                >
+                                                    <div className="flex items-start gap-3">
+                                                        {userProfiles.find((u) => u.id === rev.user_id)?.profile_pic ? (
+                                                            <img
+                                                                src={userProfiles.find((u) => u.id === rev.user_id).profile_pic}
+                                                                alt="Reviewer"
+                                                                className="w-10 h-10 rounded-full object-cover"
+                                                            />
+                                                        ) : (
+                                                            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-violet-600 text-white font-semibold flex items-center justify-center rounded-full">
+                                                                {rev.reviewer_name?.[0]?.toUpperCase() || "A"}
+                                                            </div>
+                                                        )}
+                                                        <div className="flex-1">
+                                                            <p className="font-semibold text-gray-800">{rev.reviewer_name}</p>
+                                                            <div className="flex items-center gap-1 mt-1">
+                                                                {[...Array(5)].map((_, j) => (
+                                                                    <Star
+                                                                        key={j}
+                                                                        className={`w-4 h-4 ${j < rev.rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300"
+                                                                            }`}
+                                                                    />
+                                                                ))}
+                                                            </div>
+                                                            <p className="text-sm text-gray-700 mt-2">{rev.comment}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-center text-gray-500 py-10">No reviews yet.</p>
+                                    )
+                                }
+                            </TabPanel >
+
+                            {/* Calendar Tab */}
+                            < TabPanel >
+                                <div className="p-3 sm:p-6 lg:p-10">
+                                    <div className="overflow-x-auto">
+                                        <div className="min-w-[300px]">
+                                            <FullCalendar
+                                                plugins={[dayGridPlugin]}
+                                                initialView="dayGridMonth"
+                                                height="auto"
+                                                aspectRatio={window.innerWidth < 768 ? 1 : 1.35}
+                                                headerToolbar={{
+                                                    left: 'prev,next',
+                                                    center: 'title',
+                                                    right: window.innerWidth < 640 ? '' : 'today'
+                                                }}
+                                                titleFormat={window.innerWidth < 640 ? { month: 'short', year: 'numeric' } : { month: 'long', year: 'numeric' }}
+                                                events={activeEventsContracts.map(e => ({ title: e.event_name, date: e.event_date?.date_value }))}
+
+                                            />
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        </TabPanel>
+                            </TabPanel >
 
-                        {/* Offers Tab */}
-                        <TabPanel>
-                            <div className="p-1 sm:p-3 lg:p-5 flex flex-col gap-3">
-                                {pendingContracts.map((offers, index) => (
-                                    <div key={index}>
-                                        <div className={`flex flex-col sm:flex-row gap- sm:gap-2 justify-between ${AppliedColor(offers.status)} shadow-gray-200 shadow-lg items-start sm:items-center p-3 sm:py-4 rounded-lg sm:px-5`}>
-                                            <div className="flex items-start sm:items-center space-x-3 flex-1">
-                                                <Calendar size={20} className="sm:size-6 text-blue-600 bg-gray-200 rounded-full h-8 w-8 sm:h-9 sm:w-9 p-1.5 sm:p-2 flex-shrink-0 mt-0.5 sm:mt-0" />
-                                                <div className="flex flex-col min-w-0 flex-1">
-                                                    <span className="font-medium text-gray-900 text-sm sm:text-base break-words">
-                                                        Event name: {contractEventsforPending[index]?.event_name}
-                                                    </span>
+                            {/* Offers Tab */}
+                            < TabPanel >
+                                <div className="p-3 flex flex-col gap-3">
+                                    {pendingContracts.map((offers, index) => (
+                                        <div key={index}>
+                                            <div className={`flex flex-col sm:flex-row gap- sm:gap-2 justify-between ${AppliedColor(offers.status)} shadow-gray-200 shadow-lg items-start sm:items-center p-3 sm:py-4 rounded-lg sm:px-5`}>
+                                                <div className="flex items-start sm:items-center space-x-3 flex-1">
+                                                    <Calendar size={20} className="sm:size-6 text-blue-600 bg-gray-200 rounded-full h-8 w-8 sm:h-9 sm:w-9 p-1.5 sm:p-2 flex-shrink-0 mt-0.5 sm:mt-0" />
+                                                    <div className="flex flex-col min-w-0 flex-1">
+                                                        <span className="font-medium text-gray-900 text-sm sm:text-base break-words">
+                                                            Event name: {contractEventsforPending[index]?.event_name}
+                                                        </span>
 
-                                                    <span className="text-gray-500 text-xs sm:text-sm">
-                                                        Applied: {offers.created_at.toDate().toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                                    </span>
+                                                        <span className="text-gray-500 text-xs sm:text-sm">
+                                                            Applied: {offers.created_at.toDate().toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                        </span>
+                                                    </div>
                                                 </div>
+
+                                                <ContractModal event_id={offers.event_id} supplier_id={offers.supplier_id} supplierData={supplier} eventData={contractEventsforPending[index]} user_id={userData.id} />
+
                                             </div>
-
-                                            <ContractModal event_id={offers.event_id} supplier_id={offers.supplier_id} supplierData={supplier} eventData={contractEventsforPending[index]} user_id={userData.id} />
-
                                         </div>
+                                    ))}
+
+                                    {pendingContracts.length === 0 && (
+                                        <div className="text-center py-8 text-gray-500 text-sm sm:text-base">
+                                            No Offers Found
+                                        </div>
+                                    )}
+                                </div>
+                            </TabPanel >
+
+                            {/* Offers Tab */}
+                            < TabPanel >
+                                <div className="p-3 flex flex-col gap-3">
+                                    {activeContracts.map((offers, index) => (
+                                        <div key={index}>
+                                            <div className={`flex flex-col sm:flex-row gap- sm:gap-2 justify-between ${AppliedColor(offers.status)} shadow-gray-200 shadow-lg items-start sm:items-center p-3 sm:py-4 rounded-lg sm:px-5`}>
+                                                <div className="flex items-start sm:items-center space-x-3 flex-1">
+                                                    <Calendar size={20} className="sm:size-6 text-blue-600 bg-gray-200 rounded-full h-8 w-8 sm:h-9 sm:w-9 p-1.5 sm:p-2 flex-shrink-0 mt-0.5 sm:mt-0" />
+                                                    <div className="flex flex-col min-w-0 flex-1">
+                                                        <span className="font-medium text-gray-900 text-sm sm:text-base break-words">
+                                                            Event name: {contractEventsforActive[index]?.event_name}
+                                                        </span>
+
+                                                        <span className="text-gray-500 text-xs sm:text-sm">
+                                                            Contract: {offers.created_at?.toDate()?.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <ContractModal userData={userData} event_id={offers.event_id} supplier_id={offers.supplier_id} supplierData={supplier} eventData={contractEventsforActive[index]} user_id={userData.id} />
+
+                                            </div>
+                                        </div>
+                                    ))}
+
+                                    {activeContracts.length === 0 && (
+                                        <div className="text-center py-8 text-gray-500 text-sm sm:text-base">
+                                            No Contracts Found
+                                        </div>
+                                    )}
+                                </div>
+                            </TabPanel >
+
+                        </TabPanels >
+                    </TabGroup >
+
+                    {/* Recent Contracts Sidebar */}
+                    < div className="lg:col-span-1 mt-5" >
+                        <div className="bg-white border border-gray-300 shadow-xl rounded-xl p-5 flex flex-col h-full">
+                            <h3 className="text-lg font-bold text-gray-800 mb-4">📑 Recent Done Contracts</h3>
+
+                            <div className="space-y-3 overflow-y-auto max-h-[400px] pr-2">
+                                {completeContracts.slice(0, 5).map((contract, index) => (
+                                    <div
+                                        key={contract.id}
+                                        className="p-3 rounded-lg border flex justify-between items-center border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors shadow-sm"
+                                    >
+                                        <div>
+                                            <p className="font-semibold text-gray-800 text-sm">
+                                                {contractEventsforComplete[index]?.event_name || "Untitled Event"}
+                                            </p>
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                {contract.created_at?.toDate().toLocaleDateString([], {
+                                                    year: 'numeric',
+                                                    month: 'short',
+                                                    day: 'numeric'
+                                                })}
+                                            </p>
+                                            <span className={`inline-block mt-2 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700`}>
+                                                {contract.status}
+                                            </span>
+                                        </div>
+
+                                        <div className="flex gap-2">
+                                            <ContractModal userData={userData} event_id={contract.event_id} supplier_id={contract.supplier_id} supplierData={supplier} eventData={contractEventsforComplete[index]} user_id={userData.id} />
+                                            {reviewed.find(rev => rev.reviewed_id === contract.planner_id && rev.user_id === userData.id && contract.event_id === rev.event_id) ? (
+                                                <span className="text-white py-1 px-4 rounded-md text-sm bg-gray-400">Reviewed</span>
+                                            ) : (
+                                                <Review reviewed_id={contract?.planner_id} reviewer_name={supplier.supplier_name} eventData={contract} />
+                                            )}
+                                        </div>
+
                                     </div>
                                 ))}
 
-                                {pendingContracts.length === 0 && (
-                                    <div className="text-center py-8 text-gray-500 text-sm sm:text-base">
-                                        No Offers Found
-                                    </div>
+                                {completeContracts.length === 0 && (
+                                    <p className="text-center text-gray-500 text-sm">No recent contracts</p>
                                 )}
                             </div>
-                        </TabPanel>
-
-                        {/* Offers Tab */}
-                        <TabPanel>
-                            <div className="p-1 sm:p-3 lg:p-5 flex flex-col gap-3">
-                                {activeContracts.map((offers, index) => (
-                                    <div key={index}>
-                                        <div className={`flex flex-col sm:flex-row gap- sm:gap-2 justify-between ${AppliedColor(offers.status)} shadow-gray-200 shadow-lg items-start sm:items-center p-3 sm:py-4 rounded-lg sm:px-5`}>
-                                            <div className="flex items-start sm:items-center space-x-3 flex-1">
-                                                <Calendar size={20} className="sm:size-6 text-blue-600 bg-gray-200 rounded-full h-8 w-8 sm:h-9 sm:w-9 p-1.5 sm:p-2 flex-shrink-0 mt-0.5 sm:mt-0" />
-                                                <div className="flex flex-col min-w-0 flex-1">
-                                                    <span className="font-medium text-gray-900 text-sm sm:text-base break-words">
-                                                        Event name: {contractEventsforActive[index]?.event_name}
-                                                    </span>
-
-                                                    <span className="text-gray-500 text-xs sm:text-sm">
-                                                        Contract: {offers.created_at?.toDate()?.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                                    </span>
-                                                </div>
-                                            </div>
-
-                                            <ContractModal userData={userData} event_id={offers.event_id} supplier_id={offers.supplier_id} supplierData={supplier} eventData={contractEventsforActive[index]} user_id={userData.id} />
-
-                                        </div>
-                                    </div>
-                                ))}
-
-                                {activeContracts.length === 0 && (
-                                    <div className="text-center py-8 text-gray-500 text-sm sm:text-base">
-                                        No Contracts Found
-                                    </div>
-                                )}
-                            </div>
-                        </TabPanel>
-
-                    </TabPanels>
-                </TabGroup>
-
-                {/* Recent Contracts Sidebar */}
-                <div className="lg:col-span-1">
-                    <div className="bg-white border border-gray-300 shadow-xl rounded-xl p-5 flex flex-col h-full">
-                        <h3 className="text-lg font-bold text-gray-800 mb-4">📑 Recent Done Contracts</h3>
-
-                        <div className="space-y-3 overflow-y-auto max-h-[400px] pr-2">
-                            {completeContracts.slice(0, 5).map((contract, index) => (
-                                <div
-                                    key={contract.id}
-                                    className="p-3 rounded-lg border flex justify-between border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors shadow-sm"
-                                >
-                                    <div>
-                                        <p className="font-semibold text-gray-800 text-sm">
-                                            {contractEventsforActive[index]?.event_name || "Untitled Event"}
-                                        </p>
-                                        <p className="text-xs text-gray-500 mt-1">
-                                            {contract.created_at?.toDate().toLocaleDateString([], {
-                                                year: 'numeric',
-                                                month: 'short',
-                                                day: 'numeric'
-                                            })}
-                                        </p>
-                                        <span className={`inline-block mt-2 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700`}>
-                                            {contract.status}
-                                        </span>
-                                    </div>
-
-                                    <ContractModal userData={userData} event_id={contract.event_id} supplier_id={contract.supplier_id} supplierData={supplier} eventData={contractEventsforActive[index]} user_id={userData.id} />
-
-                                </div>
-                            ))}
-
-                            {completeContracts.length === 0 && (
-                                <p className="text-center text-gray-500 text-sm">No recent contracts</p>
-                            )}
                         </div>
-                    </div>
-                </div>
+                    </div >
 
-            </div>
+                </div >
+            )
+            }
         </>
     )
 }  

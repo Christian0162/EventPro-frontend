@@ -1,358 +1,222 @@
-import { useState, useEffect } from "react"
-import { collection, getDocs, onSnapshot } from "firebase/firestore";
-import { db } from "../../firebase/firebase";
+import { useMemo } from "react"
 import { Title } from "react-head";
-import DashboardCard from "../../components/DashboardCards";
-import { Users, IdCard, CalendarPlus, Calendar } from "lucide-react";
-import { Tab, TabList, TabPanels, TabPanel, TabGroup } from "@headlessui/react";
-import { BarChart, PieChart } from "../../components/Charts";
+import { Users, IdCard, CalendarPlus, Calendar, BarChart3, ChartNoAxesCombined, TrendingUp, AlertTriangle, ReceiptText, PhilippinePeso, Package, BanknoteArrowUp } from "lucide-react";
+import { Tab, TabList, TabPanels, TabGroup, TabPanel } from "@headlessui/react";
+import { PieChart, BarChart, LineChart } from "../../components/Charts";
+import PageLoading from "../../components/PageLoading";
+import { useFetchAllVerification } from "../../hooks/useVerification";
+import { useFetchUsers } from "../../hooks/useUsers";
+import { useFetchSuppliers } from "../../hooks/useSupplier";
+import { useFetchEvents } from "../../hooks/useEvents";
+import { useFetchAllTransaction } from "../../hooks/useTransaction";
+import { useFetchContract } from "../../hooks/useContract";
 
-export default function AdminDashboard() {
+export default function AdminDashboard({ userData }) {
+    const { verifications, isLoading: isVerificationLoading } = useFetchAllVerification()
+    const { users, isLoading: isUsersLoading } = useFetchUsers()
+    const { suppliers } = useFetchSuppliers()
+    const { events } = useFetchEvents()
+    const { transactions } = useFetchAllTransaction()
+    const { contracts } = useFetchContract()
 
-    const [isLoading, setIsLoading] = useState(false);
-    const [supplierVerification, setSupplierVerification] = useState([])
-    const [eventVerification, setEventVerification] = useState([])
+    const allLoading = isUsersLoading || isVerificationLoading
 
-    useEffect(() => {
-        setIsLoading(true)
-        try {
-            const unsubscribe = onSnapshot(collection(db, "verification"), async (onsnapshot) => {
-                const verified = onsnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+    const pendingPlanner = users.filter(user => user.role === "Event Planner" && user.verification_status === "pending")
+    const pendingSupplier = users.filter(user => user.role === "Supplier" && user.verification_status === "pending")
 
-                const onSnapshotUser = await getDocs(collection(db, "users"))
-                const user = onSnapshotUser.docs.map(supplier => ({ id: supplier.id, ...supplier.data() }))
-                const filteredSupplier = user.filter(user => user.role === "Supplier" && user.verification_status === "pending")
-                const filteredEvent = user.filter(user => user.role === "Event Planner" && user.verification_status === "pending")
+    const supplierVerification = verifications.filter(v => pendingSupplier.some(sup => v.id === sup.id))
+    const eventVerification = verifications.filter(v => pendingPlanner.some(sup => v.id === sup.id))
 
-                const supplierFilteredVerification = verified.filter(verified => filteredSupplier.some(supplier => !verified.is_verified && verified.id === supplier.id))
-                const eventFilteredVerification = verified.filter(verified => filteredEvent.some(event => !verified.is_verified && verified.id === event.id))
-                setSupplierVerification(supplierFilteredVerification)
-                setEventVerification(eventFilteredVerification)
-                setIsLoading(false)
+    console.log(transactions)
 
-            })
+    const totalUsers = users.length
+    const totalEarnings = transactions.reduce((sum, t) => sum + (Number(t.platform_fee) || 0), 0);
+    const activeEvents = useMemo(() => events.filter(e => e.status !== "completed").length, [events]);
+    const totalSuppliers = suppliers.length;
+    const verifiedUsers = users.filter(s => s.verification_status === "verified").length;
+    const pendingRequests = supplierVerification.length + eventVerification.length;
+    const totalContracts = contracts.length;
+    const topEarningSupplier = useMemo(() => {
+        if (!transactions.length) return "N/A";
+        const supplierEarnings = {};
+        transactions.forEach(t => {
+            supplierEarnings[t.supplier_id] = (supplierEarnings[t.supplier_id] || 0) + t.amount;
+        });
+        const topSupplierId = Object.keys(supplierEarnings).reduce((a, b) => supplierEarnings[a] > supplierEarnings[b] ? a : b);
+        const topSupplier = suppliers.find(s => s.id === topSupplierId);
+        return topSupplier ? topSupplier.name : "N/A";
+    }, [transactions, suppliers]);
 
-            return () => unsubscribe()
-        }
-        catch (e) {
-            console.error(e)
-        }
+    const userCountsPerMonth = Array(12).fill(null).map((_, month) =>
+        users.filter(u => {
+            const date = u.createdAt?.toDate ? u.createdAt.toDate() : null;
+            return date && date.getMonth() === month;
+        }).length
+    );
 
-    }, [])
 
-    const AppliedColor = (status) => {
 
-        const colors = {
-            approved: 'bg-green-100',
-            pending: 'bg-yellow-100',
-            reject: 'bg-red-100',
-        }
-        return colors[status]
-    }
+    const AppliedColor = (status) => ({
+        approved: 'bg-green-100',
+        pending: 'bg-yellow-100',
+        reject: 'bg-red-100',
+    }[status]);
 
+    // Example Pie chart data (you can replace with actual logic)
+    const pieChartData = useMemo(() => ({
+        labels: ["Catering", "Venue", "Photography", "Others"],
+        dataValues: [45, 30, 15, 10],
+        backgroundColors: ["#60a5fa", "#a78bfa", "#f97316", "#34d399"],
+        borderColors: ["#60a5fa", "#a78bfa", "#f97316", "#34d399"]
+    }), []);
 
     return (
         <>
-            {isLoading && (
-                <div className="flex justify-center items-center  py-[15rem]">
-                    <div className="h-12 w-12 border border-t-blue-600 rounded-full animate-spin "></div>
-                </div>
-            )}
+            {allLoading && <PageLoading />}
 
-            {!isLoading && (
+            {!allLoading && (
                 <>
-                    <Title>Admin - Dashboard</Title>
-                    <div className="flex justify-between items-center flex-col lg:flex-row md:flex-row">
-                        <div className="flex flex-col">
-                            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Admin Dashboard</h1>
+                    <Title>Admin Dashboard</Title>
+
+                    {/* Header */}
+                    <div className="flex flex-col lg:flex-row justify-between items-start gap-4 mb-10">
+                        <div>
+                            <h1 className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-blue-600 to-violet-600 bg-clip-text text-transparent">
+                                Admin Dashboard
+                            </h1>
+                            <p className="text-gray-600 text-sm sm:text-base mt-1">
+                                Welcome back, <span className="font-semibold text-gray-800">{userData?.first_name}</span>
+                            </p>
                         </div>
+                    </div>
+
+                    {/* Stats Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+                        {[
+                            { title: "Total Platform Earnings", value: `₱${(totalEarnings)}`, icon: PhilippinePeso, color: "from-violet-500 to-violet-600" },
+                            { title: "Active Events", value: activeEvents, icon: Calendar, color: "from-yellow-500 to-yellow-600" },
+                            { title: "Total Suppliers", value: totalSuppliers, icon: Package, color: "from-blue-500 to-blue-600" },
+                            { title: "Verified Users", value: verifiedUsers, icon: IdCard, color: "from-green-500 to-green-600" },
+                            { title: "Pending Requests", value: pendingRequests, icon: CalendarPlus, color: "from-red-500 to-red-600" },
+                            { title: "Total Contracts", value: totalContracts, icon: ReceiptText, color: "from-orange-500 to-orange-600" },
+                            { title: "Top Earning Supplier", value: topEarningSupplier, icon: BanknoteArrowUp, color: "from-pink-500 to-pink-600" },
+                            { title: "Total Users", value: totalUsers, icon: Users, color: "from-pink-500 to-pink-600" },
+                            // { title: "Reported Issues", value: reportedIssues.length, icon: AlertTriangle, color: "from-gray-500 to-gray-600" },
+                        ].map(({ title, value, icon: Icon, color }, i) => (
+                            <div key={i} className="relative bg-white rounded-2xl p-6 shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-100 group overflow-hidden">
+                                <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 bg-gradient-to-r ${color} transition-opacity duration-300`} />
+                                <div className="flex justify-between items-center relative z-10">
+                                    <div>
+                                        <p className="text-sm text-gray-500 font-medium">{title}</p>
+                                        <p className="text-3xl font-bold text-gray-800 mt-1">{value}</p>
+                                    </div>
+                                    <div className={`w-12 h-12 flex items-center justify-center rounded-full bg-gradient-to-r ${color} shadow-md`}>
+                                        <Icon className="text-white w-6 h-6" />
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
                     </div>
 
                     {/* Charts Section */}
-                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6 mt-5">
-
-                        {/* Pie Chart - Supplier Distribution */}
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6 mb-8">
+                        {/* Pie Chart */}
                         <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100">
-                            <div className="mb-4 sm:mb-6">
-                                <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-2">
-                                    Supplier Distribution
-                                </h3>
-                                <p className="text-sm text-gray-500">Number of suppliers by category</p>
-                            </div>
-
-                            <div className="mb-4 sm:mb-6 flex justify-center">
-                                <div className="w-full max-w-[250px]">
-                                    <PieChart />
-                                </div>
-                            </div>
-
-                            {/* Distribution Stats */}
-                            <div className="space-y-3">
-                                <div className="flex justify-between items-center">
-                                    <div className="flex items-center space-x-2">
-                                        <div className="w-3 h-3 bg-blue-500 rounded-full flex-shrink-0"></div>
-                                        <span className="text-sm text-gray-600">Catering</span>
-                                    </div>
-                                    <span className="text-sm font-medium">45%</span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <div className="flex items-center space-x-2">
-                                        <div className="w-3 h-3 bg-purple-500 rounded-full flex-shrink-0"></div>
-                                        <span className="text-sm text-gray-600">Venue</span>
-                                    </div>
-                                    <span className="text-sm font-medium">30%</span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <div className="flex items-center space-x-2">
-                                        <div className="w-3 h-3 bg-orange-500 rounded-full flex-shrink-0"></div>
-                                        <span className="text-sm text-gray-600">Photography</span>
-                                    </div>
-                                    <span className="text-sm font-medium">15%</span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <div className="flex items-center space-x-2">
-                                        <div className="w-3 h-3 bg-green-500 rounded-full flex-shrink-0"></div>
-                                        <span className="text-sm text-gray-600">Others</span>
-                                    </div>
-                                    <span className="text-sm font-medium">10%</span>
+                            <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2"><BarChart3 /> Supplier Distribution</h3>
+                            <div className="flex justify-center">
+                                <div className="w-full max-w-[250px] mt-5">
+                                    <PieChart
+                                        className="w-full h-64"
+                                        labels={pieChartData.labels}
+                                        dataValues={pieChartData.dataValues}
+                                        backgroundColors={pieChartData.backgroundColors}
+                                        borderColors={pieChartData.borderColors}
+                                    />
                                 </div>
                             </div>
                         </div>
 
-                        {/* Bar Chart - Supplier Category Comparison */}
-                        <div className="xl:col-span-2 bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100">
-                            <div className="flex flex-col lg:flex-row justify-between items-start mb-4 sm:mb-6 gap-4">
-                                <div className="w-full lg:w-auto">
-                                    <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-2">
-                                        Supplier Category Comparison
-                                    </h3>
-                                    <p className="text-sm text-gray-500 mb-4">Average rating over time</p>
+                        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-md hover:shadow-lg transition-all">
+                            <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2"><TrendingUp />Registered Users Overview</h3>
+                            <LineChart
+                                className="w-full h-64"
+                                dataPoints={userCountsPerMonth}
+                                labels={['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']}
+                                label="Registerd Users"
+                            />
+                        </div>
 
-                                    {/* Legend */}
-                                    <div className="grid grid-cols-2 sm:flex sm:items-center sm:space-x-6 gap-2 sm:gap-0">
-                                        <div className="flex items-center space-x-2">
-                                            <div className="w-3 h-3 bg-blue-500 rounded-full flex-shrink-0"></div>
-                                            <span className="text-sm text-gray-600">Catering</span>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <div className="w-3 h-3 bg-purple-500 rounded-full flex-shrink-0"></div>
-                                            <span className="text-sm text-gray-600">Venue</span>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <div className="w-3 h-3 bg-orange-500 rounded-full flex-shrink-0"></div>
-                                            <span className="text-sm text-gray-600">Photography</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="text-left lg:text-right w-full lg:w-auto">
-                                    <div className="text-sm text-gray-500">This Month</div>
-                                    <div className="text-xl sm:text-2xl font-bold text-gray-800">4.8</div>
-                                    <div className="text-sm text-green-600">+0.2 from last month</div>
-                                </div>
-                            </div>
+                        {/* Bar Chart */}
+                        <div className="xl:col-span-2 bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100">
+                            <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2"><ChartNoAxesCombined /> Supplier Verification Comparison</h3>
                             <div className="mt-4 sm:mt-6 overflow-x-auto">
                                 <div className="min-w-[300px]">
-                                    <BarChart />
+                                    <BarChart
+                                        labels={["Suppliers", "Planners"]}
+                                        datasets={[
+                                            { label: "Pending", data: [supplierVerification.length, eventVerification.length], backgroundColor: "#facc15", borderRadius: 10 },
+                                        ]}
+                                        title="Pending Verifications"
+                                        xLabel="Roles"
+                                        yLabel="Count"
+                                    />
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
-                        {/* Total Supplier*/}
-                        <DashboardCard>
-                            <div className="flex flex-col space-y-1">
-                                <span className="block text-lg text-gray-800 font-bold">Active Events</span>
-                                <span className="block text-2xl text-gray-900 font-bold">24</span>
-                                <span className="block text-gray-600 text-sm">from last month</span>
-                            </div>
-                            <span className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-full py-1 px-1">{<Users width={50} height={50} className="p-3 text-white" />}</span>
-                        </DashboardCard>
-
-                        {/* Verify Supplier */}
-                        <DashboardCard>
-                            <div className="flex flex-col space-y-1">
-                                <span className="block text-lg text-gray-800 font-bold">Verified Supplier</span>
-                                <span className="block text-2xl text-gray-900 font-bold">24</span>
-                                <span className="block text-gray-600 text-sm">from last month</span>
-                            </div>
-                            <span className="bg-gradient-to-r from-violet-500 to-violet-600 rounded-full py-1 px-1">{<IdCard width={50} height={50} className="p-3 text-white" />}</span>
-                        </DashboardCard>
-
-                        {/* Active Events*/}
-                        <DashboardCard>
-                            <div className="flex flex-col space-y-1">
-                                <span className="block text-lg text-gray-800 font-bold">Active Events</span>
-                                <span className="block text-2xl text-gray-900 font-bold">24</span>
-                                <span className="block text-gray-600 text-sm">from last month</span>
-                            </div>
-                            <span className="bg-gradient-to-r from-green-500 to-green-600 rounded-full py-1 px-1">{<CalendarPlus width={50} height={50} className="p-3 text-white" />}</span>
-                        </DashboardCard>
-
-                        <DashboardCard>
-                            <div className="flex flex-col space-y-1">
-                                <span className="block text-lg text-gray-800 font-bold">Total Earnings</span>
-                                <span className="block text-2xl text-gray-900 font-bold">24</span>
-                                <span className="block text-gray-600 text-sm">from last month</span>
-                            </div>
-                            <span className="bg-gradient-to-r from-green-500 to-green-600 rounded-full py-1 px-1">{<CalendarPlus width={50} height={50} className="p-3 text-white" />}</span>
-                        </DashboardCard>
-                    </div>
-
-                    <TabGroup className={'mt-8'}>
-                        <TabList className="flex gap-4 mb-3">
-                            <Tab
-                                className="rounded-full px-5 py-3 text-sm font-semibold text-gray-700 focus:outline-none data-selected:bg-white shadow-xl data-selected:text-gray-800 data-hover:bg-gray-100 transition-colors"
-                            >
-                                Supplier
-                            </Tab>
-
-                            <Tab
-                                className="rounded-full px-5 py-3 text-sm font-semibold text-gray-700 focus:outline-none data-selected:bg-white shadow-xl data-selected:text-gray-800 data-hover:bg-gray-100 transition-colors"
-                            >
-                                Planner
-                            </Tab>
-
-                            <Tab
-                                className="rounded-full px-5 py-3 text-sm font-semibold text-gray-700 focus:outline-none data-selected:bg-white shadow-xl data-selected:text-gray-800 data-hover:bg-gray-100 transition-colors"
-                            >
-                                Reported
-                            </Tab>
-
+                    {/* Tabs for Verification */}
+                    <TabGroup className="mt-5 bg-white border border-gray-200 rounded-2xl shadow-md p-3 transition-all">
+                        <TabList className="flex flex-wrap gap-2 sm:gap-3 mb-6">
+                            {["Suppliers", "Planners"].map((tab, i) => (
+                                <Tab
+                                    key={i}
+                                    className="rounded-full px-5 py-2 text-sm font-medium border border-gray-200 bg-white hover:bg-gray-100 data-[selected]:bg-gradient-to-r data-[selected]:from-blue-500 data-[selected]:to-blue-600 data-[selected]:text-white shadow-sm transition-all"
+                                >
+                                    {tab}
+                                </Tab>
+                            ))}
                         </TabList>
-                        <TabPanels className={'rounded-xl border border-gray-300 bg-white shadow-xl'}>
-                            <TabPanel className="p-5  px-7">
-                                <div className="flex flex-col gap-3">
-                                    {supplierVerification.map((verification, index) => (
-                                        <div key={index}>
-                                            <div className={`flex flex-col sm:flex-row gap- sm:gap-2 justify-between bg-yellow-100 shadow-gray-200 shadow-lg items-start sm:items-center p-3 sm:py-4 rounded-lg sm:px-5`}>
-                                                <div className="flex items-start sm:items-center space-x-3 flex-1">
-                                                    <Calendar size={20} className="sm:size-6 text-blue-600 bg-gray-200 rounded-full h-8 w-8 sm:h-9 sm:w-9 p-1.5 sm:p-2 flex-shrink-0 mt-0.5 sm:mt-0" />
-                                                    <div className="flex flex-col min-w-0 flex-1">
-                                                        <span className="font-medium text-gray-900 text-sm sm:text-base break-words">
-                                                            Supplier name: {verification.supplier_name}
-                                                        </span>
-
-                                                        <span className="text-gray-500 text-xs sm:text-sm">
-                                                            Requested: {verification.createdAt?.toDate().toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                                        </span>
-                                                    </div>
-                                                </div>
-
-                                                <a href={`/review/${verification.id}`} className="px-6 py-1 bg-blue-600 rounded-lg text-white">Review</a>
-
+                        <TabPanels className="rounded-xl border border-gray-300 bg-white shadow-xl">
+                            <TabPanel className="p-3 sm:p-5 sm:px-7">
+                                {supplierVerification.length ? supplierVerification.map((v, i) => (
+                                    <div key={i} className={`flex flex-col sm:flex-row gap-2 justify-between ${AppliedColor("pending")} shadow-lg items-start sm:items-center p-3 sm:py-4 rounded-lg sm:px-5`}>
+                                        <div className="flex items-start sm:items-center space-x-3 flex-1">
+                                            <Calendar size={20} className="text-blue-600 bg-gray-200 rounded-full h-8 w-8 p-2 flex-shrink-0" />
+                                            <div className="flex flex-col min-w-0 flex-1">
+                                                <span className="font-medium text-gray-900">{v.supplier_name}</span>
+                                                <span className="text-gray-500 text-xs sm:text-sm">
+                                                    Requested: {v.createdAt?.toDate().toLocaleDateString()}
+                                                </span>
                                             </div>
                                         </div>
-                                    ))}
-
-                                    {supplierVerification.length === 0 && (
-                                        <div className="text-center py-8 text-gray-500 text-sm sm:text-base">
-                                            No verification application found Supplier.
-                                        </div>
-                                    )}
-                                </div>
+                                        <a href={`/review/${v.id}`} className="px-6 py-1 bg-blue-600 rounded-lg text-white">Review</a>
+                                    </div>
+                                )) : (
+                                    <p className="text-center text-gray-500 py-10">No pending supplier verification.</p>
+                                )}
                             </TabPanel>
 
-                            {/* Planner panel */}
-                            <TabPanel className="p-5  px-7">
-                                <div className="flex flex-col gap-3">
-                                    {eventVerification.map((verification, index) => (
-                                        <div key={index}>
-                                            <div className={`flex flex-col sm:flex-row gap- sm:gap-2 justify-between bg-yellow-100 shadow-gray-200 shadow-lg items-start sm:items-center p-3 sm:py-4 rounded-lg sm:px-5`}>
-                                                <div className="flex items-start sm:items-center space-x-3 flex-1">
-                                                    <Calendar size={20} className="sm:size-6 text-blue-600 bg-gray-200 rounded-full h-8 w-8 sm:h-9 sm:w-9 p-1.5 sm:p-2 flex-shrink-0 mt-0.5 sm:mt-0" />
-                                                    <div className="flex flex-col min-w-0 flex-1">
-                                                        <span className="font-medium text-gray-900 text-sm sm:text-base break-words">
-                                                            Planner name: {verification.last_name + ", " + verification.first_name}
-                                                        </span>
-
-                                                        <span className="text-gray-500 text-xs sm:text-sm">
-                                                            Requested: {verification.createdAt?.toDate().toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                                        </span>
-                                                    </div>
-                                                </div>
-
-                                                <a href={`/review/${verification.id}`} className="px-6 py-1 bg-blue-600 rounded-lg text-white">Review</a>
-
+                            <TabPanel className="p-3 sm:p-5 sm:px-7">
+                                {eventVerification.length ? eventVerification.map((v, i) => (
+                                    <div key={i} className={`flex flex-col sm:flex-row gap-2 justify-between ${AppliedColor("pending")} shadow-lg items-start sm:items-center p-3 sm:py-4 rounded-lg sm:px-5`}>
+                                        <div className="flex items-start sm:items-center space-x-3 flex-1">
+                                            <Calendar size={20} className="text-blue-600 bg-gray-200 rounded-full h-8 w-8 p-2 flex-shrink-0" />
+                                            <div className="flex flex-col min-w-0 flex-1">
+                                                <span className="font-medium text-gray-900">{v.first_name} {v.last_name}</span>
+                                                <span className="text-gray-500 text-xs sm:text-sm">
+                                                    Requested: {v.createdAt?.toDate().toLocaleDateString()}
+                                                </span>
                                             </div>
                                         </div>
-                                    ))}
-
-                                    {eventVerification.length === 0 && (
-                                        <div className="text-center py-8 text-gray-500 text-sm sm:text-base">
-                                            No verification application found Event.
-                                        </div>
-                                    )}
-                                </div>
-                            </TabPanel>
-
-                            {/* reports panel */}
-                            <TabPanel className="p-5  px-7">
-                                <div className="flex flex-col gap-3">
-                                    {eventVerification.map((verification, index) => (
-                                        <div key={index}>
-                                            <div className={`flex flex-col sm:flex-row gap- sm:gap-2 justify-between ${AppliedColor(verification.status)} shadow-gray-200 shadow-lg items-start sm:items-center p-3 sm:py-4 rounded-lg sm:px-5`}>
-                                                <div className="flex items-start sm:items-center space-x-3 flex-1">
-                                                    <Calendar size={20} className="sm:size-6 text-blue-600 bg-gray-200 rounded-full h-8 w-8 sm:h-9 sm:w-9 p-1.5 sm:p-2 flex-shrink-0 mt-0.5 sm:mt-0" />
-                                                    <div className="flex flex-col min-w-0 flex-1">
-                                                        <span className="font-medium text-gray-900 text-sm sm:text-base break-words">
-                                                            Planner name: {verification.first_name}
-                                                        </span>
-
-                                                        <span className="text-gray-500 text-xs sm:text-sm">
-                                                            Requested: {verification.createdAt?.toDate().toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                                        </span>
-                                                    </div>
-                                                </div>
-
-                                                <a href={`/review/${verification.id}`} className="px-6 py-1 bg-blue-600 rounded-lg text-white">Review</a>
-
-                                            </div>
-                                        </div>
-                                    ))}
-
-                                    {eventVerification.length === 0 && (
-                                        <div className="text-center py-8 text-gray-500 text-sm sm:text-base">
-                                            No verification application found.
-                                        </div>
-                                    )}
-                                </div>
+                                        <a href={`/review/${v.id}`} className="px-6 py-1 bg-blue-600 rounded-lg text-white">Review</a>
+                                    </div>
+                                )) : (
+                                    <p className="text-center text-gray-500 py-10">No pending planner verification.</p>
+                                )}
                             </TabPanel>
                         </TabPanels>
                     </TabGroup>
-
-                    {/* admin tabs */}
-                    {/* <div className="w-full border-1 mt-7 font-semibold border-black rounded-lg py-7 px-8">
-                <span className="block text-2xl">Verify Supplier Accounts</span>
-                <div className="flex flex-col mt-5 px-5 space-y-3">
-                    {!isLoading && data.map((datas, index) => (
-                        <div key={index}>
-                            <div className="flex justify-between items-center">
-                                <div className="flex items-center space-x-3">
-                                    <div className="text-white flex items-center justify-center rounded-full bg-gradient-to-r from-violet-600 via-100% via-blue-600 to-pink-600 h-10 w-10">
-                                        <span className="text-xl">{datas.first_name ? datas.first_name.charAt(0).toUpperCase() : datas?.supplier_name?.charAt(0).toUpperCase()}</span>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <span>{datas.first_name ? datas.first_name : datas?.supplier_name}</span>
-                                        {datas.last_name && (
-                                            <span>{datas.last_name}</span>
-                                        )}
-                                    </div>
-                                </div>
-                                <Link to={`/review/${datas.id}`} className="px-6 py-1 bg-blue-600 rounded-lg text-white">Review</Link>
-                            </div>
-                            {index !== data.length - 1 && (
-                                <hr className="border-t mt-3 border-gray-800" />
-                            )}
-                        </div>
-                    ))}
-                    {isLoading && (
-                        <span className="text-center">Loading..</span>
-                    )}
-                    <span className={` ${data.length > 0 || isLoading ? 'hidden' : 'block'} text-center text-gray-500`}>No Pending Request..</span>
-
-                </div>
-            </div> */}
                 </>
             )}
         </>

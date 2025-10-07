@@ -2,23 +2,23 @@ import { Button, Dialog, DialogPanel, } from '@headlessui/react'
 import { useEffect, useState, useRef } from 'react'
 import { X, Check } from 'lucide-react'
 import { FileText, MapPin, Calendar, Building, User, TriangleAlert, CreditCard, PhilippinePeso, Package } from 'lucide-react'
-import { collection, doc, getDoc, getDocs, query, where, addDoc, serverTimestamp, updateDoc } from 'firebase/firestore'
+import { collection, doc, getDocs, query, where, addDoc, serverTimestamp, updateDoc } from 'firebase/firestore'
 import { db, auth } from '../firebase/firebase'
 import { paymentMethods } from '../constants/categories'
 import { nanoid } from 'nanoid'
 import { useCreatePayment } from '../hooks/usePayment'
-import { useFetchAllTransaction } from '../hooks/useTransaction'
+import { useFetchTransactionById } from '../hooks/useTransaction'
 import SubmissionModal from './SubmissionModal'
 import { useFetchDeliveries } from '../hooks/useDeliveries'
 import { useNavigate } from 'react-router-dom'
 import Swal from 'sweetalert2'
 import LoadingOverlay from './LoadingOverlay'
-import PageLoading from './PageLoading'
+import { RejectReview } from './ReviewModal'
+import { useFetchUsers } from '../hooks/useUsers'
+import { useFetchContract } from '../hooks/useContract'
 
 export default function ContractModal({ userData, event_id, supplier_id, eventData, supplierData, user_id }) {
     const [isOpen, setIsOpen] = useState(false)
-    const [contract, setContract] = useState([])
-    const [eventUser, setEventUser] = useState([])
     const [payment_method, setPayment_method] = useState([])
     const [payment_method_error, setPayment_method_error] = useState('')
     const [contract_transaction, setContract_Transaction] = useState([])
@@ -26,21 +26,31 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
     const [isProcecssing, setIsProcessing] = useState(false)
     const [isReleasing, setIsReleasing] = useState(false)
     const { createPayment, isProcessing } = useCreatePayment()
-    const { transactions } = useFetchAllTransaction(eventData.user_id)
+    const { transactions } = useFetchTransactionById(eventData?.user_id)
+    const [contract, setContract] = useState([])
+    const [eventUser, setEventUser] = useState([])
+    const { deliveries } = useFetchDeliveries()
+    const { contracts: AllContracts } = useFetchContract()
+    const { users } = useFetchUsers()
     const paymentSectionRef = useRef(null);
     const navigate = useNavigate()
     const [now, setNow] = useState(new Date())
 
     useEffect(() => {
+        const eventUser = users.filter(user => user.id === eventData?.user_id)
+
+        const contract = AllContracts.filter(cont => cont.event_id === eventData?.id && cont.supplier_id === supplierData?.id)
+        setEventUser(eventUser)
+        setContract(contract)
+    }, [AllContracts, users, eventData, supplierData])
+
+    useEffect(() => {
         const filteredTransaction = transactions.filter(trans => trans.contract_id === contract[0]?.id && trans.status === "COMPLETED")
 
-        console.log(filteredTransaction)
         setContract_Transaction(filteredTransaction)
     }, [user_id, transactions, contract])
 
-    console.log(contract)
 
-    const { deliveries } = useFetchDeliveries()
 
     const contractDeliveries = deliveries.filter(del => del.contract_id === contract[0]?.id && del.supplier_id === supplier_id)
 
@@ -51,8 +61,6 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
 
         return () => clearInterval(interval);
     }, []);
-
-    console.log(eventData)
 
     const eventDate = new Date(eventData?.event_date?.date_value);
 
@@ -257,6 +265,7 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
                 const deliveryRef = doc(db, "deliveries", deliveryId);
                 await updateDoc(deliveryRef, {
                     status: status,
+                    confirmed_at: serverTimestamp(),
                     updated_at: serverTimestamp()
                 });
 
@@ -281,26 +290,32 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
         }
     }
 
-    useEffect(() => {
-        const fetchContract = async () => {
+    // useEffect(() => {
+    //     try {
+    //         const fetchContract = async () => {
 
-            const q = query(collection(db, "contracts"),
-                where("event_id", "==", event_id),
-                where("supplier_id", "==", supplier_id))
+    //             const q = query(collection(db, "contracts"),
+    //                 where("event_id", "==", event_id),
+    //                 where("supplier_id", "==", supplier_id))
 
-            const contractSnapShot = await getDocs(q)
-            const contract = contractSnapShot.docs.map(contract => ({ id: contract.id, ...contract.data() }))
-            setContract(contract)
-        }
+    //             const contractSnapShot = await getDocs(q)
+    //             const contract = contractSnapShot.docs.map(contract => ({ id: contract.id, ...contract.data() }))
+    //             setContract(contract)
+    //         }
 
-        const fetchEventById = async () => {
-            const fetchEventUser = await getDoc(doc(db, "users", eventData?.user_id))
-            setEventUser(fetchEventUser.data())
-        }
+    //         const fetchEventById = async () => {
+    //             const fetchEventUser = await getDoc(doc(db, "users", eventData?.user_id))
+    //             setEventUser(fetchEventUser.data())
+    //         }
 
-        fetchEventById()
-        fetchContract()
-    }, [event_id, supplier_id])
+    //         fetchEventById()
+    //         fetchContract()
+    //     }
+
+    //     catch (e) {
+    //         console.error(e)
+    //     }
+    // }, [event_id, supplier_id, eventData?.user_id])
 
     const handleRelease = async (e, platform_fee, netAmount) => {
         e.preventDefault()
@@ -448,7 +463,7 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
     };
 
 
-    if (contract.length === 0) {
+    if (contract && contract?.length === 0) {
         return <div className='h-6 w-6 rounded-full animate-spin border border-t-blue-600'></div>
     }
 
@@ -476,7 +491,7 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
                             <LoadingOverlay isLoading={isProcecssing || isSubmitting} message='Processing...' />
 
                             <div>
-                                {contract.map((cont, index) => {
+                                {contract?.map((cont, index) => {
                                     const platformFee = Number(cont?.service_plan?.service_price) > 5000 ? Number(cont?.service_plan?.service_price) * 0.10 : Number(cont?.service_plan?.service_price) * 0.05
                                     const service_price = Number(cont?.service_plan?.service_price) || 0;
                                     const process_fee = payment_method?.process_fee || 0;
@@ -547,9 +562,6 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
                                                     </div>
                                                 </div>
                                             </div>
-
-
-
 
                                             <div className='flex flex-col items-start px-9 py-8 justify-center'>
 
@@ -677,7 +689,7 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
                                                     )}
 
                                                     {/* Submit Button for Supplier */}
-                                                    {showSubmitButton && (
+                                                    {showSubmitButton && contract[0].status !== "Completed" && (
                                                         <div className="flex justify-end mt-6">
                                                             <SubmissionModal
                                                                 contract={contract}
@@ -745,7 +757,7 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
                                                     ))}
                                                 </div>
 
-                                                {cont.status === "Approved" || cont.status === "Completed" && (
+                                                {(cont.status === "Approved" || cont.status === "Completed") && (
                                                     <>
                                                         {/* payment method */}
                                                         {(total_paid - total_fees) !== service_price && userData?.role != "Supplier" && (
@@ -933,10 +945,14 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
                                                         )}
 
                                                         {supplier_id === user_id && cont.status === "Pending" && (
-                                                            <button onClick={() => handleApprove(cont.id)} disabled={isSubmitting} className={`transition-all duration-50 px-7 py-2 flex justify-end items-end ml-auto relative bottom-3 right-10 ${isSubmitting ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'} text-white text-sm rounded`}>{isSubmitting ?
-                                                                <>
-                                                                    <div className='h-5 w-5 border-t-2 rounded-full animate-spin border-white'></div>
-                                                                </> : 'Approve Offer'}</button>
+                                                            <div className='flex justify-end items-end ml-auto relative bottom-3 right-10 gap-2'>
+                                                                <RejectReview contract={contract[0]} supplier={supplierData} event_id={eventData.id} supplier_id={supplierData.id} className={`transition duration-50 py-1 px-5 border rounded-md hover:bg-red-600 hover:text-white`} />
+                                                                <button onClick={() => handleApprove(cont.id)} disabled={isSubmitting} className={`transition-all duration-50 px-7 py-2 ${isSubmitting ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'} text-white text-sm rounded`}>{isSubmitting ?
+                                                                    <>
+                                                                        <div className='h-5 w-5 border-t-2 rounded-full animate-spin border-white'></div>
+                                                                    </> : 'Approve Offer'}
+                                                                </button>
+                                                            </div>
                                                         )}
                                                     </div>
                                                 </>
@@ -944,7 +960,6 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
                                         </div>
                                     )
                                 })}
-
                             </div>
                         </DialogPanel>
                     </div>

@@ -79,6 +79,9 @@ export const useAuthLogin = () => {
             else if (e.code === 'auth/too-many-requests') {
                 setError("Too many attempts. Please try again later.");
             }
+            else if (e.code === 'auth/user-disabled') {
+                setError("Account temporarily disabled due to suspicious activity. Please try again later or contact support.");
+            }
             else {
                 setError("Something went wrong. Please try again.");
             }

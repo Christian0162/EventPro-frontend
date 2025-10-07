@@ -12,6 +12,7 @@ import { useNavigate } from "react-router-dom";
 import EventModal from "../../components/EventModal";
 import LoadingOverlay from "../../components/LoadingOverlay";
 import { useFetchAllApplication } from "../../hooks/useApplication";
+import PageLoading from "../../components/PageLoading";
 
 export default function Event({ userData }) {
     const [supplierData, setSupplierData] = useState({})
@@ -20,10 +21,8 @@ export default function Event({ userData }) {
     const [isCreatingContact, setIsCreatingContact] = useState(false)
     const [likedEvents, setLikedEvents] = useState({});
     const [allEvents, setAllEvents] = useState([])
-    const [isLoading, setIsLoading] = useState(true);
     const [isApplying, setIsApplying] = useState(false)
     const [applyingEventId, setApplyingEventId] = useState(null)
-    const [countdown, setCountdown] = useState(1)
     const { deleteEvent } = useDeleteEvent()
     const { events, isLoading: isEventLoading } = useFetchEvents()
     const { applications: supplierApplications, isLoading: isApplicationLoading } = useFetchAllApplication()
@@ -31,7 +30,7 @@ export default function Event({ userData }) {
 
     const applications = supplierApplications.filter(app => app.supplier_id === userData.id)
 
-    const isAllLoading = isEventLoading && isApplicationLoading
+    const isAllLoading = isEventLoading || isApplicationLoading
 
     useEffect(() => {
         const unsubscribe = onSnapshot(collection(db, "favorites"), (snapshot) => {
@@ -55,22 +54,13 @@ export default function Event({ userData }) {
         } else {
             const today = new Date().toISOString().split("T")[0];
 
-            const activeEvents = events.filter(events => events.status === "active" && events.event_date.date_value < today)
-            setAllEvents(activeEvents)
+            const activeEvents = events.filter(event =>
+                event.status === "active" &&
+                event.event_date?.date_value < today &&
+                event.event_status?.value?.toLowerCase() !== "completed"
+            ); setAllEvents(activeEvents)
         }
     }, [events, userData])
-
-    // useEffect(() => {
-    //     const q = query(collection(db, "applications"),
-    //         where("supplier_id", "==", userData.id))
-
-    //     const unsubscribe = onSnapshot(q, (onsnapshot) => {
-    //         const applications = onsnapshot.docs.map(app => ({ id: app.id, ...app.data() }))
-    //         setApplications(applications)
-    //     })
-
-    //     return () => unsubscribe()
-    // }, [userData])
 
     const handleDelete = async (id) => {
         deleteEvent(id)
@@ -213,16 +203,7 @@ export default function Event({ userData }) {
             <Title>Event</Title>
 
             {isAllLoading && (
-                <div className="flex justify-center items-center py-[15rem]">
-                    <div className="relative">
-                        {/* Background glow effect */}
-                        <div className="absolute inset-0 h-12 w-12 bg-blue-500/10 rounded-full blur-sm animate-pulse"></div>
-                        {/* Main spinner */}
-                        <div className="h-12 w-12 border-2 border-blue-100 rounded-full animate-spin border-t-blue-600 border-r-blue-600"></div>
-                        {/* Inner ring */}
-                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/1 h-6 w-6 border border-blue-200 rounded-full"></div>
-                    </div>
-                </div>
+                <PageLoading />
             )}
 
             {(isCreatingContact || isCreatingFavorites) && (
@@ -313,6 +294,7 @@ export default function Event({ userData }) {
                                                         </div>
 
                                                         {/* event suppliers */}
+                                                        {/* event suppliers */}
                                                         <div>
                                                             <div className="flex gap-2 items-center mb-5">
                                                                 <Users className="text-gray-600 h-5 w-5" />
@@ -321,11 +303,23 @@ export default function Event({ userData }) {
 
                                                             {/* categories */}
                                                             <div className="flex flex-wrap gap-3 mt-2">
-                                                                {events.event_categories.map((categories, index) => (
-                                                                    <span key={index} className="px-3 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full border border-blue-100">{categories}</span>
-                                                                ))}
+                                                                {events.event_categories?.filter(category => category?.label).length > 0 ? (
+                                                                    events.event_categories
+                                                                        .filter(category => category?.label)
+                                                                        .map((category, index) => (
+                                                                            <span
+                                                                                key={index}
+                                                                                className="px-3 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full border border-blue-100"
+                                                                            >
+                                                                                {category.label}
+                                                                            </span>
+                                                                        ))
+                                                                ) : (
+                                                                    <span className="text-gray-500 text-sm italic">No categories selected for this event</span>
+                                                                )}
                                                             </div>
                                                         </div>
+
                                                     </div>
                                                 </div>
                                             </div>
@@ -340,39 +334,49 @@ export default function Event({ userData }) {
 
                                                 {userData.role === "Supplier" && (
                                                     <>
-                                                        {!gettingShop && supplierData?.supplier_name.length > 0 ? (
-                                                            <button
-                                                                onClick={() => handleApply(events.id, events.user_id)}
-                                                                disabled={
-                                                                    applications.find(app => app.event_id === events.id)?.status === "Pending" ||
-                                                                    applications.find(app => app.event_id === events.id)?.status === "Approved" ||
-                                                                    (isApplying && applyingEventId === events.id) ||
-                                                                    !supplierData.is_verified
-                                                                }
-                                                                className={`flex items-center justify-center gap-2 text-center py-2 w-full ${applications.find(app => app.event_id === events.id)?.status === "Pending" ||
-                                                                    applications.find(app => app.event_id === events.id)?.status === "Approved"
-                                                                    ? 'bg-blue-300 cursor-not-allowed'
-                                                                    : (isApplying && applyingEventId === events.id)
-                                                                        ? 'bg-blue-400 cursor-not-allowed'
-                                                                        : !supplierData.is_verified ? 'bg-blue-400 cursor-not-allowed'
-                                                                            : 'bg-blue-600 hover:bg-blue-700'
-                                                                    } text-white font-bold rounded-lg`}
-                                                            >
-                                                                {isApplying && applyingEventId === events.id ? (
-                                                                    <>
-                                                                        <ClipLoader size={16} color="#ffffff" />
-                                                                        Applying...
-                                                                    </>
-                                                                ) : applications.find(app => app.event_id === events.id)?.status === "Pending" ? (
-                                                                    'Pending'
-                                                                ) : applications.find(app => app.event_id === events.id)?.status === "Approved" ? (
-                                                                    'Approved'
-                                                                ) : !supplierData.is_verified ? (
-                                                                    'Account not verified'
-                                                                ) : (
-                                                                    'Apply'
-                                                                )}
-                                                            </button>
+                                                        {!gettingShop ? (
+                                                            supplierData?.supplier_name?.length > 0 ? (
+                                                                <button
+                                                                    onClick={() => handleApply(events.id, events.user_id)}
+                                                                    disabled={
+                                                                        applications.find(app => app.event_id === events.id)?.status === "Pending" ||
+                                                                        applications.find(app => app.event_id === events.id)?.status === "Approved" ||
+                                                                        (isApplying && applyingEventId === events.id) ||
+                                                                        !supplierData.is_verified
+                                                                    }
+                                                                    className={`flex items-center justify-center gap-2 text-center py-2 w-full ${applications.find(app => app.event_id === events.id)?.status === "Pending" ||
+                                                                        applications.find(app => app.event_id === events.id)?.status === "Approved"
+                                                                        ? 'bg-blue-300 cursor-not-allowed'
+                                                                        : (isApplying && applyingEventId === events.id)
+                                                                            ? 'bg-blue-400 cursor-not-allowed'
+                                                                            : !supplierData.is_verified
+                                                                                ? 'bg-blue-400 cursor-not-allowed'
+                                                                                : 'bg-blue-600 hover:bg-blue-700'
+                                                                        } text-white font-bold rounded-lg`}
+                                                                >
+                                                                    {isApplying && applyingEventId === events.id ? (
+                                                                        <>
+                                                                            <ClipLoader size={16} color="#ffffff" />
+                                                                            Applying...
+                                                                        </>
+                                                                    ) : applications.find(app => app.event_id === events.id)?.status === "Pending" ? (
+                                                                        'Pending'
+                                                                    ) : applications.find(app => app.event_id === events.id)?.status === "Approved" ? (
+                                                                        'Approved'
+                                                                    ) : !supplierData.is_verified ? (
+                                                                        'Account not verified'
+                                                                    ) : (
+                                                                        'Apply'
+                                                                    )}
+                                                                </button>
+                                                            ) : (
+                                                                <Link
+                                                                    to={'/shop'}
+                                                                    className="block text-center bg-gray-200 py-2 rounded-md transition-all text-gray-600 hover:bg-blue-600 hover:text-white"
+                                                                >
+                                                                    Need shop to apply
+                                                                </Link>
+                                                            )
                                                         ) : (
                                                             <div className="py-2 bg-blue-400 rounded-lg flex justify-center items-center">
                                                                 <div className="h-6 w-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -380,11 +384,6 @@ export default function Event({ userData }) {
                                                             </div>
                                                         )}
 
-                                                        {!gettingShop && !supplierData.supplier_name?.length > 0 && (
-                                                            <Link to={'/shop'} className="block text-center bg-gray-200 py-2 rounded-md transition-all text-gray-600 hover:bg-blue-600 hover:text-white">
-                                                                Need shop to apply
-                                                            </Link>
-                                                        )}
                                                     </>
                                                 )}
                                             </div>

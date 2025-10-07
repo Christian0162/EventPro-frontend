@@ -1,6 +1,6 @@
 import { CheckCircle2 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useFetchAllTransaction } from "../hooks/useTransaction";
+import { useFetchTransactionById } from "../hooks/useTransaction";
 import { useEffect } from "react";
 import Loading from "./Loading";
 
@@ -9,7 +9,7 @@ export default function PaymentSuccess({ userData }) {
     const [searchParams] = useSearchParams();
     const id = searchParams.get("id");
 
-    const { transactions, isLoading } = useFetchAllTransaction(userData.id);
+    const { transactions, isLoading } = useFetchTransactionById(userData.id);
 
     const transaction_exist = transactions.filter(
         (trans) => trans.external_id === id

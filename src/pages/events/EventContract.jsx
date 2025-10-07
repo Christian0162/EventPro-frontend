@@ -12,7 +12,7 @@ import { termsOfCondition } from "../../constants/categories";
 import { useFetchSupplierServices } from "../../hooks/useSupplier";
 import { useFetchEvents } from "../../hooks/useEvents";
 
-export default function EventContract() {
+export default function EventContract({ userData }) {
 
     const { eventId, supplierId } = useParams()
     const navigate = useNavigate()
@@ -31,7 +31,7 @@ export default function EventContract() {
 
     const currentEvent = events.find(event => event.id === eventId)
 
-    const services = shopServices[supplierId]
+    const services = shopServices.filter(serv => serv.supplier_id === supplierId)
 
     useEffect(() => {
         if (countdown <= 0) { return setIsLoading(false) }
@@ -96,6 +96,7 @@ export default function EventContract() {
             addDoc(collection(db, "contracts"), {
                 supplier_id: supplierId,
                 event_id: eventId,
+                planner_id: userData.id,
                 service_plan: selectedService,
                 penalty_clauses: termsOfCondition,
                 additional_information: additional_information,

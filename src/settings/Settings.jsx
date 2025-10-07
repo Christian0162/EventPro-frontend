@@ -10,7 +10,7 @@ import EmailVerificationModal from '../components/EmailVerificationModal';
 import { paymentMethods } from '../constants/categories';
 import { useCreatePayout } from '../hooks/usePayout';
 import { CircleAlert } from 'lucide-react';
-import { useFetchAllTransaction } from '../hooks/useTransaction';
+import { useFetchTransactionById } from '../hooks/useTransaction';
 import { formatDistanceToNow } from 'date-fns';
 import LoadingOverlay from '../components/LoadingOverlay';
 import { UpdateProfile } from '../components/UpdateModal';
@@ -55,7 +55,7 @@ export default function Settings({ userData, user }) {
 
     const [paymentError, setPaymentError] = useState(false)
     const { createPayout, isLoading } = useCreatePayout()
-    const { transactions } = useFetchAllTransaction(userData.id)
+    const { transactions } = useFetchTransactionById(userData.id)
     const paymentSectionRef = useRef()
     const balanceSectionRef = useRef()
 
@@ -272,22 +272,6 @@ export default function Settings({ userData, user }) {
                             </div>
                             <h2 className="text-3xl font-bold text-black mb-2">{userData.first_name} {userData.last_name}</h2>
                             <p className="text-gray-800 text-lg mb-1">{userData.role}</p>
-                        </div>
-
-                        {/* Profile Stats */}
-                        <div className="grid grid-cols-3 gap-4 mb-8">
-                            <div className="text-center">
-                                <div className="text-2xl font-bold text-black">24</div>
-                                <div className="text-black/70 text-sm">Events</div>
-                            </div>
-                            <div className="text-center">
-                                <div className="text-2xl font-bold text-black">156</div>
-                                <div className="text-black/70 text-sm">Clients</div>
-                            </div>
-                            <div className="text-center">
-                                <div className="text-2xl font-bold text-black">4.9</div>
-                                <div className="text-black/70 text-sm">Rating</div>
-                            </div>
                         </div>
 
                         {/* Basic Info */}
@@ -614,7 +598,7 @@ export default function Settings({ userData, user }) {
                                 {/* Recent Transactions */}
                                 <div className="bg-gray-100 rounded-2xl p-6">
                                     <h4 className="text-black font-medium mb-4">Recent Transactions</h4>
-                                    <div className={`space-y-4 overflow-y-auto ${transactions.length > 0 && 'h-[150px]'}`}>
+                                    <div className={`space-y-4 overflow-y-auto ${transactions.length > 2 && 'h-[150px]'}`}>
                                         {transactions.map((transaction, index) => (
                                             <div key={index} className="flex items-center justify-between">
                                                 <div>
@@ -635,13 +619,6 @@ export default function Settings({ userData, user }) {
 
                                 </div>
 
-                                {/* <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-black text-sm">Withdrawal</p>
-                                        <p className="text-black/50 text-xs">Jan 12, 2024</p>
-                                    </div>
-                                    <p className="text-red-400 font-medium">-$200.00</p>
-                                </div> */}
                                 <button
                                     onClick={(e) => handlePayout(e)}
                                     className="w-full bg-green-500 text-white py-4 px-6 rounded-2xl font-semibold hover:bg-green-600 transition-all shadow-xl flex items-center justify-center"

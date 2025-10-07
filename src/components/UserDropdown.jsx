@@ -34,13 +34,13 @@ export default function UserDropDown({ userData }) {
                 >
                     {userProfile?.profile_pic ? (
                         <img
-                            src={userProfile.profile_pic}
+                            src={userProfile?.profile_pic}
                             alt="Profile"
                             className="w-full h-full object-cover"
                         />
                     ) : (
                         <span className="font-medium">
-                            {userData.first_name.charAt(0).toUpperCase()}
+                            {userData?.first_name?.charAt(0).toUpperCase()}
                         </span>
                     )}
                 </button>

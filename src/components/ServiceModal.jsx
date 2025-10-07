@@ -31,7 +31,7 @@ export default function ServiceModal({ userData, supplierData }) {
         setIsOpen(false)
     }
 
-    const supplierService = services[supplierData.id]
+    const supplierService = services.filter(serv => serv.supplier_id === userData.id)
 
     // Filter out options that already exist
     const existingPlans = supplierService
@@ -89,11 +89,12 @@ export default function ServiceModal({ userData, supplierData }) {
         setIsSubmitting(true)
 
         try {
-            await addDoc(collection(db, "shops", supplierData.id, "services"), {
+            await addDoc(collection(db, "services"), {
                 service_plan: service_plan,
                 service_price: price,
                 service_inclusions: allInclusions,
-                service_payment_notice: payment_notice
+                service_payment_notice: payment_notice,
+                supplier_id: userData.id
             })
 
             Swal.fire('Success!', 'Your service has been added successfully.', 'success')
@@ -109,7 +110,6 @@ export default function ServiceModal({ userData, supplierData }) {
         }
     }
 
-    console.log(supplierService)
     return (
         <>
             {userData?.id === supplierData?.id && (
@@ -171,7 +171,7 @@ export default function ServiceModal({ userData, supplierData }) {
                                                 <label htmlFor="" className='text-gray-700 font-bold'>List Inclusions</label>
                                             </div>
                                             <div className='flex gap-3'>
-                                                <input type="text" className='w-full px-4 py-2 rounded-md focus:outline-none border border-gray-400' onChange={(e) => setInclusions(e.target.value)} value={inclusions} required placeholder='e.g One Free Tiramisu' />
+                                                <input type="text" className='w-full px-4 py-2 rounded-md focus:outline-none border border-gray-400' onChange={(e) => setInclusions(e.target.value)} value={inclusions} placeholder='e.g One Free Tiramisu' />
                                                 <button onClick={() => handleInclusions(inclusions)} className='w-1/3 bg-blue-600 hover:bg-blue-700 transition-all duration-200 rounded-md text-white' type='button'>Add</button>
                                             </div>
                                             {error && (

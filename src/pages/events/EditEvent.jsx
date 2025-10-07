@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import AddressAutoComplete from "../../components/AddressAutoComplete";
 import Select from "react-select"
-import { X } from "lucide-react";
+import { X, Calendar, Clock, MapPin, Tag, Users, FileText, Send } from "lucide-react";
 import PrimaryButton from "../../components/PrimaryButton";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "../../firebase/firebase";
@@ -17,6 +17,11 @@ import { useFetchContract } from "../../hooks/useContract";
 import { statusOptions, SupplierOptions } from "../../constants/categories";
 import { RejectReview } from "../../components/ReviewModal";
 import LoadingOverlay from "../../components/LoadingOverlay";
+import { useFetchUserProfiles } from "../../hooks/useProfile";
+import { useFetchUsers } from "../../hooks/useUsers";
+import ProfileHover from "../../components/ProfileHover";
+import PageLoading from "../../components/PageLoading";
+import { UpdateEventBackground } from "../../components/UpdateModal";
 
 export default function EditEvent({ userData }) {
 
@@ -26,6 +31,7 @@ export default function EditEvent({ userData }) {
     const [event_name, setEvent_name] = useState('')
     const [event_location, setEvent_location] = useState('')
     const [event_date, setEvent_date] = useState('')
+    const [eventBackground, setEventBackround] = useState('')
     const [startTime, setStartTime] = useState('')
     const [endTime, setEndTime] = useState('')
     const [event_status, setEvent_status] = useState(null)
@@ -34,33 +40,45 @@ export default function EditEvent({ userData }) {
     const [categories, setCategories] = useState(null)
     const [event_budget, setEvent_budget] = useState('')
     const [tags, setTags] = useState([])
-    const [isLoading, setIsLoading] = useState(true)
     const [applications, setApplications] = useState([])
     const [eventData, setEventData] = useState([])
     const { contracts } = useFetchContract()
     const { reviews } = useFetchReviews()
     const { services } = useFetchSupplierServices()
     const { suppliers } = useFetchSuppliers()
-    const { events } = useFetchEvents(userData.id)
+    const { events, isLoading } = useFetchEvents(userData.id)
     const [suggestedEvents, setSuggestedEvents] = useState([])
     const { updateEvent, isLoading: isUpdating } = useUpdateEvent()
-    const [countdown, setCoutdown] = useState(2)
+    const [hoverState, setHoverState] = useState({ id: null, section: null });
+    const { users } = useFetchUsers()
+    const { userProfiles } = useFetchUserProfiles()
 
     const data = events.find(event => event.id === id)
 
     console.log(tags)
 
     useEffect(() => {
-        const suggestedEvents = suppliers
-            .filter(supplier => tags.includes(supplier.supplier_type?.value))
-        setSuggestedEvents(suggestedEvents)
-    }, [suppliers, tags])
+        if (!suppliers?.length || !tags?.length) return;
+
+        const suggestedEvents = suppliers.filter(supplier =>
+            tags.some(tag =>
+                tag?.value?.toLowerCase() === supplier?.supplier_type?.value?.toLowerCase()
+            )
+        );
+
+        setSuggestedEvents(suggestedEvents);
+    }, [suppliers, tags]);
+
+
+    console.log(tags)
+    console.log(suppliers)
+
     const addTag = () => {
-        if (categories?.value.trim() && !tags.includes(categories?.value.trim())) {
-            setTags([...tags, categories.value])
-            setCategories(null)
+        if (categories?.value.trim() && !tags.some(tag => tag.value === categories.value)) {
+            setTags([...tags, categories]);
+            setCategories(null);
         }
-    }
+    };
 
     const removeTag = (index) => {
         setTags(tags.filter((tag, i) => i !== index))
@@ -80,20 +98,6 @@ export default function EditEvent({ userData }) {
     }, [])
 
     useEffect(() => {
-        if (countdown <= 0) { return setIsLoading(false) }
-
-        const countDownLoading = setInterval(() => {
-            setCoutdown(prev => prev - 1)
-        }, [500])
-
-        return () => clearInterval(countDownLoading)
-
-    }, [countdown])
-
-    console.log(contracts)
-
-
-    useEffect(() => {
         if (data) {
             setEventData(data)
             setEvent_name(data.event_name)
@@ -106,6 +110,7 @@ export default function EditEvent({ userData }) {
             setTags(data.event_categories)
             setStartTime(data.event_time.valueStartAndEnd[0])
             setEndTime(data.event_time.valueStartAndEnd[1])
+            setEventBackround(data.event_background)
         }
 
     }, [data])
@@ -195,126 +200,235 @@ export default function EditEvent({ userData }) {
         return average.toFixed(1);
     };
 
+    // Background images for header - you can replace these with your actual images
+    const headerBackgrounds = [
+        "https://images.unsplash.com/photo-1540575467063-178a50c2df87?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
+        "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
+        "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
+    ];
+
+    const headerBackground = headerBackgrounds[Math.floor(Math.random() * headerBackgrounds.length)];
+
     return (
         <>
             {isLoading && (
-                <div className="flex justify-center items-center py-[12rem]">
-                    <div className="h-12 w-12 border border-t-blue-600 rounded-full animate-spin "></div>
-
-                </div>
+                <PageLoading />
             )}
 
             {!isLoading && (
                 <>
-                    <div className="mb-5">
-                        <h1 className="text-3xl  font-bold text-blue-600">Manage Events</h1>
+                    {/* Header with Background Image */}
+                    <div
+                        className="relative h-64 rounded-xl mb-8 overflow-hidden bg-cover bg-center"
+                        style={{ backgroundImage: `url(${eventBackground || headerBackground})` }}
+                    >
+
+                        <div className="absolute inset-0 bg-blue-900/30"></div>
+                        <div className="relative z-10 h-full flex flex-col justify-center px-8">
+                            <h1 className="text-4xl font-bold text-white mb-2">Manage Events</h1>
+                            <p className="text-blue-100 text-lg">Edit and manage your event details</p>
+                            <div className="flex items-center mt-4 space-x-4 text-white">
+                                <div className="flex items-center">
+                                    <Calendar size={18} className="mr-2" />
+                                    <span>{event_date?.date_preview?.join(' ') || 'Select date'}</span>
+                                </div>
+                                <div className="flex items-center">
+                                    <MapPin size={18} className="mr-2" />
+                                    <span>{event_location || 'Add location'}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <UpdateEventBackground id={id} className={`absolute top-4 right-5 z-50`} />
+
                     </div>
 
-                    <div className="bg-white rounded-xl p-10 border border-gray-100 shadow-lg">
-                        <form onSubmit={handleSubmit} className="w-full h-full space-y-5">
+
+                    <div className="bg-white rounded-xl p-8 border border-gray-100 shadow-lg mb-8">
+                        <div className="mb-6">
+                            <h2 className="text-2xl font-bold text-gray-800 flex items-center">
+                                <FileText className="mr-2 text-blue-600" size={24} />
+                                Event Details
+                            </h2>
+                            <p className="text-gray-600 mt-1">Update your event information</p>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="w-full h-full space-y-6">
                             {/* event name and location */}
-                            <div className="justify-between gap-5 grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2">
+                            <div className="justify-between gap-6 grid grid-cols-1 md:grid-cols-2">
                                 {/* event name */}
                                 <div className="flex flex-col w-full">
-                                    <label htmlFor="event_name">Event Name</label>
-                                    <input type="text" name="event_name" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black"
+                                    <label htmlFor="event_name" className="text-sm font-medium text-gray-700 mb-2">Event Name</label>
+                                    <input
+                                        type="text"
+                                        name="event_name"
+                                        className="px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                                         required
-                                        placeholder="Event name"
+                                        placeholder="Enter event name"
                                         onChange={(e) => setEvent_name(e.target.value)}
-                                        value={event_name} />
+                                        value={event_name || ""}
+                                    />
                                 </div>
 
                                 {/* location */}
                                 <div className="flex flex-col w-full">
-                                    <label htmlFor="location">Location</label>
-                                    <AddressAutoComplete setLocation={setEvent_location} default_location={event_location} className={'mt-2 py-1 rounded-sm ring-1 ring-black'} />
+                                    <label htmlFor="location" className="text-sm font-medium text-gray-700 mb-2">Location</label>
+                                    <AddressAutoComplete
+                                        setLocation={setEvent_location}
+                                        default_location={event_location || ""}
+                                        className={'py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'}
+                                    />
                                 </div>
                             </div>
 
                             {/* date, time and status */}
-                            <div className="gap-3 items-center grid grid-cols-1 sm:grid-cols-3">
+                            <div className="gap-6 items-center grid grid-cols-1 md:grid-cols-3">
 
                                 {/* date */}
                                 <div className="flex flex-col w-full">
-                                    <label htmlFor="date">Date</label>
-                                    <input type="date" name="event_date" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black"
-                                        required
-                                        onChange={handleDate}
-                                        value={event_date.date_value}
-                                    />
+                                    <label htmlFor="date" className="text-sm font-medium text-gray-700 mb-2">Date</label>
+                                    <div className="relative">
+                                        <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                                        <input
+                                            type="date"
+                                            name="event_date"
+                                            className="pl-10 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                                            required
+                                            onChange={handleDate}
+                                            value={event_date.date_value || ""}
+                                        />
+                                    </div>
                                 </div>
 
-                                {/* time */}
+                                {/* Time Section */}
                                 <div className="flex flex-col w-full">
-                                    <div className="gap-2 grid grid-cols-1 sm:grid-cols-2">
-                                        <div>
-                                            <label htmlFor="time">Time Start</label>
-                                            <input type="time" name="event_time" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black"
+                                    <label htmlFor="start_time" className="text-sm font-medium text-gray-700 mb-2">
+                                        Event Time
+                                    </label>
+                                    <div className="gap-3 grid grid-cols-2">
+                                        {/* Start Time */}
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm">
+                                                Start
+                                            </span>
+                                            <input
+                                                type="time"
+                                                id="start_time"
+                                                name="start_time"
+                                                className="pl-12 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                                                 required
                                                 onChange={(e) => setStartTime(e.target.value)}
-                                                value={startTime}
+                                                value={startTime || ""}
                                             />
                                         </div>
-                                        <div>
-                                            <label htmlFor="time">Time End</label>
-                                            <input type="time" name="event_time" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black"
+
+                                        {/* End Time */}
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm">
+                                                End
+                                            </span>
+                                            <input
+                                                type="time"
+                                                id="end_time"
+                                                name="end_time"
+                                                className="pl-10 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                                                 required
                                                 onChange={(e) => setEndTime(e.target.value)}
-                                                value={endTime}
+                                                value={endTime || ""}
                                             />
                                         </div>
                                     </div>
                                 </div>
 
+
                                 {/* status */}
                                 <div className="flex flex-col w-full">
-                                    <label htmlFor="status">Status</label>
+                                    <label htmlFor="status" className="text-sm font-medium text-gray-700 mb-2">Status</label>
                                     <Select
                                         name="event_status"
                                         value={event_status}
                                         onChange={setEvent_status}
                                         options={statusOptions}
-                                        placeholder="Upcoming"
-                                        className="mt-2"
+                                        placeholder="Select status"
+                                        className="mt-1"
+                                        styles={{
+                                            control: (base) => ({
+                                                ...base,
+                                                padding: '4px 0',
+                                                borderRadius: '8px',
+                                                borderColor: '#d1d5db',
+                                                '&:hover': {
+                                                    borderColor: '#d1d5db'
+                                                }
+                                            })
+                                        }}
                                     />
                                 </div>
                             </div>
 
-                            {/* type */}
-                            <div className="flex flex-col w-full">
-                                <label htmlFor="type" className="mb-2">Type</label>
-                                <Select
-                                    name="event_type"
-                                    options={SupplierOptions}
-                                    value={event_type}
-                                    onChange={setEvent_type}
-                                    placeholder="Event Type"
-                                />
-                            </div>
+                            {/* type and budget */}
+                            <div className="gap-6 grid grid-cols-1 md:grid-cols-2">
+                                {/* type */}
+                                <div className="flex flex-col w-full">
+                                    <label htmlFor="type" className="text-sm font-medium text-gray-700 mb-2">Event Type</label>
+                                    <Select
+                                        name="event_type"
+                                        options={SupplierOptions}
+                                        value={event_type || ""}
+                                        onChange={setEvent_type}
+                                        placeholder="Select event type"
+                                        styles={{
+                                            control: (base) => ({
+                                                ...base,
+                                                padding: '4px 0',
+                                                borderRadius: '8px',
+                                                borderColor: '#d1d5db',
+                                                '&:hover': {
+                                                    borderColor: '#d1d5db'
+                                                }
+                                            })
+                                        }}
+                                    />
+                                </div>
 
-                            {/* Budget */}
-                            <div className="flex flex-col w-full">
-                                <label htmlFor="type">Budget</label>
-                                <input placeholder="₱ 25,500" type="text" name="event_budget" className="mt-2 focus:ring-2 focus:outline-none px-5 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black"
-                                    required
-                                    onChange={(e) => setEvent_budget(e.target.value)}
-                                    value={event_budget}
-                                />
+                                {/* Budget */}
+                                <div className="flex flex-col w-full">
+                                    <label htmlFor="type" className="text-sm font-medium text-gray-700 mb-2">Budget</label>
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₱</span>
+                                        <input
+                                            placeholder="25,500"
+                                            type="text"
+                                            name="event_budget"
+                                            className="pl-10 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                                            required
+                                            onChange={(e) => setEvent_budget(e.target.value)}
+                                            value={event_budget || ""}
+                                        />
+                                    </div>
+                                </div>
                             </div>
 
                             {/* description */}
                             <div className="flex flex-col w-full">
-                                <label htmlFor="description">Description</label>
-                                <textarea name="event_description" id="desctipion" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-38 py-2 ring-black"
+                                <label htmlFor="description" className="text-sm font-medium text-gray-700 mb-2">Description</label>
+                                <textarea
+                                    name="event_description"
+                                    id="description"
+                                    rows="4"
+                                    className="px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                                     required
                                     onChange={(e) => setEvent_description(e.target.value)}
-                                    value={event_description}
+                                    value={event_description || ""}
+                                    placeholder="Describe your event..."
                                 ></textarea>
                             </div>
 
-                            {/* sepcify supplier */}
-                            <div className="flex flex-col space-y-4">
-                                <span className="block font-medium">Specify the supplier you are looking for:</span>
+                            {/* specify supplier */}
+                            <div className="flex flex-col space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-100">
+                                <div className="flex items-center">
+                                    <Tag className="mr-2 text-blue-600" size={20} />
+                                    <span className="font-medium text-gray-800">Specify the supplier you are looking for:</span>
+                                </div>
 
                                 {/* Tags Display */}
                                 {tags.length > 0 && (
@@ -322,13 +436,13 @@ export default function EditEvent({ userData }) {
                                         {tags.map((tag, index) => (
                                             <span
                                                 key={index}
-                                                className="inline-flex items-center gap-2 py-2 px-3 bg-blue-50 border border-blue-200 rounded-lg text-sm"
+                                                className="inline-flex items-center gap-2 py-2 px-3 bg-blue-100 border border-blue-300 rounded-lg text-sm text-blue-800 font-medium"
                                             >
-                                                {tag}
+                                                {tag.label}
                                                 <button
                                                     type="button"
                                                     onClick={() => removeTag(index)}
-                                                    className="hover:bg-blue-100 rounded-full p-1 transition-colors"
+                                                    className="hover:bg-blue-200 rounded-full p-1 transition-colors"
                                                 >
                                                     <X width={14} height={14} strokeWidth={2} />
                                                 </button>
@@ -338,8 +452,8 @@ export default function EditEvent({ userData }) {
                                 )}
 
                                 {/* Add Supplier Controls */}
-                                <div className="flex md:grid md:grid-cols-3 gap-3 items-end">
-                                    <div className="md:col-span-2">
+                                <div className="flex flex-col md:flex-row gap-3 items-end">
+                                    <div className="flex-grow">
                                         <Select
                                             options={SupplierOptions}
                                             value={categories}
@@ -347,15 +461,26 @@ export default function EditEvent({ userData }) {
                                             placeholder="Select supplier category"
                                             isClearable
                                             className="w-full"
+                                            styles={{
+                                                control: (base) => ({
+                                                    ...base,
+                                                    borderRadius: '8px',
+                                                    borderColor: '#d1d5db',
+                                                    '&:hover': {
+                                                        borderColor: '#d1d5db'
+                                                    }
+                                                })
+                                            }}
                                         />
                                     </div>
                                     <button
                                         type="button"
-                                        className="py-2 px-4 bg-blue-500 text-white rounded-sm hover:bg-blue-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                        className="flex items-center justify-center py-2 px-6 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
                                         onClick={addTag}
                                         disabled={!categories || !categories.value.trim()}
                                     >
-                                        Add Supplier
+                                        <Tag size={18} className="mr-2" />
+                                        Add Category
                                     </button>
                                 </div>
                             </div>
@@ -364,50 +489,87 @@ export default function EditEvent({ userData }) {
                                 <LoadingOverlay isLoading={isUpdating} message="Processing.." />
                             )}
 
-                            <div className="w-full sm:w-full md:w-full lg:w-[40rem] grid grid-cols-1 sm:grid-cols-2 gap-5">
-                                <PrimaryButton>Update Event</PrimaryButton>
-                                <Link to={'/events'} className="flex items-center py-2 w-full text-center justify-center border-1 hover:boder-1 hover:border-blue-500 rounded-sm">
-                                    <span className="block">Cancel</span>
+                            <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+                                <PrimaryButton className="w-full flex items-center justify-center">
+                                    <Send size={18} className="mr-2" />
+                                    Update Event
+                                </PrimaryButton>
+                                <Link
+                                    to={'/events'}
+                                    className="flex items-center justify-center py-3 w-full text-center border border-gray-300 rounded-lg hover:border-blue-500 hover:text-blue-600 transition-colors font-medium"
+                                >
+                                    Cancel
                                 </Link>
                             </div>
                         </form>
+                    </div>
 
+                    {/* Suppliers Sections */}
+                    <div className="space-y-8">
                         {/* Filtered Suppliers Section */}
-                        <div className="mt-8">
-                            <h3 className="text-md font-semibold mb-3">Suppliers Matching Your Categories</h3>
+                        <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-lg">
+                            <div className="flex items-center mb-4">
+                                <Users className="mr-2 text-blue-600" size={24} />
+                                <h3 className="text-xl font-bold text-gray-800">Suggested Suppliers</h3>
+                            </div>
+                            <p className="text-gray-600 mb-4">Suppliers matching your selected categories</p>
 
                             {tags.length === 0 ? (
-                                <p className="text-gray-500">No categories selected. Please add categories above to see suppliers.</p>
+                                <div className="text-center py-8 bg-gray-50 rounded-lg">
+                                    <Tag className="mx-auto text-gray-400 mb-2" size={32} />
+                                    <p className="text-gray-500">No categories selected. Please add categories above to see suppliers.</p>
+                                </div>
                             ) : (
                                 <>
                                     {suppliers.filter(supplier =>
-                                        tags.includes(supplier.supplier_type?.value)
+                                        tags.some(tag => tag.value === supplier.supplier_type?.value)
                                     ).length > 0 ? (
-                                        <div className="space-y-3">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                             {suggestedEvents
                                                 .map((supplier) => {
                                                     const averageRating = calculateAverageRating(supplier.id);
+                                                    const userProfile = userProfiles.find(
+                                                        profile => profile.id === supplier.id
+                                                    )
+                                                    const userDetail = users.find(user => user.id === supplier.id)
+                                                    const userServices = services.filter(serv => serv.supplier_id === supplier.id)
 
                                                     return (
                                                         <div
                                                             key={supplier.id}
-                                                            className="flex items-center justify-between p-4 bg-white rounded-lg border"
+                                                            className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow"
                                                         >
-                                                            <div className="flex items-center space-x-3">
-                                                                <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium">
-                                                                    {supplier.supplier_name.charAt(0).toUpperCase()}
-                                                                </div>
-                                                                <div>
-                                                                    <p className="font-medium text-gray-900">{supplier.supplier_name}</p>
-                                                                    <SupplierModal
-                                                                        className="text-sm text-gray-600 hover:text-blue-600"
-                                                                        supplierData={supplier}
-                                                                        applications={applications}
-                                                                        userData={userData}
-                                                                        services={services[supplier.id]}
-                                                                        reviews={reviews[supplier.id]}
-                                                                        averageRating={averageRating}
-                                                                    />
+                                                            <div className="flex items-start space-x-3">
+                                                                {supplier.supplier_background_image ? (
+                                                                    <img src={supplier.supplier_background_image} alt="" className='h-12 w-12 rounded-full object-cover' />
+                                                                ) : (
+                                                                    <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-medium">
+                                                                        {supplier.supplier_name.charAt(0).toUpperCase()}
+                                                                    </div>)
+                                                                }
+                                                                <div className="flex-1">
+                                                                    <div
+                                                                        className="relative inline-block"
+                                                                        onMouseEnter={() => setHoverState({ id: supplier.id, section: "suggested" })}
+                                                                        onMouseLeave={() => setHoverState({ id: null, section: null })}
+                                                                    >
+                                                                        <p className="font-semibold text-gray-900">{supplier.supplier_name}</p>
+                                                                        {hoverState.id === supplier.id && hoverState.section === "suggested" && (
+                                                                            <ProfileHover hoveredReviewer={userProfile} user={userDetail} review={supplier} />
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="flex items-center mt-1">
+                                                                        <span className="text-sm text-gray-600 mr-2">Rating: {averageRating}</span>
+                                                                        <SupplierModal
+                                                                            className={'text-sm text-blue-600 hover:text-blue-800 font-medium'}
+                                                                            supplierData={supplier}
+                                                                            applications={applications}
+                                                                            userData={userData.role}
+                                                                            services={userServices}
+                                                                            reviews={reviews.filter(r => r.reviewed_id === supplier.id)}
+                                                                            averageRating={averageRating}
+                                                                        />
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -415,206 +577,427 @@ export default function EditEvent({ userData }) {
                                                 })}
                                         </div>
                                     ) : (
-                                        <div className="text-gray-500">
-                                            No suppliers match your selected categories.
+                                        <div className="text-center py-8 bg-gray-50 rounded-lg">
+                                            <Users className="mx-auto text-gray-400 mb-2" size={32} />
+                                            <p className="text-gray-500">No suppliers match your selected categories.</p>
                                         </div>
                                     )}
-
                                 </>
                             )}
                         </div>
-                        {/* Event Suppliers Section */}
-                        <div className="mt-8 space-y-4">
 
-                            <div>
-                                <h3 className="text-md font-semibold">Recents Suppliers</h3>
-                                {suppliers.length > 0 &&
-                                    <div className="space-y-3 mt-3">
-                                        {suppliers.filter(supplier => applications.some(app => app.supplier_id === supplier.id && app.status === "Approved") &&
-                                            contracts.some(contracts => contracts.status === "Completed" && supplier.id === contracts.supplier_id)).map((supplier) => {
-
-                                                const averageRating = calculateAverageRating(supplier.id);
-
-                                                return (
-                                                    <div key={supplier.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
-                                                        <div className="flex items-center space-x-3">
-                                                            <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium">
-                                                                {supplier.supplier_name.charAt(0).toUpperCase()}
-                                                            </div>
-                                                            <div>
-                                                                <p className="font-medium relative top-1 text-gray-900">{supplier.supplier_name}</p>
-                                                                <SupplierModal className={'text-sm text-gray-600 hover:text-blue-600'} supplierData={supplier} applications={applications} userData={userData.role} services={services[supplier.id]} reviews={reviews[supplier.id]} averageRating={averageRating} />
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="flex gap-3">
-                                                            <div className="flex items-center space-x-2">
-                                                                <ContractModal userData={userData} event_id={id} user_id={userData.id} supplier_id={supplier.id} eventData={eventData} supplierData={supplier} />
-                                                            </div>
-
-                                                            <div className="flex items-center text-sm gap-3">
-                                                                {reviews[supplier.id] && reviews[supplier.id].some(
-                                                                    rev => rev.supplier_id === supplier.id
-                                                                ) ? (
-                                                                    <span className="text-white py-1 px-4 rounded-md text-sm bg-gray-400">Reviewed</span>
-                                                                ) : (
-                                                                    <Review supplier_id={supplier.id} event_name={event_name} />
-                                                                )}
-                                                            </div>
-                                                        </div>
-
-                                                    </div>
-                                                )
-                                            })}
-                                    </div>
-                                }
+                        {/* Recent Suppliers */}
+                        <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-lg">
+                            <div className="flex items-center mb-4">
+                                <Users className="mr-2 text-green-600" size={24} />
+                                <h3 className="text-xl font-bold text-gray-800">Recent Suppliers</h3>
                             </div>
+                            <p className="text-gray-600 mb-4">Suppliers from completed contracts</p>
+                            {suppliers.length > 0 &&
+                                <div className="space-y-4">
+                                    {suppliers.filter(supplier => applications.some(app => app.supplier_id === supplier.id && app.status === "Approved") &&
+                                        contracts.some(c => c.supplier_id === supplier.id && c.status === "Completed" && c.event_id === id)
+                                    ).map((supplier) => {
 
-                            {!isLoading && suppliers.filter(supplier => applications.some(app => app.supplier_id === supplier.id && app.status === "Approved") &&
-                                contracts.some(contracts => contracts.status === "Completed" && supplier.id === contracts.supplier_id)).length === 0 && (
-                                    <div className="text-center py-6 text-gray-500">
-                                        <p>No new supplier applications for this event.</p>
-                                    </div>
-                                )}
+                                        const averageRating = calculateAverageRating(supplier.id);
+                                        const userProfile = userProfiles.find(
+                                            profile => profile.id === supplier.id
+                                        )
+                                        const userDetail = users.find(user => user.id === supplier.id)
+                                        const userServices = services.filter(serv => serv.supplier_id === supplier.id)
 
-                            {/* event suppliers */}
-                            <div>
-                                <h3 className="text-md font-semibold">Event Suppliers</h3>
-                                {suppliers.length > 0 &&
-                                    <div className="space-y-3 mt-3">
-                                        {suppliers.filter(supplier =>
-                                            applications.some(app => app.supplier_id === supplier.id && app.status === "Approved") &&
-                                            contracts.filter(c => c.supplier_id === supplier.id).every(c => c.status === "Approved")
-                                        ).map((supplier) => {
-
-                                            const averageRating = calculateAverageRating(supplier.id);
-
-                                            return (
-                                                <div key={supplier.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
-                                                    <div className="flex items-center space-x-3">
-                                                        <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium">
+                                        return (
+                                            <div key={supplier.id} className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200 hover:bg-green-100 transition-colors">
+                                                <div className="flex items-center space-x-4">
+                                                    {supplier.supplier_background_image ? (
+                                                        <img src={supplier.supplier_background_image} alt="" className='h-12 w-12 rounded-full object-cover' />
+                                                    ) : (
+                                                        <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-teal-600 rounded-full flex items-center justify-center text-white font-medium">
                                                             {supplier.supplier_name.charAt(0).toUpperCase()}
+                                                        </div>)
+                                                    }
+                                                    <div className="flex-1">
+                                                        <div
+                                                            className="relative inline-block"
+                                                            onMouseEnter={() => setHoverState({ id: supplier.id, section: "recent" })}
+                                                            onMouseLeave={() => setHoverState({ id: null, section: null })}
+                                                        >
+                                                            <p className="font-semibold text-gray-900">{supplier.supplier_name}</p>
+                                                            {hoverState.id === supplier.id && hoverState.section === "recent" && (
+                                                                <ProfileHover hoveredReviewer={userProfile} user={userDetail} review={supplier} />
+                                                            )}
                                                         </div>
-                                                        <div>
-                                                            <p className="font-medium relative top-1 text-gray-900">{supplier.supplier_name}</p>
-                                                            <SupplierModal className={'text-sm text-gray-600 hover:text-blue-600'} supplierData={supplier} applications={applications} userData={userData.role} services={services[supplier.id]} reviews={reviews[supplier.id]} averageRating={averageRating} />
+                                                        <div className="flex items-center mt-1">
+                                                            <span className="text-sm text-gray-600 mr-2">Rating: {averageRating}</span>
+                                                            <SupplierModal
+                                                                className={'text-sm text-blue-600 hover:text-blue-800 font-medium'}
+                                                                supplierData={supplier}
+                                                                applications={applications}
+                                                                userData={userData.role}
+                                                                services={userServices}
+                                                                reviews={reviews.filter(r => r.reviewed_id === supplier.id)}
+                                                                averageRating={averageRating}
+                                                            />
                                                         </div>
                                                     </div>
+                                                </div>
 
+                                                <div className="flex gap-3">
                                                     <div className="flex items-center space-x-2">
                                                         <ContractModal userData={userData} event_id={id} user_id={userData.id} supplier_id={supplier.id} eventData={eventData} supplierData={supplier} />
                                                     </div>
 
+                                                    <div className="flex items-center text-sm gap-3">
+                                                        {reviews.find(rev => rev.reviewed_id === supplier.id && rev.user_id === userData.id && rev.event_id === eventData.id) ? (
+                                                            <span className="text-white py-1 px-4 rounded-md text-sm bg-gray-500 ">Reviewed</span>
+                                                        ) : (
+                                                            <Review reviewed_id={supplier.id} reviewer_name={event_name} eventData={eventData} />
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            )
-                                        })}
-                                    </div>
-                                }
-                            </div>
 
-                            {isLoading && (
-                                <div className="flex justify-center">
-                                    <div className="border border-t-2 rounded-full h-8 w-8 border-blue animate-spin"></div>
+                                            </div>
+                                        )
+                                    })}
                                 </div>
-                            )}
+                            }
+
                             {!isLoading && suppliers.filter(supplier => applications.some(app => app.supplier_id === supplier.id && app.status === "Approved") &&
-                                contracts.filter(contracts => supplier.id === contracts.supplier_id).every(c => c.status === "Approved")).length === 0 && (
-                                    <div className="text-center py-6 text-gray-500">
-                                        <p>No new supplier applications for this event.</p>
+                                contracts.some(c => c.supplier_id === supplier.id && c.status === "Completed" && c.event_id === id)
+                            ).length === 0 && (
+                                    <div className="text-center py-8 bg-gray-50 rounded-lg">
+                                        <Users className="mx-auto text-gray-400 mb-2" size={32} />
+                                        <p className="text-gray-500">No recent suppliers for this event.</p>
                                     </div>
                                 )}
+                        </div>
 
-                            {/* Suppliers who applied for this event - separate section */}
-                            <div className="mt-6">
-                                <h4 className="text-md font-medium mb-3">Suppliers who applied for this event</h4>
-                                {suppliers.length > 0 && (
-                                    <div className="space-y-3">
-                                        {suppliers.filter(supplier => applications.some(app => app.supplier_id === supplier.id && app.status === "Pending")).map((supplier) => {
-                                            const averageRating = calculateAverageRating(supplier.id);
+                        {/* current event suppliers */}
+                        <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-lg">
+                            <div className="flex items-center mb-4">
+                                <Users className="mr-2 text-purple-600" size={24} />
+                                <h3 className="text-xl font-bold text-gray-800">Current Event Suppliers</h3>
+                            </div>
+                            <p className="text-gray-600 mb-4">Suppliers currently working on this event</p>
 
-                                            return (
-                                                <div key={supplier.id} className="flex items-center justify-between p-4 bg-white rounded-lg border">
-                                                    <div className="flex items-center space-x-3">
-                                                        <div className="w-10 h-10 bg-gray-500 rounded-full flex items-center justify-center text-white font-medium">
+                            {suppliers.length > 0 &&
+                                <div className="space-y-4">
+                                    {suppliers.filter(supplier =>
+                                        applications.filter(app => app.supplier_id === supplier.id).every(app => app.status === "Approved") &&
+                                        contracts.some(c => c.supplier_id === supplier.id && c.status === "Approved" && c.event_id === id)
+                                    ).map((supplier) => {
+
+                                        const averageRating = calculateAverageRating(supplier.id);
+                                        const userProfile = userProfiles.find(
+                                            profile => profile.id === supplier.id
+                                        )
+                                        const userDetail = users.find(user => user.id === supplier.id)
+                                        const userServices = services.filter(serv => serv.supplier_id === supplier.id)
+
+                                        return (
+                                            <div key={supplier.id} className="flex items-center justify-between p-4 bg-purple-50 rounded-lg border border-purple-200 hover:bg-purple-100 transition-colors">
+                                                <div className="flex items-center space-x-4">
+                                                    {supplier.supplier_background_image ? (
+                                                        <img src={supplier.supplier_background_image} alt="" className='h-12 w-12 rounded-full object-cover' />
+                                                    ) : (
+                                                        <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-medium">
                                                             {supplier.supplier_name.charAt(0).toUpperCase()}
+                                                        </div>)
+                                                    }
+                                                    <div className="flex-1">
+                                                        <div
+                                                            className="relative inline-block"
+                                                            onMouseEnter={() => setHoverState({ id: supplier.id, section: "event suppliers" })}
+                                                            onMouseLeave={() => setHoverState({ id: null, section: null })}
+                                                        >
+                                                            <p className="font-semibold text-gray-900">{supplier.supplier_name}</p>
+                                                            {hoverState.id === supplier.id && hoverState.section === "event suppliers" && (
+                                                                <ProfileHover hoveredReviewer={userProfile} user={userDetail} review={supplier} />
+                                                            )}
                                                         </div>
-                                                        <div>
-                                                            <p className="font-medium relative top-1 text-gray-900">{supplier.supplier_name}</p>
-                                                            <SupplierModal className={'text-sm text-gray-600 hover:text-blue-600'} supplierData={supplier} applications={applications} userData={userData.role} services={services[supplier.id]} reviews={reviews[supplier.id]} averageRating={averageRating} />
+                                                        <div className="flex items-center mt-1">
+                                                            <span className="text-sm text-gray-600 mr-2">Rating: {averageRating}</span>
+                                                            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full font-medium">Approved</span>
                                                         </div>
                                                     </div>
+                                                </div>
 
+                                                <div className="flex items-center space-x-3">
+                                                    <ContractModal
+                                                        userData={userData}
+                                                        event_id={id}
+                                                        user_id={userData.id}
+                                                        supplier_id={supplier.id}
+                                                        eventData={eventData}
+                                                        supplierData={supplier}
+                                                    />
+                                                    <SupplierModal
+                                                        className={'text-sm text-blue-600 hover:text-blue-800 font-medium'}
+                                                        supplierData={supplier}
+                                                        applications={applications}
+                                                        userData={userData.role}
+                                                        services={userServices}
+                                                        reviews={reviews.filter(r => r.reviewed_id === supplier.id)}
+                                                        averageRating={averageRating}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            }
+
+                            {!isLoading && suppliers.filter(supplier => applications.filter(app => app.supplier_id === supplier.id).every(app => app.status === "Approved") &&
+                                contracts.some(c => c.supplier_id === supplier.id && c.status === "Approved" && c.event_id === id)
+                            ).length === 0 && (
+                                    <div className="text-center py-8 bg-gray-50 rounded-lg">
+                                        <Users className="mx-auto text-gray-400 mb-2" size={32} />
+                                        <p className="text-gray-500">No suppliers currently assigned to this event.</p>
+                                    </div>
+                                )}
+                        </div>
+
+                        {/* Applied Suppliers Section */}
+                        <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-lg">
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center">
+                                    <Users className="mr-2 text-amber-600" size={24} />
+                                    <h3 className="text-xl font-bold text-gray-800">Supplier Applications</h3>
+                                </div>
+                                <span className="bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-sm font-medium">
+                                    {suppliers.filter(supplier => applications.some(app => app.supplier_id === supplier.id && app.status === "Pending")).length} Pending
+                                </span>
+                            </div>
+                            <p className="text-gray-600 mb-4">Suppliers who have applied to work on this event</p>
+
+                            {suppliers.length > 0 && (
+                                <div className="space-y-4">
+                                    {suppliers.filter(supplier => applications.some(app => app.supplier_id === supplier.id && app.status === "Pending")).map((supplier) => {
+                                        const averageRating = calculateAverageRating(supplier.id);
+                                        const userProfile = userProfiles.find(
+                                            profile => profile.id === supplier.id
+                                        )
+                                        const userDetail = users.find(user => user.id === supplier.id)
+                                        const userServices = services.filter(serv => serv.supplier_id === supplier.id)
+                                        return (
+                                            <div key={supplier.id} className="flex items-center justify-between p-4 bg-amber-50 rounded-lg border border-amber-200 hover:bg-amber-100 transition-colors">
+                                                <div className="flex items-center space-x-4">
+                                                    {supplier.supplier_background_image ? (
+                                                        <img src={supplier.supplier_background_image} alt="" className='h-12 w-12 rounded-full object-cover' />
+                                                    ) : (
+                                                        <div className="w-12 h-12 bg-gradient-to-r from-amber-500 to-orange-600 rounded-full flex items-center justify-center text-white font-medium">
+                                                            {supplier.supplier_name.charAt(0).toUpperCase()}
+                                                        </div>)
+                                                    }
+                                                    <div className="flex-1">
+                                                        <div
+                                                            className="relative inline-block"
+                                                            onMouseEnter={() => setHoverState({ id: supplier.id, section: "applied" })}
+                                                            onMouseLeave={() => setHoverState({ id: null, section: null })}
+                                                        >
+                                                            <p className="font-semibold text-gray-900">{supplier.supplier_name}</p>
+                                                            {hoverState.id === supplier.id && hoverState.section === "applied" && (
+                                                                <ProfileHover hoveredReviewer={userProfile} user={userDetail} review={supplier} />
+                                                            )}
+                                                        </div>
+                                                        <div className="flex items-center mt-1 space-x-2">
+                                                            <span className="text-sm text-gray-600">Rating: {averageRating}</span>
+                                                            <SupplierModal
+                                                                className={'text-sm text-blue-600 hover:text-blue-800 font-medium mr-4'}
+                                                                supplierData={supplier}
+                                                                applications={applications}
+                                                                userData={userData.role}
+                                                                services={userServices}
+                                                                reviews={reviews.filter(r => r.reviewed_id === supplier.id)}
+                                                                averageRating={averageRating}
+                                                            />                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center space-x-3">
 
                                                     <div className="flex items-center space-x-2">
                                                         <button
                                                             onClick={() => handleApprove(supplier)}
-                                                            className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
+                                                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm flex items-center"
                                                         >
+                                                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                            </svg>
                                                             Approve
                                                         </button>
 
-                                                        <RejectReview className={`px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition-colors`} userData={userData} event_id={id} event_name={event_name} supplier_id={supplier.id} supplier={supplier} />
+                                                        <RejectReview
+                                                            className={`px-4 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium flex items-center`}
+                                                            userData={userData}
+                                                            event_id={id}
+                                                            event_name={event_name}
+                                                            supplier_id={supplier.id}
+                                                            supplier={supplier}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            )}
+
+                            {!isLoading && suppliers.filter(supplier => applications.some(app => app.supplier_id === supplier.id && app.status === "Pending")).length === 0 && (
+                                <div className="text-center py-8 bg-gray-50 rounded-lg">
+                                    <Users className="mx-auto text-gray-400 mb-2" size={32} />
+                                    <p className="text-gray-500">No pending supplier applications for this event.</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Your Offers Section */}
+                        <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-lg">
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center">
+                                    <FileText className="mr-2 text-indigo-600" size={24} />
+                                    <h3 className="text-xl font-bold text-gray-800">Your Contract Offers</h3>
+                                </div>
+                                <span className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-medium">
+                                    {suppliers.filter(supplier =>
+                                        applications.some(app => app.supplier_id === supplier.id && app.status === "Approved") &&
+                                        contracts.some(contracts => contracts.status === "Pending" && supplier.id === contracts.supplier_id)
+                                    ).length} Pending
+                                </span>
+                            </div>
+                            <p className="text-gray-600 mb-4">Contract offers waiting for supplier response</p>
+
+                            {contracts.length > 0 && (
+                                <div className="space-y-4">
+                                    {suppliers.filter(supplier =>
+                                        applications.some(app => app.supplier_id === supplier.id && app.status === "Approved") &&
+                                        contracts.some(contracts => contracts.status === "Pending" && supplier.id === contracts.supplier_id))
+                                        .map((supplier) => {
+                                            const averageRating = calculateAverageRating(supplier.id);
+                                            const userProfile = userProfiles.find(
+                                                profile => profile.id === supplier.id
+                                            )
+                                            const userDetail = users.find(user => user.id === supplier.id)
+                                            const userServices = services.filter(serv => serv.supplier_id === supplier.id)
+
+                                            return (
+                                                <div key={supplier.id} className="flex items-center justify-between p-4 bg-indigo-50 rounded-lg border border-indigo-200 hover:bg-indigo-100 transition-colors">
+                                                    <div className="flex items-center space-x-4">
+                                                        {supplier.supplier_background_image ? (
+                                                            <img src={supplier.supplier_background_image} alt="" className='h-12 w-12 rounded-full object-cover' />
+                                                        ) : (
+                                                            <div className="w-12 h-12 bg-gradient-to-r from-indigo-500 to-blue-600 rounded-full flex items-center justify-center text-white font-medium">
+                                                                {supplier.supplier_name.charAt(0).toUpperCase()}
+                                                            </div>)
+                                                        }
+                                                        <div className="flex-1">
+                                                            <div
+                                                                className="relative inline-block"
+                                                                onMouseEnter={() => setHoverState({ id: supplier.id, section: "offers" })}
+                                                                onMouseLeave={() => setHoverState({ id: null, section: null })}
+                                                            >
+                                                                <p className="font-semibold text-gray-900">{supplier.supplier_name}</p>
+                                                                {hoverState.id === supplier.id && hoverState.section === "offers" && (
+                                                                    <ProfileHover hoveredReviewer={userProfile} user={userDetail} review={supplier} />
+                                                                )}
+                                                            </div>
+                                                            <div className="flex items-center mt-1 space-x-2">
+                                                                <span className="text-sm text-gray-600">Rating: {averageRating}</span>
+                                                                <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full font-medium">Offer Sent</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex items-center space-x-3">
+                                                        <SupplierModal
+                                                            className={'text-sm text-blue-600 hover:text-blue-800 font-medium mr-4'}
+                                                            supplierData={supplier}
+                                                            applications={applications}
+                                                            userData={userData.role}
+                                                            services={userServices}
+                                                            reviews={reviews.filter(r => r.reviewed_id === supplier.id)}
+                                                            averageRating={averageRating}
+                                                        />
+                                                        <ContractModal
+                                                            userData={userData}
+                                                            event_id={id}
+                                                            supplier_id={supplier.id}
+                                                            eventData={eventData}
+                                                            supplierData={supplier}
+                                                        />
                                                     </div>
                                                 </div>
                                             )
                                         })}
+                                </div>
+                            )}
+
+                            {!isLoading && suppliers.filter(supplier => applications.some(app => app.supplier_id === supplier.id && app.status === "Approved") &&
+                                contracts.some(contracts => contracts.status === "Pending" && supplier.id === contracts.supplier_id)).length === 0 && (
+                                    <div className="text-center py-8 bg-gray-50 rounded-lg">
+                                        <FileText className="mx-auto text-gray-400 mb-2" size={32} />
+                                        <p className="text-gray-500">No pending contract offers for this event.</p>
                                     </div>
                                 )}
-                                {isLoading && (
-                                    <div className="flex justify-center">
-                                        <div className="border border-t-2 rounded-full h-8 w-8 border-blue animate-spin"></div>
+                        </div>
+                    </div>
+
+                    {/* Quick Stats Summary */}
+                    <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-lg mt-8">
+                        <h3 className="text-xl font-bold text-gray-800 mb-6">Event Summary</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-green-600 font-medium">Recent Suppliers</p>
+                                        <p className="text-2xl font-bold text-gray-800 mt-1">
+                                            {suppliers.filter(supplier =>
+                                                applications.some(app => app.supplier_id === supplier.id && app.status === "Approved") &&
+                                                contracts.some(c => c.supplier_id === supplier.id && c.status === "Completed" && c.event_id === id)
+                                            ).length}
+                                        </p>
                                     </div>
-                                )}
-                                {!isLoading && suppliers.filter(supplier => applications.some(app => app.supplier_id === supplier.id && app.status !== "Approved")).length === 0 && (
-                                    <div className="text-center py-6 text-gray-500">
-                                        <p>No new supplier applications for this event.</p>
-                                    </div>
-                                )}
+                                    <Users className="text-green-500" size={24} />
+                                </div>
                             </div>
 
-                            {/* your offers to suppliers */}
-                            <div className="mt-6">
-                                <h4 className="text-md font-medium mb-3">Your Offers to Suppliers</h4>
-                                {contracts.length > 0 && (
-                                    <div className="space-y-3">
-                                        {suppliers.filter(supplier =>
-                                            applications.some(app => app.supplier_id === supplier.id && app.status === "Approved") &&
-                                            contracts.some(contracts => contracts.status === "Pending" && supplier.id === contracts.supplier_id))
-                                            .map((supplier) => {
-                                                const averageRating = calculateAverageRating(supplier.id);
-
-                                                return (
-                                                    <div key={supplier.id} className="flex items-center justify-between p-4 bg-white rounded-lg border">
-                                                        <div className="flex items-center space-x-3">
-                                                            <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium">
-                                                                {supplier.supplier_name.charAt(0).toUpperCase()}
-                                                            </div>
-                                                            <div>
-                                                                <p className="font-medium relative top-1 text-gray-900">{supplier.supplier_name}</p>
-                                                                <SupplierModal className={'text-sm text-gray-600 hover:text-blue-600'} supplierData={supplier} applications={applications} userData={userData.role} services={services[supplier.id]} reviews={reviews[supplier.id]} averageRating={averageRating} />
-                                                            </div>
-                                                        </div>
-
-
-                                                        <div className="flex items-center space-x-2">
-                                                            <ContractModal userData={userData} event_id={id} supplier_id={supplier.id} eventData={eventData} supplierData={supplier} />
-                                                        </div>
-                                                    </div>
-                                                )
-                                            })}
+                            <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-amber-600 font-medium">Pending Applications</p>
+                                        <p className="text-2xl font-bold text-gray-800 mt-1">
+                                            {suppliers.filter(supplier => applications.some(app => app.supplier_id === supplier.id && app.status === "Pending")).length}
+                                        </p>
                                     </div>
-                                )}
-                                {isLoading && (
-                                    <div className="flex justify-center">
-                                        <div className="border border-t-2 rounded-full h-8 w-8 border-blue animate-spin"></div>
+                                    <FileText className="text-amber-500" size={24} />
+                                </div>
+                            </div>
+
+                            <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-purple-600 font-medium">Contract Offers</p>
+                                        <p className="text-2xl font-bold text-gray-800 mt-1">
+                                            {suppliers.filter(supplier =>
+                                                applications.some(app => app.supplier_id === supplier.id && app.status === "Approved") &&
+                                                contracts.some(contracts => contracts.status === "Pending" && supplier.id === contracts.supplier_id)
+                                            ).length}
+                                        </p>
                                     </div>
-                                )}
-                                {!isLoading && suppliers.filter(supplier => applications.some(app => app.supplier_id === supplier.id && app.status === "Approved") &&
-                                    contracts.some(contracts => contracts.status === "Pending" && supplier.id === contracts.supplier_id)).length === 0 && (
-                                        <div className="text-center py-6 text-gray-500">
-                                            <p>No new supplier applications for this event.</p>
-                                        </div>
-                                    )}
+                                    <Send className="text-purple-500" size={24} />
+                                </div>
+                            </div>
+
+                            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-blue-600 font-medium">Suggested Matches</p>
+                                        <p className="text-2xl font-bold text-gray-800 mt-1">
+                                            {suggestedEvents.length}
+                                        </p>
+                                    </div>
+                                    <Tag className="text-blue-500" size={24} />
+                                </div>
                             </div>
                         </div>
                     </div>

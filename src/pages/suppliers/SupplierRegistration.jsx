@@ -9,6 +9,7 @@ import Swal from 'sweetalert2'
 import { SupplierOptions } from '../../constants/categories';
 import { supplierTypeToExpertise } from '../../constants/categories';
 import LoadingOverlay from '../../components/LoadingOverlay';
+import AvailabilityPicker from '../../components/AvailabilityPicker';
 
 export default function SupplierRegistration() {
 
@@ -98,6 +99,8 @@ export default function SupplierRegistration() {
             setIsLoading(false);
         }
     };
+
+    console.log(supplier_availability)
 
     console.log(location)
     return (
@@ -277,23 +280,6 @@ export default function SupplierRegistration() {
                                             required
                                         />
                                     </div>
-                                </div>
-
-                                <div className="grid md:grid-cols-2 gap-6">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            <Calendar className="inline w-4 h-4 mr-1" />
-                                            Availability
-                                        </label>
-                                        <input
-                                            type="text"
-                                            name="availability"
-                                            required
-                                            onChange={(e) => setSupplier_availability(e.target.value)}
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg  focus:border-transparent transition-colors"
-                                            placeholder="e.g., Monday to Saturday, 8AM-6PM"
-                                        />
-                                    </div>
 
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -305,15 +291,22 @@ export default function SupplierRegistration() {
                                             name="minimumOrders"
                                             required
                                             onChange={(e) => setPrice(e.target.value)}
-                                            className="w-full px-4 py-3 border border-gray-300 rounded-lg  focus:border-transparent transition-colors"
+                                            className="w-full px-4 py-[7px] border border-gray-300 rounded-md  focus:border-transparent transition-colors"
                                             placeholder="e.g., ₱5,000"
                                         />
                                     </div>
+
+                                    <div>
+                                        <AvailabilityPicker onChange={(val) => setSupplier_availability(val)} />
+                                    </div>
+
+
+
                                 </div>
                             </div>
 
                             {/* Submit Button */}
-                            <div className="pt-6 border-t">
+                            <div className="pt-6 border-t border-gray-500">
                                 <button
                                     type="submit"
                                     disabled={isLoading}

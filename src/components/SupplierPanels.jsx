@@ -12,6 +12,10 @@ import { ServiceEdit } from './UpdateModal'
 import { formatDistanceToNow } from 'date-fns'
 import Swal from 'sweetalert2'
 import LoadingOverlay from './LoadingOverlay'
+import { useFetchUserProfiles } from '../hooks/useProfile'
+import { useFetchUsers } from '../hooks/useUsers'
+import ProfileHover from './ProfileHover'
+import AvailabilityPicker from './AvailabilityPicker'
 
 export default function SupplierPanels({ userData, shop, reviews, services, averageRating }) {
 
@@ -25,6 +29,9 @@ export default function SupplierPanels({ userData, shop, reviews, services, aver
     const [availability, setAvailability] = useState('')
     const [supplier_price, setSupplier_price] = useState('')
     const [isDeleting, setIsDeleting] = useState(false)
+    const [hoveredReviewerId, setHoveredReviewerId] = useState(null)
+    const { userProfiles } = useFetchUserProfiles()
+    const { users } = useFetchUsers()
 
     useEffect(() => {
         setSupplier_price(shop?.supplier_price)
@@ -34,8 +41,6 @@ export default function SupplierPanels({ userData, shop, reviews, services, aver
         setContact_number(shop?.supplier_number)
 
     }, [shop])
-
-
 
     const handleContactSubmit = async (e) => {
         e.preventDefault()
@@ -75,7 +80,7 @@ export default function SupplierPanels({ userData, shop, reviews, services, aver
 
             if (result.isConfirmed) {
                 try {
-                    await deleteDoc(doc(db, "shops", shop.id, "services", service?.id));
+                    await deleteDoc(doc(db, "services", service?.id));
                     Swal.fire(
                         'Deleted!',
                         'Service has been deleted successfully.',
@@ -118,7 +123,7 @@ export default function SupplierPanels({ userData, shop, reviews, services, aver
         }
     }
 
-    console.log(reviews)
+    console.log(services)
 
     return (
         <>
@@ -290,11 +295,11 @@ export default function SupplierPanels({ userData, shop, reviews, services, aver
                                                     <Clock7 size={24} className="text-purple-600" />
                                                 </div>
                                                 <div>
-                                                    <h4 className="font-bold text-gray-900 mb-1">Availability</h4>
+                                                    <h4 className="font-bold text-gray-900 mb-1">{bookingEdting ? '' : "Availability"}</h4>
                                                     {!bookingEdting ? (
                                                         <p className="text-gray-600">{shop?.supplier_availability}</p>
                                                     ) : (
-                                                        <input type="text" placeholder="e.g., Monday to Saturday, 8AM-6PM" value={availability} onChange={(e) => setAvailability(e.target.value)} className='border border-gray-300 focus:outline-none px-4 py-2 rounded-md text-sm' />
+                                                        <AvailabilityPicker onChange={(val) => setAvailability(val)} />
                                                     )}
 
                                                 </div>
@@ -422,31 +427,62 @@ export default function SupplierPanels({ userData, shop, reviews, services, aver
 
                                 {reviews.length > 0 ? (
                                     <div className="space-y-6">
-                                        {reviews.map((review, index) => (
-                                            <div key={index} className="border-b border-gray-100 pb-6 last:border-b-0">
-                                                <div className="flex items-start gap-4">
-                                                    <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold">
-                                                        {review.reviewer_name?.charAt(0).toUpperCase() || 'A'}
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <div className="flex items-center gap-3 mb-2">
-                                                            <h4 className="font-semibold text-gray-900">{review.reviewer_name || 'Anonymous'}</h4>
-                                                            <div className="flex items-center gap-1">
-                                                                {[...Array(5)].map((_, i) => (
-                                                                    <Star
-                                                                        key={i}
-                                                                        size={16}
-                                                                        className={`${i < review.rating ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'}`}
-                                                                    />
-                                                                ))}
+                                        {reviews.map((review, index) => {
+                                            const reviewerProfile = userProfiles.find(
+                                                profile => profile.id === review.user_id
+                                            )
+                                            const reviewerDetail = users.find(user => user.id === review.user_id)
+
+                                            return (
+                                                <div key={index} className="border-b border-gray-100 pb-6 last:border-b-0">
+                                                    <div className="flex items-start gap-4">
+
+                                                        {reviewerProfile?.profile_pic ? (
+                                                            <img src={reviewerProfile?.profile_pic} alt="" className='h-10 w-10 rounded-full object-cover' />
+                                                        ) : (
+                                                            <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold">
+                                                                {review.reviewer_name?.charAt(0).toUpperCase() || 'A'}
+                                                            </div>)}
+
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center gap-3 mb-2">
+                                                                <div
+                                                                    className="relative inline-block"
+                                                                    onMouseEnter={() => setHoveredReviewerId(review.id)}
+                                                                    onMouseLeave={() => setHoveredReviewerId(null)}
+                                                                >
+                                                                    <div className='flex flex-col'>
+                                                                        <div className='flex items-baseline gap-3 mb-1'>
+                                                                            <h2 className="font-medium text-gray-900 cursor-pointer">
+                                                                                {reviewerDetail?.first_name} {reviewerDetail?.last_name}
+                                                                            </h2>
+                                                                            <p className="text-xs text-gray-500">{review?.createdAt ? formatDistanceToNow(new Date(review.createdAt.seconds * 1000), { addSuffix: true }) : 'Recent'}</p>
+                                                                        </div>
+                                                                        <h2 className="font-medium text-xs text-gray-600 cursor-pointer">
+                                                                            {reviewerDetail?.role === "Event Planner" ? 'Event' : 'Shop'}: {review.reviewer_name}
+                                                                        </h2>
+                                                                    </div>
+                                                                    {hoveredReviewerId === review.id && (
+                                                                        <ProfileHover hoveredReviewer={reviewerProfile} user={reviewerDetail} review={review} />
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex items-center gap-1">
+                                                                    {[...Array(5)].map((_, i) => (
+                                                                        <Star
+                                                                            key={i}
+                                                                            size={16}
+                                                                            className={`${i < review.rating ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'}`}
+                                                                        />
+                                                                    ))}
+                                                                </div>
+                                                                <span className="text-sm text-gray-500">{review?.createdAt ? formatDistanceToNow(new Date(review.createdAt.seconds * 1000), { addSuffix: true }) : 'Recent'}</span>
                                                             </div>
-                                                            <span className="text-sm text-gray-500">{review?.createdAt ? formatDistanceToNow(new Date(review.createdAt.seconds * 1000), { addSuffix: true }) : 'Recent'}</span>
+                                                            <p className="text-gray-700">{review.comment || 'Great service!'}</p>
                                                         </div>
-                                                        <p className="text-gray-700">{review.comment || 'Great service!'}</p>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            )
+                                        })}
                                     </div>
                                 ) : (
                                     <div className="text-center py-12">

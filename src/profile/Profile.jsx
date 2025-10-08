@@ -13,9 +13,9 @@ export default function Profile({ userData }) {
 
     const [descriptionEditing, setDescriptionEditing] = useState(false)
     const [descriptionLoading, setDescriptionLoading] = useState(false)
+    const [error, setError] = useState("");
     const [contactInformationEditing, setContactInformationEditing] = useState(false)
     const [contactInformationLoading, setContactInformationLoading] = useState(false)
-    const [email_address, setEmail_address] = useState('')
     const [contact_number, setContact_number] = useState('')
     const [description, setDescription] = useState('')
     const { userProfile } = useFetchUserProfileById(userData?.id)
@@ -44,17 +44,18 @@ export default function Profile({ userData }) {
         );
     };
 
+    console.log(contactInformationEditing)
+
     useEffect(() => {
         const unsubscribe = onSnapshot(doc(db, "userProfiles", userData.id), (onsnapshot) => {
             const userProfile = onsnapshot.data()
 
             setContact_number(userProfile?.contact_number)
-            setEmail_address(userProfile?.email_address)
             setDescription(userProfile?.description)
         })
 
         return () => unsubscribe()
-    }, [])
+    }, [userData])
 
     const handleDescription = async (e) => {
         e.preventDefault()
@@ -78,12 +79,18 @@ export default function Profile({ userData }) {
 
     const handleContactInformation = async (e) => {
         e.preventDefault()
+        setError("");
         setContactInformationLoading(true)
+
+        if (!/^\d{11}$/.test(contact_number)) {
+            setError("Contact number must be exactly 11 digits.");
+            setContactInformationLoading(false);
+            return;
+        }
 
         try {
             await updateDoc(doc(db, "userProfiles", userData.id), {
                 contact_number: contact_number,
-                email_address: email_address
             })
         }
 
@@ -184,30 +191,28 @@ export default function Profile({ userData }) {
                                         <div className="space-y-4">
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                    Email:
-                                                </label>
-                                                <input
-                                                    type="email"
-                                                    onChange={(e) => setEmail_address(e.target.value)}
-                                                    value={email_address}
-                                                    disabled={!contactInformationEditing}
-                                                    className={`w-full p-3 rounded-lg bg-gray-50 text-gray-700 ${contactInformationEditing ? 'border border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent' : 'border border-gray-300'}`}
-                                                    placeholder='e.g test@gmail.com'
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">
                                                     Contact Number:
                                                 </label>
                                                 <input
-                                                    type="tel"
-                                                    onChange={(e) => setContact_number(e.target.value)}
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    pattern="[0-9]*"
                                                     value={contact_number}
                                                     disabled={!contactInformationEditing}
+                                                    onChange={(e) => {
+                                                        // Remove all non-digit characters
+                                                        const value = e.target.value.replace(/\D/g, "");
+                                                        // Limit to 11 digits
+                                                        if (value.length <= 11) {
+                                                            setContact_number(value);
+                                                            // Clear error on input change
+                                                        }
+                                                    }}
+                                                    maxLength={11}
+                                                    placeholder="e.g. 09487623432"
                                                     className={`w-full p-3 rounded-lg bg-gray-50 text-gray-700 ${contactInformationEditing ? 'border border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent' : 'border border-gray-300'}`}
-                                                    placeholder="e.g 09487623432"
                                                 />
+                                                {error && <span className="text-red-600 text-sm mt-2 block">{error}</span>}
                                             </div>
                                         </div>
                                         {contactInformationEditing && (
@@ -222,82 +227,86 @@ export default function Profile({ userData }) {
                                 )}
                             </div>
 
-                            {/* Recent Reviews Section */}
-                            <div className="bg-white border border-gray-200 rounded-lg p-4">
-                                <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Reviews</h2>
+                            {userData?.role !== "Admin" && (
+                                <>
+                                    {/* Recent Reviews Section */}
+                                    <div className="bg-white border border-gray-200 rounded-lg p-4">
+                                        <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Reviews</h2>
 
-                                <div className="space-y-4">
-                                    {userReviews.map((review, index) => {
-                                        const reviewerProfile = userProfiles.find(
-                                            profile => profile.id === review.user_id
-                                        )
-                                        const reviewerDetail = users.find(user => user.id === review.user_id)
+                                        <div className="space-y-4">
+                                            {userReviews.map((review, index) => {
+                                                const reviewerProfile = userProfiles.find(
+                                                    profile => profile.id === review.user_id
+                                                )
+                                                const reviewerDetail = users.find(user => user.id === review.user_id)
 
-                                        return (
-                                            < div key={review.id} >
-                                                <div className="flex items-start gap-3">
-                                                    {reviewerProfile.profile_pic ? (
-                                                        <img
-                                                            src={reviewerProfile.profile_pic}
-                                                            alt=""
-                                                            className="h-10 w-10 rounded-full object-cover"
-                                                        />
-                                                    ) : (
-                                                        <div className="text-5xl h-10 w-10 rounded-full bg-gradient-to-r from-blue-600 to-pink-600 text-white flex items-center justify-center">
-                                                            <span>{reviewerDetail?.first_name.charAt(0).toUpperCase()}</span>
-                                                        </div>
-                                                    )}
-
-                                                    <div className="flex-1">
-                                                        <div className="flex items-center justify-between">
-                                                            <div>
-                                                                <div
-                                                                    className="relative inline-block"
-                                                                    onMouseEnter={() => setHoveredReviewerId(review.id)}
-                                                                    onMouseLeave={() => setHoveredReviewerId(null)}
-                                                                >
-                                                                    <div className='flex flex-col'>
-                                                                        <div className='flex items-baseline gap-3 mb-1'>
-                                                                            <h2 className="font-medium text-gray-900 cursor-pointer">
-                                                                                {reviewerDetail?.first_name} {reviewerDetail?.last_name}
-                                                                            </h2>
-                                                                            <p className="text-xs text-gray-500">{review?.createdAt ? formatDistanceToNow(new Date(review.createdAt.seconds * 1000), { addSuffix: true }) : 'Recent'}</p>
-                                                                        </div>
-                                                                        <h2 className="font-medium text-xs text-gray-600 cursor-pointer">
-                                                                            {reviewerDetail?.role === "Event Planner" ? 'Event' : 'Shop'}: {review.reviewer_name}
-                                                                        </h2>
-                                                                    </div>
-                                                                    {hoveredReviewerId === review.id && (
-                                                                        <ProfileHover hoveredReviewer={reviewerProfile} user={reviewerDetail} review={review} />
-                                                                    )}
+                                                return (
+                                                    < div key={review.id} >
+                                                        <div className="flex items-start gap-3">
+                                                            {reviewerProfile.profile_pic ? (
+                                                                <img
+                                                                    src={reviewerProfile.profile_pic}
+                                                                    alt=""
+                                                                    className="h-10 w-10 rounded-full object-cover"
+                                                                />
+                                                            ) : (
+                                                                <div className="text-5xl h-10 w-10 rounded-full bg-gradient-to-r from-blue-600 to-pink-600 text-white flex items-center justify-center">
+                                                                    <span>{reviewerDetail?.first_name.charAt(0).toUpperCase()}</span>
                                                                 </div>
-                                                            </div>
+                                                            )}
 
-                                                            <StarRating rating={review.rating} />
+                                                            <div className="flex-1">
+                                                                <div className="flex items-center justify-between">
+                                                                    <div>
+                                                                        <div
+                                                                            className="relative inline-block"
+                                                                            onMouseEnter={() => setHoveredReviewerId(review.id)}
+                                                                            onMouseLeave={() => setHoveredReviewerId(null)}
+                                                                        >
+                                                                            <div className='flex flex-col'>
+                                                                                <div className='flex items-baseline gap-3 mb-1'>
+                                                                                    <h2 className="font-medium text-gray-900 cursor-pointer">
+                                                                                        {reviewerDetail?.first_name} {reviewerDetail?.last_name}
+                                                                                    </h2>
+                                                                                    <p className="text-xs text-gray-500">{review?.createdAt ? formatDistanceToNow(new Date(review.createdAt.seconds * 1000), { addSuffix: true }) : 'Recent'}</p>
+                                                                                </div>
+                                                                                <h2 className="font-medium text-xs text-gray-600 cursor-pointer">
+                                                                                    {reviewerDetail?.role === "Event Planner" ? 'Event' : 'Shop'}: {review.reviewer_name}
+                                                                                </h2>
+                                                                            </div>
+                                                                            {hoveredReviewerId === review.id && (
+                                                                                <ProfileHover hoveredReviewer={reviewerProfile} user={reviewerDetail} review={review} />
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <StarRating rating={review.rating} />
+                                                                </div>
+
+                                                                <p className="text-sm text-gray-900 mt-2">{review.comment}</p>
+                                                            </div>
                                                         </div>
 
-                                                        <p className="text-sm text-gray-900 mt-2">{review.comment}</p>
+
+                                                        {index < userReviews.length - 1 && (
+                                                            <hr className="my-4 border-gray-200" />
+                                                        )}
+
+
                                                     </div>
-                                                </div>
+                                                )
+                                            })}
 
+                                            {userReviews.length === 0 && (
+                                                <h4 className='py-4 text-center text-gray-400 font-medium'>
+                                                    No reviews yet
+                                                </h4>
+                                            )}
 
-                                                {index < userReviews.length - 1 && (
-                                                    <hr className="my-4 border-gray-200" />
-                                                )}
-
-
-                                            </div>
-                                        )
-                                    })}
-
-                                    {userReviews.length === 0 && (
-                                        <h4 className='py-4 text-center text-gray-400 font-medium'>
-                                            No reviews yet
-                                        </h4>
-                                    )}
-
-                                </div>
-                            </div>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div >
                 </>

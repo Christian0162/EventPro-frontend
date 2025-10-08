@@ -14,7 +14,7 @@ export default function ProfileHover({ hoveredReviewer, user, review }) {
     const navigate = useNavigate()
 
     const userReviews = reviews.filter(rev => rev.reviewed_id === user.id)
-    const userProfile = userProfiles.find(prof => prof.id === userReviews[0].user_id)
+    const userProfile = userProfiles.find(prof => prof.id === userReviews[0]?.user_id)
 
     console.log(userProfile)
 

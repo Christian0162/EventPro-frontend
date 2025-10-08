@@ -1,5 +1,5 @@
 import DashboardCard from "../../components/DashboardCards"
-import { Eye, PhilippinePeso, CalendarPlus, Calendar, Star, TrendingUp, ChartNoAxesCombined, Package } from "lucide-react"
+import { Eye, PhilippinePeso, CalendarPlus, Calendar, Star, TrendingUp, ChartNoAxesCombined, Package, ReceiptText } from "lucide-react"
 import { TabGroup, TabPanel, TabPanels, TabList, Tab } from "@headlessui/react"
 import { Title } from "react-head"
 import { where, query, collection, onSnapshot, serverTimestamp, addDoc, getDocs } from "firebase/firestore"
@@ -19,10 +19,11 @@ import { Review } from "../../components/ReviewModal"
 import { useFetchUserProfiles } from "../../hooks/useProfile"
 import PageLoading from "../../components/PageLoading"
 import { useFetchDeliveries } from "../../hooks/useDeliveries"
+import { useFetchTransactionById } from "../../hooks/useTransaction"
+import { useFetchAllApplication } from "../../hooks/useApplication"
 
 export default function SupplierDashboard({ userData }) {
 
-    const [applications, setApplications] = useState([])
     const { reviews: reviewed } = useFetchReviews()
     const { contracts } = useFetchContract()
     const { events, isLoading: isEventLoading } = useFetchEvents()
@@ -32,8 +33,12 @@ export default function SupplierDashboard({ userData }) {
     const [now, setNow] = useState(new Date())
     const { userProfiles } = useFetchUserProfiles()
     const { deliveries, isLoading: isDeliveriesLoading } = useFetchDeliveries()
+    const { transactions, isLoading: isTransactionLoading } = useFetchTransactionById(userData.id)
+    const { applications: userApplications, isLoading: isApplicationLoading } = useFetchAllApplication()
 
-    const isAllLoading = isSupplierLoading || isEventLoading || isDeliveriesLoading || isSuppliersLoading
+    const applications = userApplications.filter(app => app.supplier_id === userData.id)
+
+    const isAllLoading = isSupplierLoading || isEventLoading || isDeliveriesLoading || isSuppliersLoading || isTransactionLoading || isApplicationLoading
 
     const userDeliveries = deliveries.filter(del => del.supplier_id === userData.id)
 
@@ -49,6 +54,8 @@ export default function SupplierDashboard({ userData }) {
     const competitiveness = avgPrice
         ? ((avgPrice - price) / avgPrice) * 100
         : 0;
+
+    const totalEarning = transactions.reduce((sum, transaction) => sum + transaction.amount || 0, 0)
 
     // ontime deliveries
     const onTimeDeliveries = userDeliveries.filter(
@@ -68,11 +75,15 @@ export default function SupplierDashboard({ userData }) {
         },
     ];
 
+    const totalAppliedEvents = applications.filter(app => app.status === 'Pending').length
 
     const reviews = reviewed.filter(rev => rev.reviewed_id === userData.id)
+
     const pendingContracts = useMemo(() =>
-        contracts.filter(contract => contract?.status === "Pending"),
+        contracts.filter(contract => contract?.status === "Pending" && contract.supplier_id === userData.id),
         [contracts]);
+
+    console.log(pendingContracts)
 
     const activeContracts = useMemo(() =>
         contracts.filter(contract => contract?.status === "Approved" && contract.supplier_id === userData.id),
@@ -163,6 +174,8 @@ export default function SupplierDashboard({ userData }) {
                             message: `Today is the delivery day for contract ID: ${contract.id} with supplier "${eventData.event_name}".`,
                             createdAt: serverTimestamp(),
                             title: "Delivery Day Reminder",
+                            referenced_type: 'contract',
+                            referenced_id: contract.id,
                             unread: true,
                             user_id: supplier?.id,
                             contract_id: contract.id,
@@ -182,28 +195,6 @@ export default function SupplierDashboard({ userData }) {
 
         sendDeliveryNotif();
     }, [activeContracts, contractEventsforActive, now, supplier?.id, supplier?.supplier_name]);
-
-
-
-    useEffect(() => {
-        try {
-            const q = query(collection(db, "applications"),
-                where("user_id", "==", auth.currentUser.uid))
-
-            const unsubscribe = onSnapshot(q, (onsnapshot) => {
-                const applications = onsnapshot.docs.map(app => ({ id: app.id, ...app.data() }))
-                setApplications(applications)
-            })
-
-            return () => unsubscribe()
-
-        }
-        catch (e) {
-            console.error(e)
-        }
-
-
-    }, [])
 
     const AppliedColor = (status) => {
 
@@ -243,8 +234,8 @@ export default function SupplierDashboard({ userData }) {
                             {
                                 title: "Price Competitiveness", value: competitiveness >= 0 ? competitiveness.toFixed(1) + "%" : competitiveness.toFixed(1) + "%", icon: ChartNoAxesCombined, color: "from-yellow-500 to-yellow-600"
                             },
-                            { title: "Revenue", value: "₱24,000", icon: PhilippinePeso, color: "from-green-500 to-green-600" },
-                            { title: "Bookings", value: "12", icon: CalendarPlus, color: "from-violet-500 to-violet-600" },
+                            { title: "Total Earnings", value: `₱${totalEarning}`, icon: PhilippinePeso, color: "from-green-500 to-green-600" },
+                            { title: "Applied Events", value: totalAppliedEvents, icon: CalendarPlus, color: "from-violet-500 to-violet-600" },
                         ].map(({ title, value, icon: Icon, color }, i) => (
                             <div
                                 key={i}
@@ -262,7 +253,7 @@ export default function SupplierDashboard({ userData }) {
                     </div>
 
                     {/* Charts */}
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-10">
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 mb-10">
                         <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-md hover:shadow-lg transition-all">
                             <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2"><ChartNoAxesCombined /> Performance Metrics</h3>
                             <BarChart
@@ -305,7 +296,7 @@ export default function SupplierDashboard({ userData }) {
                                         {applications.map((app) => (
                                             <div
                                                 key={app.id}
-                                                className={`p - 4 rounded - xl flex justify - between items - center border ${AppliedColor(app.status)} hover:shadow-lg transition-all`}
+                                                className={`p-4 rounded-xl flex justify-between items-center border border-gray-300 ${AppliedColor(app.status)} hover:shadow-lg transition-all`}
                                             >
                                                 <div className="flex gap-3 items-center">
                                                     <Calendar className="text-blue-500" />
@@ -429,7 +420,7 @@ export default function SupplierDashboard({ userData }) {
                                                     </div>
                                                 </div>
 
-                                                <ContractModal event_id={offers.event_id} supplier_id={offers.supplier_id} supplierData={supplier} eventData={contractEventsforPending[index]} user_id={userData.id} />
+                                                <ContractModal userData={userData} event_id={offers.event_id} supplier_id={offers.supplier_id} supplierData={supplier} eventData={contractEventsforPending[index]} user_id={userData.id} />
 
                                             </div>
                                         </div>
@@ -443,7 +434,7 @@ export default function SupplierDashboard({ userData }) {
                                 </div>
                             </TabPanel >
 
-                            {/* Offers Tab */}
+                            {/* Contracts Tab */}
                             < TabPanel >
                                 <div className="p-3 flex flex-col gap-3">
                                     {activeContracts.map((offers, index) => (
@@ -481,8 +472,8 @@ export default function SupplierDashboard({ userData }) {
 
                     {/* Recent Contracts Sidebar */}
                     < div className="lg:col-span-1 mt-5" >
-                        <div className="bg-white border border-gray-300 shadow-xl rounded-xl p-5 flex flex-col h-full">
-                            <h3 className="text-lg font-bold text-gray-800 mb-4">📑 Recent Done Contracts</h3>
+                        <div className="bg-white border border-gray-300 shadow-xl rounded-xl p-6 flex flex-col h-full">
+                            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2"><div className="p-2 bg-gradient-to-r from-blue-500 to-blue-700 text-white rounded-full"><ReceiptText size={20} /></div> Recent Done Contracts</h3>
 
                             <div className="space-y-3 overflow-y-auto max-h-[400px] pr-2">
                                 {completeContracts.slice(0, 5).map((contract, index) => (
@@ -509,7 +500,7 @@ export default function SupplierDashboard({ userData }) {
                                         <div className="flex gap-2">
                                             <ContractModal userData={userData} event_id={contract.event_id} supplier_id={contract.supplier_id} supplierData={supplier} eventData={contractEventsforComplete[index]} user_id={userData.id} />
                                             {reviewed.find(rev => rev.reviewed_id === contract.planner_id && rev.user_id === userData.id && contract.event_id === rev.event_id) ? (
-                                                <span className="text-white py-1 px-4 rounded-md text-sm bg-gray-400">Reviewed</span>
+                                                <span className="text-white py-1 px-4 rounded-md text-sm flex items-center bg-gray-400">Reviewed</span>
                                             ) : (
                                                 <Review reviewed_id={contract?.planner_id} reviewer_name={supplier.supplier_name} eventData={contract} />
                                             )}

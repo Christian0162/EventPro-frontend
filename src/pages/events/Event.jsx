@@ -127,6 +127,8 @@ export default function Event({ userData }) {
                     await addDoc(collection(db, "notifications"), {
                         avatar: userData.id.charAt(0).toUpperCase(),
                         message: `The supplier "${supplierData.supplier_name}" applied to your event.`,
+                        referenced_type: 'event',
+                        referenced_id: event_id,
                         createdAt: serverTimestamp(),
                         title: 'You have a new application for your event.',
                         unread: true,
@@ -293,7 +295,6 @@ export default function Event({ userData }) {
                                                             <span className="font-bold text-gray-900">₱ {events.event_budget}</span>
                                                         </div>
 
-                                                        {/* event suppliers */}
                                                         {/* event suppliers */}
                                                         <div>
                                                             <div className="flex gap-2 items-center mb-5">

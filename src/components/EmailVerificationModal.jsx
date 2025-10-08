@@ -1,8 +1,11 @@
-import { Button, Dialog, DialogPanel, } from '@headlessui/react'
+import { Button, Dialog, DialogPanel } from '@headlessui/react'
 import { EmailAuthProvider, reauthenticateWithCredential, updateEmail } from 'firebase/auth'
 import { X, Mail, Lock } from 'lucide-react'
 import { useState } from 'react'
 import Swal from 'sweetalert2'
+import LoadingOverlay from './LoadingOverlay'
+import { doc, updateDoc } from 'firebase/firestore'
+import { db } from '../firebase/firebase'
 
 export default function EmailVerificationModal({ user }) {
 
@@ -19,61 +22,86 @@ export default function EmailVerificationModal({ user }) {
 
     function close() {
         setIsOpen(false)
-        setError(false)
+        setError('')
         setIsVerifying(false)
         setCurrentStep(1)
         setNewEmail('')
         setPassword('')
     }
 
-
-    // const test = EmailAuthProvider
-
     const handleChangeEmail = async () => {
-
         setIsVerifying(true)
 
-        if (!password) {
-            setError('Please enter your password to continue')
+        // Step 1: Check if password is empty
+        if (!password && currentStep === 1) {
+            setError('Please enter your password to continue.')
             setIsVerifying(false)
+            return
         }
 
-        const credential = EmailAuthProvider.credential(user.email, password)
-
-        await reauthenticateWithCredential(user, credential).then(async () => {
-            setError('')
+        // Step 2: Step 2 validation (email)
+        if (currentStep === 2 && !newEmail) {
+            setError('Please enter a new email address.')
             setIsVerifying(false)
+            return
+        }
 
-            if (!newEmail) {
-                setCurrentStep(2)
-                setIsVerifying(false)
-                return
-            }
+        // Step 1: Verify password
+        if (currentStep === 1) {
+            const credential = EmailAuthProvider.credential(user.email, password)
 
+            await reauthenticateWithCredential(user, credential)
+                .then(() => {
+                    setError('')
+                    setIsVerifying(false)
+                    setCurrentStep(2)
+                })
+                .catch((e) => {
+                    console.error(e.code)
+                    setIsVerifying(false)
+                    if (e.code === 'auth/invalid-credential' || e.code === 'auth/wrong-password') {
+                        setError('The password you entered is incorrect. Please try again.')
+                    } else {
+                        setError('An unexpected error occurred. Please try again later.')
+                    }
+                })
+        }
+
+        // Step 2: Change email
+        if (currentStep === 2) {
+            setIsVerifying(true)
             try {
-
                 await updateEmail(user, newEmail)
 
+                await updateDoc(doc(db, 'users', user.uid), {
+                    email_address: newEmail
+                })
+
+                await updateDoc(doc(db, 'userProfiles', user.uid), {
+                    email_address: newEmail
+                })
+
                 setIsOpen(false)
-                setError(false)
+                setError('')
                 setIsVerifying(false)
                 setCurrentStep(1)
+                setNewEmail('')
+                setPassword('')
 
                 Swal.fire('Email Updated Successfully!!', 'Your email has been changed successfully.', 'success')
-            }
+            } catch (e) {
+                console.error(e.code)
+                setIsVerifying(false)
 
-            catch (e) {
-                console.error(e)
+                if (e.code === 'auth/email-already-in-use') {
+                    setError('This email is already in use. Please try a different one.')
+                } else if (e.code === 'auth/invalid-email') {
+                    setError('The email address is invalid. Please enter a valid one.')
+                } else {
+                    setError('An error occurred while updating your email. Please try again.')
+                }
             }
-
-        }).catch((e) => {
-            console.error(e.code)
-            setIsVerifying(false)
-            if (e.code === "auth/invalid-credential" || e.code === "auth/wrong-password") {
-                setError('The password you entered is incorrect. Please try again.')
-            }
-
-        })
+        }
     }
 
     return (
@@ -91,9 +119,8 @@ export default function EmailVerificationModal({ user }) {
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
                             transition
-                            className="w-full max-w-md rounded-2xl mt-18 bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                            className="relative w-full max-w-md rounded-2xl mt-18 bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
                         >
-
                             {/* Header */}
                             <div className="flex items-center justify-between p-6">
                                 <div className="flex items-center gap-3 font-medium text-lg">
@@ -107,7 +134,7 @@ export default function EmailVerificationModal({ user }) {
                                 </button>
                             </div>
 
-                            {/* step 1 paswsword verification*/}
+                            {/* Step 1: Password Verification */}
                             {currentStep === 1 && (
                                 <div className='px-10'>
                                     <div className='flex flex-col justify-center items-center my-4'>
@@ -115,32 +142,35 @@ export default function EmailVerificationModal({ user }) {
                                         <p className='text-gray-600'>Enter your password to change your email address</p>
                                     </div>
 
-                                    {/* email address */}
                                     <div className='relative mb-5'>
                                         <label className='text-sm text-gray-800 font-medium'>Current Email</label>
                                         <Mail className='absolute text-gray-400 top-10 left-3 h-4 w-4' />
-                                        <input type="text" value={user?.email} disabled className={`h-10 w-full bg-gray-100 border-1 border-gray-200 rounded-md px-9 mt-1 pb-1 text-md text-gray-500`} />
+                                        <input type="text" value={user?.email} disabled className='h-10 w-full bg-gray-100 border border-gray-200 rounded-md px-9 mt-1 text-md text-gray-500' />
                                     </div>
 
-                                    {/* password */}
                                     <div className='relative mb-5'>
                                         <label className='text-sm text-gray-800 font-medium'>Password</label>
                                         <Lock className='absolute text-gray-400 top-10 left-3 h-4 w-4' />
-                                        <input onChange={(e) => setPassword(e.target.value)} value={password} placeholder='Enter your password' type="password" className={`h-10 w-full bg-gray-50 border-1 border-gray-200 rounded-md pl-9 pr-4 mt-1 pb-1 text-md text-gray-500`} />
-                                        {error && (
-                                            <span className='block mt-1 text-sm text-red-600 ml-1'>{error}</span>
-
-                                        )}
+                                        <input
+                                            onChange={(e) => setPassword(e.target.value)}
+                                            value={password}
+                                            placeholder='Enter your password'
+                                            type="password"
+                                            className='h-10 w-full bg-gray-50 border border-gray-200 rounded-md pl-9 pr-4 mt-1 text-md text-gray-700'
+                                        />
+                                        {error && <span className='block mt-1 text-sm text-red-600 ml-1'>{error}</span>}
                                     </div>
 
                                     <div className='flex justify-between gap-4 my-5'>
-                                        <button onClick={close} className='transtion-all duration-50 py-2 w-full bg-gray-200 border border-gray-300 text-gray-600 rounded-lg hover:bg-blue-600 hover:text-white'>Cancel</button>
-                                        <button onClick={() => handleChangeEmail()} className={`transtion-all duration-50 py-2 w-full rounded-lg ${isVerifying ? 'bg-blue-300' : 'bg-blue-600  hover:bg-blue-700'} text-white`}>{isVerifying ? 'Verifying..' : 'Verify Password'}</button>
+                                        <button onClick={close} className='py-2 w-full bg-gray-200 border border-gray-300 text-gray-600 rounded-lg hover:bg-blue-600 hover:text-white'>Cancel</button>
+                                        <button onClick={handleChangeEmail} className={`py-2 w-full rounded-lg ${isVerifying ? 'bg-blue-300' : 'bg-blue-600 hover:bg-blue-700'} text-white`}>
+                                            {isVerifying ? 'Verifying..' : 'Verify Password'}
+                                        </button>
                                     </div>
                                 </div>
                             )}
 
-                            {/* step 2 change email*/}
+                            {/* Step 2: Change Email */}
                             {currentStep === 2 && (
                                 <div className='px-10'>
                                     <div className='flex flex-col justify-center items-center my-4'>
@@ -148,23 +178,30 @@ export default function EmailVerificationModal({ user }) {
                                         <p className='text-gray-600'>Enter your new email address</p>
                                     </div>
 
-                                    {/* email address */}
                                     <div className='relative mb-5'>
                                         <label className='text-sm text-gray-800 font-medium'>Current Email</label>
                                         <Mail className='absolute text-gray-400 top-10 left-3 h-4 w-4' />
-                                        <input type="text" value={user?.email} disabled className={`h-10 w-full bg-gray-100 border-1 border-gray-200 rounded-md px-9 mt-1 pb-1 text-md text-gray-500`} />
+                                        <input type="text" value={user?.email} disabled className='h-10 w-full bg-gray-100 border border-gray-200 rounded-md px-9 mt-1 text-md text-gray-500' />
                                     </div>
 
-                                    {/* new email address */}
                                     <div className='relative mb-5'>
                                         <label className='text-sm text-gray-800 font-medium'>New Email Address</label>
                                         <Mail className='absolute text-gray-400 top-10 left-3 h-4 w-4' />
-                                        <input type="text" placeholder='Enter new email address' value={newEmail} onChange={(e) => setNewEmail(e.target.value)} className={`h-10 w-full bg-gray-50 border-1 focus:outline-none focus:border-blue-600 focus:border-2 border-gray-300 rounded-md px-9 mt-1 pb-1 text-md text-gray-800`} />
+                                        <input
+                                            type="text"
+                                            placeholder='Enter new email address'
+                                            value={newEmail}
+                                            onChange={(e) => setNewEmail(e.target.value)}
+                                            className='h-10 w-full bg-gray-50 border focus:outline-none focus:border-blue-600 focus:border-2 border-gray-300 rounded-md px-9 mt-1 text-md text-gray-800'
+                                        />
+                                        {error && <span className='block mt-1 text-sm text-red-600 ml-1'>{error}</span>}
                                     </div>
 
                                     <div className='flex justify-between gap-4 my-5'>
-                                        <button onClick={() => setCurrentStep(1)} className='transtion-all duration-50 py-2 w-full bg-gray-200 rounded-lg hover:bg-blue-600 hover:text-white'>Back</button>
-                                        <button onClick={() => handleChangeEmail()} className='transtion-all duration-50 py-2 w-full bg-blue-600 rounded-lg hover:bg-blue-700 text-white'>Change Email</button>
+                                        <button onClick={() => setCurrentStep(1)} className='py-2 w-full bg-gray-200 rounded-lg hover:bg-blue-600 hover:text-white'>Back</button>
+                                        <button onClick={handleChangeEmail} className={`py-2 w-full rounded-lg ${isVerifying ? 'bg-blue-300' : 'bg-blue-600 hover:bg-blue-700'} text-white`}>
+                                            {isVerifying ? 'Processing..' : 'Change email'}
+                                        </button>
                                     </div>
                                 </div>
                             )}

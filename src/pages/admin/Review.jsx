@@ -23,7 +23,6 @@ export default function Review({ userData }) {
 
     console.log(reviewData)
 
-
     useEffect(() => {
         const fetchReviewData = async () => {
 
@@ -73,6 +72,8 @@ export default function Review({ userData }) {
                         user_id: id,
                         avatar: 'A',
                         title: 'Verification Approved!',
+                        referenced_type: 'application',
+                        referenced_id: id,
                         message: "Congratulations! Your account is now verified. You can now post events and showcase your plans to suppliers!",
                         createdAt: serverTimestamp(),
                         unread: true
@@ -97,6 +98,8 @@ export default function Review({ userData }) {
                         user_id: id,
                         avatar: 'A',
                         title: 'Your Verification Has Been approved!',
+                        referenced_type: 'application',
+                        referenced_id: id,
                         message: "You're verified! Your business is now publicly visible to planners in the Suppliers directory!",
                         createdAt: serverTimestamp(),
                         unread: true

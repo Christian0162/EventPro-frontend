@@ -299,8 +299,10 @@ export default function SupplierPanels({ userData, shop, reviews, services, aver
                                                     {!bookingEdting ? (
                                                         <p className="text-gray-600">{shop?.supplier_availability}</p>
                                                     ) : (
-                                                        <AvailabilityPicker onChange={(val) => setAvailability(val)} />
-                                                    )}
+                                                        <AvailabilityPicker
+                                                            onChange={(val) => setAvailability(val)}
+                                                            existingValue={shop?.supplier_availability}
+                                                        />)}
 
                                                 </div>
                                             </div>
@@ -369,7 +371,7 @@ export default function SupplierPanels({ userData, shop, reviews, services, aver
 
                                                     <div className="flex items-center justify-center">
                                                         <p className="text-gray-900 text-2xl font-bold leading-relaxed mt-3">
-                                                            ₱{services.service_price}.0/deliver
+                                                            ₱{services.service_price}.0/service
                                                         </p>
                                                     </div>
                                                 </div>

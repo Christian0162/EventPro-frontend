@@ -26,13 +26,15 @@ export default function Favorites({ userData }) {
     const [applications, setApplications] = useState([])
     const [isApplying, setIsApplying] = useState(false)
     const [applyingEventId, setApplyingEventId] = useState(null)
-    const { reviews: shopReviews } = useFetchReviews()
+    const { reviews: shopReviews, isLoading: isReviewLoading } = useFetchReviews()
     const { events } = useFetchEvents()
-    const { supplier, isLoading: gettingShop } = useFetchSupplierById(userData.id)
+    const { supplier, isLoading: isSupplierLoading } = useFetchSupplierById(userData.id)
     const [isCreatingFavorites, setIsCreatingFavorites] = useState(false)
     const [isCreatingContact, setIsCreatingContact] = useState(false)
     const [likedEvents, setLikedEvents] = useState({});
     const navigate = useNavigate()
+
+    const isAllLoading = isReviewLoading || isSupplierLoading || isFavoritesLoading
 
     const favoritesEvents = events.filter(event =>
         favorites.some(fav => event.id === fav.event_id)
@@ -90,6 +92,8 @@ export default function Favorites({ userData }) {
                         avatar: userData.id.charAt(0).toUpperCase(),
                         message: `The supplier "${supplier.supplier_name}" applied to your event.`,
                         createdAt: serverTimestamp(),
+                        referenced_type: 'event',
+                        referenced_id: event_id,
                         title: 'You have a new application for your event.',
                         unread: true,
                         user_id: user_id
@@ -227,7 +231,7 @@ export default function Favorites({ userData }) {
     return (
         <>
             <Title>Favorites</Title>
-            {isFavoritesLoading && (
+            {isAllLoading && (
                 <div className="flex justify-center items-center py-[15rem]">
                     <div className="relative">
                         <div className="absolute inset-0 h-12 w-12 bg-blue-500/10 rounded-full blur-sm animate-pulse"></div>
@@ -241,7 +245,7 @@ export default function Favorites({ userData }) {
                 <LoadingOverlay isLoading={isCreatingContact || isCreatingFavorites} message="Processing..." />
             )}
 
-            {!isFavoritesLoading && (
+            {!isAllLoading && (
                 <>
                     <div className={`flex flex-col mb-5`}>
                         <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Favorites</h1>

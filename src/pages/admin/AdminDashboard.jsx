@@ -1,6 +1,6 @@
 import { useMemo } from "react"
 import { Title } from "react-head";
-import { Users, IdCard, CalendarPlus, Calendar, BarChart3, ChartNoAxesCombined, TrendingUp, AlertTriangle, ReceiptText, PhilippinePeso, Package, BanknoteArrowUp } from "lucide-react";
+import { Users, IdCard,  Calendar, BarChart3, ChartNoAxesCombined, TrendingUp, AlertTriangle, ReceiptText, PhilippinePeso, Package, BanknoteArrowUp, ShieldAlert } from "lucide-react";
 import { Tab, TabList, TabPanels, TabGroup, TabPanel } from "@headlessui/react";
 import { PieChart, BarChart, LineChart } from "../../components/Charts";
 import PageLoading from "../../components/PageLoading";
@@ -97,7 +97,7 @@ export default function AdminDashboard({ userData }) {
                             { title: "Active Events", value: activeEvents, icon: Calendar, color: "from-yellow-500 to-yellow-600" },
                             { title: "Total Suppliers", value: totalSuppliers, icon: Package, color: "from-blue-500 to-blue-600" },
                             { title: "Verified Users", value: verifiedUsers, icon: IdCard, color: "from-green-500 to-green-600" },
-                            { title: "Pending Requests", value: pendingRequests, icon: CalendarPlus, color: "from-red-500 to-red-600" },
+                            { title: "Pending Requests", value: pendingRequests, icon: ShieldAlert, color: "from-red-500 to-red-600" },
                             { title: "Total Contracts", value: totalContracts, icon: ReceiptText, color: "from-orange-500 to-orange-600" },
                             { title: "Top Earning Supplier", value: topEarningSupplier, icon: BanknoteArrowUp, color: "from-pink-500 to-pink-600" },
                             { title: "Total Users", value: totalUsers, icon: Users, color: "from-pink-500 to-pink-600" },
@@ -107,7 +107,7 @@ export default function AdminDashboard({ userData }) {
                                 <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 bg-gradient-to-r ${color} transition-opacity duration-300`} />
                                 <div className="flex justify-between items-center relative z-10">
                                     <div>
-                                        <p className="text-sm text-gray-500 font-medium">{title}</p>
+                                        <p className="text-sm text-gray-500">{title}</p>
                                         <p className="text-3xl font-bold text-gray-800 mt-1">{value}</p>
                                     </div>
                                     <div className={`w-12 h-12 flex items-center justify-center rounded-full bg-gradient-to-r ${color} shadow-md`}>
@@ -168,7 +168,7 @@ export default function AdminDashboard({ userData }) {
                     {/* Tabs for Verification */}
                     <TabGroup className="mt-5 bg-white border border-gray-200 rounded-2xl shadow-md p-3 transition-all">
                         <TabList className="flex flex-wrap gap-2 sm:gap-3 mb-6">
-                            {["Suppliers", "Planners"].map((tab, i) => (
+                            {["Suppliers Request", "Planners Request"].map((tab, i) => (
                                 <Tab
                                     key={i}
                                     className="rounded-full px-5 py-2 text-sm font-medium border border-gray-200 bg-white hover:bg-gray-100 data-[selected]:bg-gradient-to-r data-[selected]:from-blue-500 data-[selected]:to-blue-600 data-[selected]:text-white shadow-sm transition-all"

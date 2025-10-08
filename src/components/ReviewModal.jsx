@@ -73,8 +73,9 @@ export const Review = ({ reviewed_id, reviewer_name, eventData }) => {
                         avatar: reviewer_name.charAt(0).toUpperCase(),
                         title: "New Review Received",
                         message: `"${reviewer_name}" left a review for you — "${reviewText}"`,
+                        feedback: reviewText,
                         createdAt: serverTimestamp(),
-                        reference_id: reviewed_id,
+                        referenced_id: reviewed_id,
                         unread: true,
                         user_id: reviewed_id
                     });
@@ -105,7 +106,7 @@ export const Review = ({ reviewed_id, reviewer_name, eventData }) => {
 
     return (
         <>
-            <Button onClick={open} className={'transition-all duration-100 hover:bg-blue-700 px-6 py-1 text-sm rounded-md bg-blue-600 text-white '}>Review</Button>
+            <Button onClick={open} className={'transition-all duration-100 hover:bg-blue-700 px-6 py-2 text-sm rounded-md bg-blue-600 text-white '}>Review</Button>
 
             <Dialog open={isOpen} as='div' className={'z-50 relative focus:outline-none'} onClose={close}>
                 <div className="fixed inset-0 bg-black/25 " />
@@ -308,6 +309,8 @@ export const RejectReview = ({ id, event_id, supplier_id, userData, event_name, 
                                 user_id: contract.planner_id,
                                 avatar: supplier.supplier_name.charAt(0).toUpperCase(),
                                 title: "Offer Rejected",
+                                referenced_id: event_id,
+                                referenced_type: 'event',
                                 message: `Unfortunately, ${supplier.supplier_name} has rejected your offer for their event.`,
                                 feedback: reviewText,
                                 createdAt: serverTimestamp(),
@@ -322,6 +325,8 @@ export const RejectReview = ({ id, event_id, supplier_id, userData, event_name, 
                                 user_id: applications[0]?.supplier_id,
                                 avatar: event_name.charAt(0).toUpperCase(),
                                 title: 'Application Rejected',
+                                referenced_id: event_id,
+                                referenced_type: 'event',
                                 message: `We're sorry, your application for the event "${event_name}" has been rejected.`,
                                 feedback: reviewText,
                                 createdAt: serverTimestamp(),
@@ -363,7 +368,7 @@ export const RejectReview = ({ id, event_id, supplier_id, userData, event_name, 
                             transition
                             className="w-full max-w-3xl rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
                         >
-                            <LoadingOverlay isLoading={isSubmitting} message='Processing..'/>
+                            <LoadingOverlay isLoading={isSubmitting} message='Processing..' />
                             <div className='relative'>
                                 <button
                                     onClick={close}

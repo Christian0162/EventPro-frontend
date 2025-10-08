@@ -57,18 +57,23 @@ export default function SupplierShop({ userData }) {
             {!isAllLoading && (
 
                 <>
-                    {(!supplierService || supplierService.length === 0) && (
-                        <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg shadow-sm">
-                            ⚠️ Your shop is currently <b>hidden</b> until you add at least one service.
-                        </div>
-                    )}
-
                     <div className="px-4">
                         {/* Header */}
                         <div className="mb-8">
                             <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Your Shop</h1>
                             <p className="text-gray-600 mt-2">Manage your business profile and showcase your services</p>
                         </div>
+
+                        {(!supplierService || supplierService.length === 0) && (
+                            <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg shadow-sm">
+                                ⚠️ Your shop is currently <b>hidden</b> until you add at least one service.
+                            </div>
+                        )}
+                        {(!userData || userData.verification_status !== "verified") && (
+                            <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg shadow-sm">
+                                ⚠️ Your shop is currently <b>hidden</b> until yor shop is verified.
+                            </div>
+                        )}
 
                         {/* Main Content Container */}
                         <div className="bg-white rounded-2xl shadow-xl border border-gray-100">

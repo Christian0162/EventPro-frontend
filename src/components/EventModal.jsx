@@ -1,5 +1,5 @@
 import { Button, Dialog, DialogPanel } from '@headlessui/react';
-import { MapPin, X, Eye, CalendarDays, CircleDollarSign, Mail, User } from 'lucide-react';
+import { MapPin, X, Eye, CalendarDays, CircleDollarSign, Mail, User, Bold } from 'lucide-react';
 import { useState } from 'react';
 import { useFetchUserProfiles } from '../hooks/useProfile';
 import { useFetchReviews } from '../hooks/useReviews';
@@ -7,6 +7,7 @@ import { useFetchUsers } from '../hooks/useUsers';
 import { formatDistanceToNow } from 'date-fns';
 import ProfileHover from './ProfileHover';
 import { createPortal } from "react-dom";
+import { headerBackgrounds } from '../constants/categories';
 
 export default function EventModal({ eventData, event_purpose }) {
     const [isOpen, setIsOpen] = useState(false);
@@ -23,12 +24,14 @@ export default function EventModal({ eventData, event_purpose }) {
     const open = () => setIsOpen(true);
     const close = () => setIsOpen(false);
 
+    const headerBackground = headerBackgrounds[Math.floor(Math.random() * headerBackgrounds.length)];
+
     return (
         <>
             <Button
                 onClick={open}
                 className={`${event_purpose === "dashboard"
-                    ? "h-7 text-white hover:bg-blue-700 transition-all duration-100 rounded-md px-4 bg-blue-600 text-sm"
+                    ? "h-9 text-white hover:bg-blue-700 transition-all duration-100 rounded-md px-4 bg-blue-600 text-sm"
                     : ""}`}
             >
                 {event_purpose === "dashboard" ? (
@@ -39,7 +42,7 @@ export default function EventModal({ eventData, event_purpose }) {
             </Button>
 
 
-            <Dialog open={isOpen} as="div" className="relative z-50 focus:outline-none" onClose={close}>
+            <Dialog open={isOpen} as="div" className="relative z-100 focus:outline-none" onClose={close}>
                 <div className="fixed inset-0 bg-black/25 backdrop-blur-sm" />
                 <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
                     <div className="flex min-h-full items-center justify-center p-4">
@@ -51,7 +54,7 @@ export default function EventModal({ eventData, event_purpose }) {
                             <div className="relative h-56 rounded-t-2xl overflow-hidden">
                                 {/* Background Image */}
                                 <img
-                                    src={eventData?.event_background || "/default-event.jpg"} // fallback image
+                                    src={eventData?.event_background || headerBackground} // fallback image
                                     alt={eventData?.event_name || "Event Image"}
                                     className="w-full h-full object-cover"
                                 />
@@ -119,18 +122,26 @@ export default function EventModal({ eventData, event_purpose }) {
                                 </div>
 
                                 {/* Event Categories */}
-                                {eventData?.event_categories?.length > 0 && (
-                                    <div>
-                                        <h3 className="text-sm font-semibold text-gray-700 mb-2">Looking for Suppliers</h3>
-                                        <div className="flex flex-wrap gap-2">
-                                            {eventData.event_categories.map((category, index) => (
-                                                <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-                                                    {category.label}
-                                                </span>
-                                            ))}
+                                <div className='mb-3'>
+                                    <h3 className="text-sm font-semibold text-gray-700 mb-2">Looking for Suppliers</h3>
+                                    {eventData?.event_categories > 0 ? (
+                                        <div>
+                                            <div className="flex flex-wrap gap-2">
+                                                {(eventData?.event_categories ?? [])
+                                                    .filter((category) => category && category.label)
+                                                    .map((category, index) => (
+                                                        <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                                                            {category.label}
+                                                        </span>
+                                                    ))}
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
+                                    ) : (
+                                        <span className="text-gray-500 text-sm italic">
+                                            No categories selected for this event
+                                        </span>
+                                    )}
+                                </div>
 
                                 {/* Description */}
                                 <div>
@@ -246,7 +257,7 @@ export default function EventModal({ eventData, event_purpose }) {
                                 <div className="pt-1">
                                     <button
                                         onClick={close}
-                                        className="w-full bg-gray-400 hover:opacity-90 text-white font-medium py-3 rounded-lg transition-all duration-200"
+                                        className="w-full bg-gray-300 hover:bg-gray-600 hover:opacity-90 text-white font-medium py-3 rounded-lg transition-all duration-200"
                                     >
                                         Close
                                     </button>

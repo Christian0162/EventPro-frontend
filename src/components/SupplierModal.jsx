@@ -1,6 +1,6 @@
 import { Button, Dialog, DialogPanel, Tab, TabGroup, TabList, TabPanel, TabPanels } from '@headlessui/react'
 import { useEffect, useState } from 'react'
-import { MapPin, CircleCheckBig, Clock, Phone, Mail, X, MessageCircleMore, Heart, ChevronsLeftRightEllipsis } from 'lucide-react'
+import { MapPin, CircleCheckBig, Clock, Phone, Mail, X, MessageCircleMore, Heart, ChevronsLeftRightEllipsis, Check } from 'lucide-react'
 import { db, auth } from '../firebase/firebase'
 import { doc, addDoc, where, serverTimestamp, onSnapshot, collection, deleteDoc, query, getDocs, updateDoc } from 'firebase/firestore'
 import { useNavigate } from 'react-router-dom'
@@ -20,6 +20,7 @@ import { useFetchUserProfiles } from '../hooks/useProfile'
 import { useFetchUsers } from '../hooks/useUsers'
 import ProfileHover from './ProfileHover'
 import AvailabilityPicker from './AvailabilityPicker'
+import EventBookingModal from './EventBookingModal'
 
 export default function SupplierModal({ supplierData, applications, userData, reviews, services, averageRating, className }) {
 
@@ -114,49 +115,6 @@ export default function SupplierModal({ supplierData, applications, userData, re
         finally {
             setIsCreatingFavorites(false)
         }
-    }
-
-    const handleBookNow = async () => {
-        const eventOptions = events.map(
-            (event, index) => `
-          <div class="flex items-center gap-2 mb-2">
-            <input type="radio" id="event-${index}" name="events" value="${event.id}" class="swal2-checkbox">
-            <label for="event-${index}" class="text-sm">${event.event_name} (${event.event_date.date_value})</label>
-          </div>
-        `
-        ).join("")
-
-        Swal.fire({
-            title: 'Select Events to Book',
-            html: `
-            <div class="text-left max-h-60 overflow-y-auto px-2">
-                ${eventOptions}
-            </div>
-        `,
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'Book Now',
-            preConfirm: () => {
-                const selected = document.querySelector('input[name="events"]:checked')?.value
-
-                if (!selected) {
-                    Swal.showValidationMessage('Please select at least one event')
-                }
-
-                if (activeContracts.some(cont => cont.event_id === selected)) {
-                    Swal.showValidationMessage('The selected event already has an active contract with this supplier')
-                    return false
-                }
-
-                return selected
-            }
-        }).then((result) => {
-            if (result.isConfirmed) {
-
-                const firstEventId = result.value
-                return navigate(`/events/${firstEventId}/contract/${supplierData.id}`)
-            }
-        })
     }
 
     const handleChat = async (e) => {
@@ -266,15 +224,16 @@ export default function SupplierModal({ supplierData, applications, userData, re
 
                                 {/* Hero Image */}
                                 <div className="relative h-60 overflow-hidden rounded-t-2xl">
-                                    {supplierData.supplier_background_image.length > 0 && (
+                                    {supplierData.supplier_background_image.length > 0 ? (
                                         <img
                                             src={supplierData.supplier_background_image}
                                             alt={supplierData.supplier_name}
                                             className="w-full h-full object-cover"
                                         />
 
+                                    ) : (
+                                        <div className="absolute inset-0 w-full bg-gradient-to-r from-pink-600 via-blue-600 via-100% to-violet-600 rounded-t-lg"></div>
                                     )}
-                                    <div className="absolute inset-0 w-full bg-gradient-to-r from-pink-600 via-blue-600 via-100% to-violet-600 rounded-t-lg"></div>
                                 </div>
                             </div>
 
@@ -497,7 +456,10 @@ export default function SupplierModal({ supplierData, applications, userData, re
                                                                         {!bookingEdting ? (
                                                                             <p className="text-gray-600">{supplierData.supplier_availability}</p>
                                                                         ) : (
-                                                                            <AvailabilityPicker onChange={(val) => setAvailability(val)} />
+                                                                            <AvailabilityPicker
+                                                                                onChange={(val) => setAvailability(val)}
+                                                                                existingValue={supplierData?.supplier_availability}
+                                                                            />
                                                                         )}
 
                                                                     </div>
@@ -548,8 +510,8 @@ export default function SupplierModal({ supplierData, applications, userData, re
                                                     {services && (
                                                         <div className="grid md:grid-cols-2 gap-6 mt-5">
                                                             {services?.map((services, index) => (
-                                                                <div key={index} className={`bg-gradient-to-br rounded-xl flex flex-col justify-between  h-full min-h-[420px]  ${services.service_plan.label === 'Premium Plan' ? 'from-blue-50 to-indigo-50 border border-blue-100' : 'from-green-50 to-emerald-50 border border-green-100'} `}>
-                                                                    <h4 className={`font-bold text-white py-7 rounded-t-md text-center ${services.service_plan.label === 'Premium Plan' ? 'bg-blue-600' : 'bg-green-600'}`}>{services.service_plan.label}</h4>
+                                                                <div key={index} className={`bg-gradient-to-br rounded-xl flex flex-col justify-between  h-full min-h-[420px] bg-blue-50`}>
+                                                                    <h4 className={`font-bold text-white py-7 rounded-t-md text-center bg-blue-600`}>{services.service_plan.label}</h4>
                                                                     <div className='p-6 flex flex-col flex-1'>
                                                                         <div className="mb-4">
                                                                             <span className='font-bold text-gray-600'>Price</span>
@@ -561,7 +523,10 @@ export default function SupplierModal({ supplierData, applications, userData, re
                                                                         <div className='flex flex-col gap-2 my-4'>
                                                                             <ul className='list-disc pl-5 flex text-gray-800 flex-col gap-2'>
                                                                                 {services?.service_inclusions?.map((inclusion, index) => (
-                                                                                    <li key={index} >{inclusion}</li>
+                                                                                    <div className="flex gap-3 space-y-3" key={index}>
+                                                                                        <Check className="text-green-400" />
+                                                                                        <span className="flex text-sm text-gray-600" >{inclusion}</span>
+                                                                                    </div>
                                                                                 ))}
                                                                             </ul>
                                                                         </div>
@@ -683,12 +648,7 @@ export default function SupplierModal({ supplierData, applications, userData, re
                                         </Button>
 
                                         {applications?.some(app => app.user_id === supplierData.id) || userData?.role === "Event Planner" && (
-                                            <Button
-                                                onClick={() => handleBookNow()}
-                                                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                                            >
-                                                Book Now
-                                            </Button>
+                                            <EventBookingModal events={events} activeContracts={activeContracts} supplierData={supplierData} />
                                         )}
                                     </div>
                                 )}

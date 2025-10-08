@@ -37,8 +37,6 @@ export default function ChatWindow({ userData }) {
 
     const isContactDeactivated = contractUserStatus?.status === "deactivated";
 
-    console.log(selectedContact)
-
     useEffect(() => {
         if (messagesEndRef.current) {
             messagesEndRef.current.scrollTop = messagesEndRef.current.scrollHeight;

@@ -14,7 +14,7 @@ import { useFetchReviews } from "../../hooks/useReviews";
 import { useFetchSupplierServices, useFetchSuppliers } from "../../hooks/useSupplier";
 import ContractModal from "../../components/ContractModal";
 import { useFetchContract } from "../../hooks/useContract";
-import { statusOptions, SupplierOptions } from "../../constants/categories";
+import { headerBackgrounds, statusOptions, SupplierOptions } from "../../constants/categories";
 import { RejectReview } from "../../components/ReviewModal";
 import LoadingOverlay from "../../components/LoadingOverlay";
 import { useFetchUserProfiles } from "../../hooks/useProfile";
@@ -189,7 +189,7 @@ export default function EditEvent({ userData }) {
     }
 
     const calculateAverageRating = (shopId) => {
-        const Allreviews = reviews[shopId] || [];
+        const Allreviews = reviews.filter(rev => rev.reviewed_id === shopId) || [];
         const validRatings = Allreviews
             .map(review => Number(review.rating))
             .filter(rating => !isNaN(rating) && rating > 0);
@@ -199,13 +199,6 @@ export default function EditEvent({ userData }) {
         const average = validRatings.reduce((sum, rating) => sum + rating, 0) / validRatings.length;
         return average.toFixed(1);
     };
-
-    // Background images for header - you can replace these with your actual images
-    const headerBackgrounds = [
-        "https://images.unsplash.com/photo-1540575467063-178a50c2df87?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
-        "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
-        "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
-    ];
 
     const headerBackground = headerBackgrounds[Math.floor(Math.random() * headerBackgrounds.length)];
 
@@ -649,7 +642,7 @@ export default function EditEvent({ userData }) {
 
                                                     <div className="flex items-center text-sm gap-3">
                                                         {reviews.find(rev => rev.reviewed_id === supplier.id && rev.user_id === userData.id && rev.event_id === eventData.id) ? (
-                                                            <span className="text-white py-1 px-4 rounded-md text-sm bg-gray-500 ">Reviewed</span>
+                                                            <span className="text-white py-2 px-4 rounded-md text-sm bg-gray-500 ">Reviewed</span>
                                                         ) : (
                                                             <Review reviewed_id={supplier.id} reviewer_name={event_name} eventData={eventData} />
                                                         )}
@@ -903,21 +896,20 @@ export default function EditEvent({ userData }) {
                                                             </div>
                                                             <div className="flex items-center mt-1 space-x-2">
                                                                 <span className="text-sm text-gray-600">Rating: {averageRating}</span>
-                                                                <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full font-medium">Offer Sent</span>
-                                                            </div>
+                                                                <SupplierModal
+                                                                    className={'text-sm text-blue-600 hover:text-blue-800 font-medium mr-4'}
+                                                                    supplierData={supplier}
+                                                                    applications={applications}
+                                                                    userData={userData.role}
+                                                                    services={userServices}
+                                                                    reviews={reviews.filter(r => r.reviewed_id === supplier.id)}
+                                                                    averageRating={averageRating}
+                                                                />                                                            </div>
                                                         </div>
                                                     </div>
 
                                                     <div className="flex items-center space-x-3">
-                                                        <SupplierModal
-                                                            className={'text-sm text-blue-600 hover:text-blue-800 font-medium mr-4'}
-                                                            supplierData={supplier}
-                                                            applications={applications}
-                                                            userData={userData.role}
-                                                            services={userServices}
-                                                            reviews={reviews.filter(r => r.reviewed_id === supplier.id)}
-                                                            averageRating={averageRating}
-                                                        />
+
                                                         <ContractModal
                                                             userData={userData}
                                                             event_id={id}

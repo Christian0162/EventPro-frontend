@@ -11,37 +11,29 @@ import Swal from "sweetalert2";
 import { termsOfCondition } from "../../constants/categories";
 import { useFetchSupplierServices } from "../../hooks/useSupplier";
 import { useFetchEvents } from "../../hooks/useEvents";
+import PageLoading from "../../components/PageLoading";
+import { useFetchContract } from "../../hooks/useContract";
 
 export default function EventContract({ userData }) {
 
     const { eventId, supplierId } = useParams()
     const navigate = useNavigate()
-    const { supplier } = useFetchSupplierById(supplierId)
-
-    const [isLoading, setIsLoading] = useState(true);
-    const [countdown, setCountdown] = useState(2)
+    const { supplier, isLoading: isSupplierLoading } = useFetchSupplierById(supplierId)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [currentStep, setCurrentStep] = useState(1)
     const [selectedService, setSelectedService] = useState(null)
     const [error, setError] = useState(false)
     const [application, setApplication] = useState([])
     const [additional_information, setAdditional_Information] = useState("")
-    const { services: shopServices } = useFetchSupplierServices()
-    const { events } = useFetchEvents()
+    const { services: shopServices, isLoading: isServiceLoading } = useFetchSupplierServices()
+    const { events, isLoading: isEventsLoading } = useFetchEvents()
+    const { contracts } = useFetchContract()
 
     const currentEvent = events.find(event => event.id === eventId)
 
     const services = shopServices.filter(serv => serv.supplier_id === supplierId)
 
-    useEffect(() => {
-        if (countdown <= 0) { return setIsLoading(false) }
-
-        const countDown = setInterval(() => {
-            setCountdown(prev => prev - 1)
-        }, [1000])
-
-        return () => clearInterval(countDown)
-    }, [countdown])
+    const isAllLoading = isEventsLoading || isServiceLoading || isSupplierLoading
 
     useEffect(() => {
 
@@ -78,8 +70,6 @@ export default function EventContract({ userData }) {
         setCurrentStep(1)
         setError(false)
     }
-
-    console.log(isLoading)
 
     const handleSubmit = async () => {
         // Swal.fire({
@@ -120,10 +110,14 @@ export default function EventContract({ userData }) {
                 })
             }
 
+            const currentContract = contracts.filter(cont => cont.supplier_id === supplierId && cont.event_id === eventId)
+
             await addDoc(collection(db, "notifications"), {
                 avatar: currentEvent.event_name.charAt(0).toUpperCase(),
                 message: `The event planner for "${currentEvent.event_name}" applied for your service.`,
                 createdAt: serverTimestamp(),
+                referenced_type: 'contract',
+                referenced_id: currentContract[0].id,
                 title: 'New service application received.',
                 unread: true,
                 user_id: supplierId
@@ -155,13 +149,11 @@ export default function EventContract({ userData }) {
     return (
         <>
             <Title>Contract</Title>
-            {isLoading && (
-                <div className="flex justify-center items-center py-[13rem]">
-                    <div className="rounded-full h-10 w-10 animate-spin border border-t-blue-600"></div>
-                </div>
+            {isAllLoading && (
+                <PageLoading />
             )}
 
-            {!isLoading && (
+            {!isAllLoading && (
                 <div className="max-w-5xl mx-auto px-4">
                     {/* Step Container with Fixed Height */}
                     <div className="relative min-h-[750px]">

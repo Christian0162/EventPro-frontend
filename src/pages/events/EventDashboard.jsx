@@ -18,16 +18,18 @@ import EventModal from "../../components/EventModal"
 
 export default function EventDashboard({ userData }) {
 
-    const { contracts } = useFetchContract()
-    const { events, isLoading } = useFetchEventsById(userData?.id)
-    const { suppliers } = useFetchSuppliers()
-    const { transactions } = useFetchTransactionById(userData?.id)
-    const { reviews } = useFetchReviews()
+    const { contracts, isLoading: isContractsLoading } = useFetchContract()
+    const { events, isLoading: isEventLoading } = useFetchEventsById(userData?.id)
+    const { suppliers, isLoading: isSuppliersLoading } = useFetchSuppliers()
+    const { transactions, isLoading: isTransactionsLoading } = useFetchTransactionById(userData?.id)
+    const { reviews, isLoading: isReviewsLoading } = useFetchReviews()
     const [barEventData, setBarEventData] = useState({
         labels: [],
         planned: [],
         actual: []
     });
+
+    const isAllLoading = isEventLoading || isSuppliersLoading || isTransactionsLoading || isReviewsLoading
 
     const reviewedSuppliers = reviews.filter(rev => rev.user_id === userData.id)
 
@@ -122,11 +124,11 @@ export default function EventDashboard({ userData }) {
 
     return (
         <>
-            {isLoading && (
+            {isAllLoading && (
                 <PageLoading />
             )}
 
-            {!isLoading && (
+            {!isAllLoading && (
                 <>
                     <Title>Dashboard</Title>
                     {/* Header Section */}
@@ -181,7 +183,7 @@ export default function EventDashboard({ userData }) {
                                 {/* Content */}
                                 <div className="flex justify-between items-center relative z-10">
                                     <div>
-                                        <p className="text-sm text-gray-500 font-medium">{title}</p>
+                                        <p className="text-sm text-gray-500">{title}</p>
                                         <p className="text-3xl font-bold text-gray-800 mt-1">{value}</p>
                                     </div>
                                     <div className={`w-12 h-12 flex items-center justify-center rounded-full bg-gradient-to-r ${color} shadow-md`}>
@@ -271,7 +273,7 @@ export default function EventDashboard({ userData }) {
 
                     <TabGroup className={'mt-5 bg-white border border-gray-200 rounded-2xl shadow-md p-3 transition-all'}>
                         <TabList className="flex flex-wrap gap-2 sm:gap-3 mb-6">
-                            {["Supplier Bookings", "Upcoming Events", "Calendar"].map((tab, i) => (
+                            {["Upcoming events", "Supplier Bookings", "Calendar"].map((tab, i) => (
                                 <Tab
                                     key={i}
                                     className="rounded-full px-5 py-2 text-sm font-medium border border-gray-200 bg-white hover:bg-gray-100 data-[selected]:bg-gradient-to-r data-[selected]:from-blue-500 data-[selected]:to-blue-600 data-[selected]:text-white shadow-sm transition-all"
@@ -281,6 +283,28 @@ export default function EventDashboard({ userData }) {
                             ))}
                         </TabList>
                         <TabPanels className={'rounded-xl border border-gray-300 bg-white shadow-xl'}>
+
+                            <TabPanel>
+                                {events.length ? (
+                                    <div className="space-y-3 p-3">
+                                        {events.map((event) => (
+                                            <div key={event.id} className="p-4 flex justify-between items-center rounded-xl border border-gray-200 bg-gray-50 hover:bg-gray-100 transition-all shadow-lg">
+                                                <div>
+                                                    <p className="font-semibold text-gray-800">{event.event_name}</p>
+                                                    <p className="text-gray-500 text-sm mt-1">
+                                                        Date: {event.event_date?.date_value || "TBA"}
+                                                    </p>
+                                                </div>
+
+                                                <EventModal eventData={event} event_purpose={'dashboard'} />
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-center text-gray-500 py-10">No upcoming events.</p>
+                                )}
+                            </TabPanel>
+
                             <TabPanel className="p-3 sm:p-5 sm:px-7">
                                 <div className="p-1  flex flex-col gap-3">
                                     {pendingContracts.map((offers, index) => (
@@ -311,27 +335,6 @@ export default function EventDashboard({ userData }) {
                                         </div>
                                     )}
                                 </div>
-                            </TabPanel>
-
-                            <TabPanel>
-                                {events.length ? (
-                                    <div className="space-y-3 p-3">
-                                        {events.map((event) => (
-                                            <div key={event.id} className="p-4 flex justify-between items-center rounded-xl border border-gray-200 bg-gray-50 hover:bg-gray-100 transition-all shadow-lg">
-                                                <div>
-                                                    <p className="font-semibold text-gray-800">{event.event_name}</p>
-                                                    <p className="text-gray-500 text-sm mt-1">
-                                                        Date: {event.event_date?.date_value || "TBA"}
-                                                    </p>
-                                                </div>
-
-                                                <EventModal eventData={event} event_purpose={'dashboard'} />
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <p className="text-center text-gray-500 py-10">No upcoming events.</p>
-                                )}
                             </TabPanel>
 
                             < TabPanel >

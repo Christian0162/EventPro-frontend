@@ -43,7 +43,8 @@ export default function SubmissionModal({ contract, supplierData, eventData }) {
                 avatar: supplierData.supplier_name.charAt(0).toUpperCase(),
                 message: `The supplier "${supplierData.supplier_name}" submitted a delivery for contract ID: ${contract[0].id}.`,
                 createdAt: serverTimestamp(),
-                reference_id: supplierData.id,
+                referenced_type: 'contract',
+                referenced_id: contract[0].id,
                 title: 'New delivery submission received.',
                 unread: true,
                 user_id: eventData.user_id

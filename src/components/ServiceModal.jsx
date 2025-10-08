@@ -85,10 +85,15 @@ export default function ServiceModal({ userData, supplierData }) {
 
     const handleService = async (e) => {
         e.preventDefault()
-
         setIsSubmitting(true)
 
         try {
+            if (allInclusions.length === 0) {
+                setError('Please add at least one inclusion.')
+                setIsSubmitting(false)
+                return
+            }
+
             await addDoc(collection(db, "services"), {
                 service_plan: service_plan,
                 service_price: price,
@@ -98,10 +103,8 @@ export default function ServiceModal({ userData, supplierData }) {
             })
 
             Swal.fire('Success!', 'Your service has been added successfully.', 'success')
-
             close()
         }
-
         catch (e) {
             console.error(e)
         }
@@ -109,6 +112,7 @@ export default function ServiceModal({ userData, supplierData }) {
             setIsSubmitting(false)
         }
     }
+
 
     return (
         <>

@@ -223,6 +223,11 @@ export default function Supplier({ userData }) {
                                                 <span className="text-gray-600 text-sm">{shopItem.supplier_location}</span>
                                             </div>
 
+                                            <div className="flex items-center space-x-2 mb-4">
+                                                <Clock className="text-gray-400 shrink-0" size={16} />
+                                                <span className="text-sm text-gray-600">{shopItem.supplier_availability}</span>
+                                            </div>
+
                                             {/* Categories */}
                                             <div className="flex flex-wrap gap-2 mb-4">
                                                 {shopItem?.supplier_expertise?.map((expertise, expertiseIndex) => (
@@ -236,16 +241,15 @@ export default function Supplier({ userData }) {
                                             </div>
 
                                             {/* Price and Hours */}
-                                            <div className="flex justify-between items-center mb-5 gap-7">
+                                            <div className="flex flex-col mb-5 gap-2">
+
+
                                                 <div className="flex items-center space-x-1">
                                                     <PhilippinePeso className="text-green-600" size={18} />
                                                     <span className="text-lg font-bold text-gray-900">{userServices[0].service_price}</span>
                                                     <span className="text-sm text-gray-500">/service</span>
                                                 </div>
-                                                <div className="flex items-center space-x-2">
-                                                    <Clock className="text-gray-400 shrink-0" size={16} />
-                                                    <span className="text-sm text-gray-600">{shopItem.supplier_availability}</span>
-                                                </div>
+
                                             </div>
 
                                             {/* Reviews */}

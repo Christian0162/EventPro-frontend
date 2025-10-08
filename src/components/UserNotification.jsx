@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useFetchNotificationsById } from "../hooks/useNotifications"
 import { BellDot, X, Check, Settings, MessageSquare } from "lucide-react";
 import { auth, db } from "../firebase/firebase"
@@ -6,14 +6,23 @@ import { doc, updateDoc } from "firebase/firestore"
 import { Link } from "react-router-dom";
 import { Dialog, DialogPanel } from "@headlessui/react";
 import { formatDistanceToNow } from "date-fns";
+import { useFetchEvents } from "../hooks/useEvents";
+import { useFetchContract } from "../hooks/useContract";
+import EventModal from "./EventModal";
+import ContractModal from "./ContractModal";
+import { useFetchSuppliers } from "../hooks/useSupplier";
 
-export default function UserNotifications() {
+export default function UserNotifications({ userData }) {
     const [isOpen, setIsOpen] = useState(false)
     const [modalOpen, setModalOpen] = useState(false)
     const [selectedNotif, setSelectedNotif] = useState(null)
-    const { notifications } = useFetchNotificationsById(auth.currentUser?.uid)
+    const { notifications } = useFetchNotificationsById(userData?.id)
     const [isLoading, setIsLoading] = useState(false)
     const [isReading, setIsReading] = useState(false)
+    const { events } = useFetchEvents()
+    const { contracts } = useFetchContract()
+    const { suppliers } = useFetchSuppliers()
+    const [selectedItem, setSelectedItem] = useState(null);
 
     const unreadCount = notifications.filter(notification => notification.unread).length
 
@@ -22,6 +31,8 @@ export default function UserNotifications() {
             unread: false
         })
     }
+
+    console.log(selectedItem)
 
     const markAllAsRead = async () => {
         const unread = notifications.filter(notification => notification.unread)
@@ -44,10 +55,24 @@ export default function UserNotifications() {
     }
 
     const handleNotifClick = (notification) => {
-        markAsRead(notification.id)
-        setSelectedNotif(notification)
-        setModalOpen(true)
-    }
+        markAsRead(notification.id);
+        setSelectedNotif(notification);
+
+        // Determine the referenced item (event or contract)
+        if (notification.referenced_type === "event") {
+            const matchedEvent = events.find(e => e.id === notification.referenced_id);
+            setSelectedItem({ type: 'event', data: matchedEvent });
+        } else if (notification.referenced_type === "contract") {
+            const matchedContract = contracts.find(c => c.id === notification.referenced_id);
+            const eventData = events.find(event => event.id === matchedContract.event_id)
+            const supplierData = suppliers.find(sup => sup.id === matchedContract.supplier_id)
+            setSelectedItem({ type: "contract", contract: matchedContract, supplier: supplierData, event: eventData });
+        } else {
+            setSelectedItem(null);
+        }
+
+        setModalOpen(true);
+    };
 
     return (
         <>
@@ -124,7 +149,7 @@ export default function UserNotifications() {
                                             notifications.map((notification, index) => (
                                                 <div
                                                     key={notification.id}
-                                                    onClick={() => handleNotifClick(notification)}
+                                                    onClick={() => (handleNotifClick(notification), setIsOpen(false))}
                                                     className={`relative cursor-pointer hover:bg-gray-50 px-4 py-3 transition-colors duration-150 border-l-4 ${notification.unread
                                                         ? 'border-transparent bg-white'
                                                         : 'border-blue-500 bg-blue-50/30'
@@ -182,7 +207,7 @@ export default function UserNotifications() {
             </div>
 
             {/* Notification Modal */}
-            <Dialog as="div" open={modalOpen} onClose={() => setModalOpen(false)} className="relative z-[999]">
+            <Dialog as="div" open={modalOpen} onClose={() => setModalOpen(false)} className="relative z-[50]">
                 <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" />
                 <div className="fixed inset-0 flex items-center justify-center p-4">
                     <DialogPanel
@@ -226,7 +251,6 @@ export default function UserNotifications() {
                                     </div>
                                 </div>
 
-                                {/* Actions */}
                                 <div className="mt-6 flex justify-center gap-3">
                                     <button
                                         onClick={() => setModalOpen(false)}
@@ -234,6 +258,16 @@ export default function UserNotifications() {
                                     >
                                         Close
                                     </button>
+
+                                    {selectedItem && (
+                                        <>
+                                            {selectedItem.type === "event" ? (
+                                                <EventModal eventData={selectedItem.data} event_purpose={`dashboard`} />
+                                            ) : (
+                                                <ContractModal event_id={selectedItem.event.id} supplier_id={selectedItem.supplier.id} user_id={userData.id} userData={userData} supplierData={selectedItem.supplier} eventData={selectedItem.event} />
+                                            )}
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         )}

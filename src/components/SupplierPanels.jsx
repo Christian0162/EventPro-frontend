@@ -25,19 +25,16 @@ export default function SupplierPanels({ userData, shop, reviews, services, aver
     const [contactLoading, setContactLoading] = useState(false)
     const [bookingLoading, setBookingLoading] = useState(false)
     const [contact_number, setContact_number] = useState('')
-    const [email_address, setEmail_address] = useState('')
     const [availability, setAvailability] = useState('')
-    const [supplier_price, setSupplier_price] = useState('')
+    const [timeError, setTimeError] = useState('')
     const [isDeleting, setIsDeleting] = useState(false)
     const [hoveredReviewerId, setHoveredReviewerId] = useState(null)
     const { userProfiles } = useFetchUserProfiles()
     const { users } = useFetchUsers()
 
     useEffect(() => {
-        setSupplier_price(shop?.supplier_price)
         setAvailability(shop?.supplier_availability)
         setResponse_time(shop?.supplier_response_time)
-        setEmail_address(shop?.supplier_email)
         setContact_number(shop?.supplier_number)
 
     }, [shop])
@@ -49,7 +46,6 @@ export default function SupplierPanels({ userData, shop, reviews, services, aver
 
         try {
             await updateDoc(doc(db, "shops", auth.currentUser.uid), {
-                supplier_email: email_address,
                 supplier_number: contact_number,
             })
         }
@@ -106,24 +102,33 @@ export default function SupplierPanels({ userData, shop, reviews, services, aver
 
     const handleBookingSubmit = async () => {
         setBookingLoading(true)
+
+        if (timeError.length > 0) {
+            setBookingLoading(false)
+            Swal.fire({
+                icon: 'error',
+                title: 'Invalid Availability',
+                text: timeError,
+            })
+            return; // ⛔ stop before doing anything
+        }
+        
         try {
             await updateDoc(doc(db, "shops", auth.currentUser.uid), {
-                supplier_price: supplier_price,
                 supplier_availability: availability,
                 supplier_response_time: response_time
             })
+            setBookingEditing(false)
         }
-
         catch (e) {
             console.error(e)
         }
         finally {
-            setBookingEditing(false)
             setBookingLoading(false)
         }
     }
 
-    console.log(services)
+    console.log(timeError)
 
     return (
         <>
@@ -207,25 +212,6 @@ export default function SupplierPanels({ userData, shop, reviews, services, aver
                                     <div className="space-y-6">
                                         <form onSubmit={handleContactSubmit} className='relative'>
                                             <div className="flex items-center gap-4 mt-6">
-                                                <div className="p-2 bg-blue-100 rounded-lg">
-                                                    <Mail size={24} className="text-blue-600" />
-                                                </div>
-                                                <div>
-                                                    <h4 className="font-bold text-gray-900 mb-1">Email Address</h4>
-                                                    {!contactEditing
-                                                        ? (
-                                                            <p className="text-gray-600">{shop?.supplier_email}</p>
-
-                                                        )
-
-                                                        : (
-                                                            <input type="email" value={email_address} onChange={(e) => setEmail_address(e.target.value)} placeholder='e.g test@gmail.com' className='border border-gray-300 focus:outline-none px-4 py-2 rounded-md text-sm' />
-                                                        )}
-
-                                                </div>
-                                            </div>
-
-                                            <div className="flex items-center gap-4 mt-6">
                                                 <div className="p-2 bg-green-100 rounded-lg">
                                                     <Phone size={24} className="text-green-600" />
                                                 </div>
@@ -288,7 +274,7 @@ export default function SupplierPanels({ userData, shop, reviews, services, aver
                                 )}
 
                                 {!bookingLoading && (
-                                    <form onSubmit={handleBookingSubmit}>
+                                    <div>
                                         <div className="space-y-6">
                                             <div className="flex items-center gap-4">
                                                 <div className="p-2 bg-purple-100 rounded-lg">
@@ -302,7 +288,11 @@ export default function SupplierPanels({ userData, shop, reviews, services, aver
                                                         <AvailabilityPicker
                                                             onChange={(val) => setAvailability(val)}
                                                             existingValue={shop?.supplier_availability}
+                                                            setTimeError={setTimeError}
                                                         />)}
+                                                    {timeError && (
+                                                        <span className="text-red-500 text-sm mt-1">{timeError}</span>
+                                                    )}
 
                                                 </div>
                                             </div>
@@ -324,12 +314,12 @@ export default function SupplierPanels({ userData, shop, reviews, services, aver
                                                 </div>
                                             </div>
                                             {bookingEdting && (
-                                                <button className='flex ml-auto px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md'>
+                                                <button onClick={() => handleBookingSubmit()} className='flex ml-auto px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md'>
                                                     Save
                                                 </button>
                                             )}
                                         </div>
-                                    </form>
+                                    </div>
                                 )}
                             </ShopCards>
                         </div>

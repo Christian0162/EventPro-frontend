@@ -26,12 +26,12 @@ export default function SubmissionModal({ contract, supplierData, eventData }) {
         setIsSubmitting(true)
         try {
             await addDoc(collection(db, "deliveries"), {
-                contract_id: contract[0].id,
-                supplier_id: contract[0].supplier_id,
+                contract_id: contract?.id,
+                supplier_id: contract?.supplier_id,
                 status: "Pending",
                 submitted_at: serverTimestamp(),
                 delivered_date: serverTimestamp(),
-                planned_date: eventData.date,
+                planned_date: eventData.event_date.date_value,
                 confirmed_at: null,
                 notes: note,
                 proof: picture,
@@ -41,10 +41,10 @@ export default function SubmissionModal({ contract, supplierData, eventData }) {
 
             await addDoc(collection(db, "notifications"), {
                 avatar: supplierData.supplier_name.charAt(0).toUpperCase(),
-                message: `The supplier "${supplierData.supplier_name}" submitted a delivery for contract ID: ${contract[0].id}.`,
+                message: `The supplier "${supplierData.supplier_name}" submitted a delivery for contract ID: ${contract?.id}.`,
                 createdAt: serverTimestamp(),
                 referenced_type: 'contract',
-                referenced_id: contract[0].id,
+                referenced_id: contract?.id,
                 title: 'New delivery submission received.',
                 unread: true,
                 user_id: eventData.user_id

@@ -183,7 +183,7 @@ export default function EditEvent({ userData }) {
             showCancelButton: true
         }).then(async (result) => {
             if (result.isConfirmed) {
-                return navigate(`/events/${id}/contract/${supplier.id}`)
+                window.location.href = `/events/${id}/contract/${supplier.id}`;
             }
         })
     }
@@ -854,7 +854,7 @@ export default function EditEvent({ userData }) {
                                 <span className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-medium">
                                     {suppliers.filter(supplier =>
                                         applications.some(app => app.supplier_id === supplier.id && app.status === "Approved") &&
-                                        contracts.some(contracts => contracts.status === "Pending" && supplier.id === contracts.supplier_id)
+                                        contracts.some(c => c.supplier_id === supplier.id && c.status === "Pending" && c.event_id === id)
                                     ).length} Pending
                                 </span>
                             </div>
@@ -864,7 +864,7 @@ export default function EditEvent({ userData }) {
                                 <div className="space-y-4">
                                     {suppliers.filter(supplier =>
                                         applications.some(app => app.supplier_id === supplier.id && app.status === "Approved") &&
-                                        contracts.some(contracts => contracts.status === "Pending" && supplier.id === contracts.supplier_id))
+                                        contracts.some(c => c.supplier_id === supplier.id && c.status === "Pending" && c.event_id === id))
                                         .map((supplier) => {
                                             const averageRating = calculateAverageRating(supplier.id);
                                             const userProfile = userProfiles.find(
@@ -904,7 +904,8 @@ export default function EditEvent({ userData }) {
                                                                     services={userServices}
                                                                     reviews={reviews.filter(r => r.reviewed_id === supplier.id)}
                                                                     averageRating={averageRating}
-                                                                />                                                            </div>
+                                                                />
+                                                            </div>
                                                         </div>
                                                     </div>
 

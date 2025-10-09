@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { Calendar } from "lucide-react";
 
-export default function AvailabilityPicker({ onChange, existingValue = "" }) {
+export default function AvailabilityPicker({ onChange, existingValue = "", setTimeError }) {
     const [selectedDays, setSelectedDays] = useState([]);
     const [startTime, setStartTime] = useState("");
     const [endTime, setEndTime] = useState("");
+    const [error, setError] = useState(""); // ⬅️ error state
 
     const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -17,7 +18,7 @@ export default function AvailabilityPicker({ onChange, existingValue = "" }) {
         return `${formattedHours}:${minutes.toString().padStart(2, "0")} ${period}`;
     };
 
-    // Convert "8:00 AM" → "08:00" (for <input type="time" />)
+    // Convert "8:00 AM" → "08:00"
     const parseTo24Hr = (timeStr) => {
         if (!timeStr) return "";
         const [time, modifier] = timeStr.split(" ");
@@ -29,7 +30,7 @@ export default function AvailabilityPicker({ onChange, existingValue = "" }) {
         return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
     };
 
-    // 🔹 Parse existing value like "Mon, Tue: 8:00 AM - 5:00 PM"
+    // Parse existing value like "Mon, Tue: 8:00 AM - 5:00 PM"
     useEffect(() => {
         if (existingValue) {
             const [dayPart, timePart] = existingValue.split(": ");
@@ -40,16 +41,48 @@ export default function AvailabilityPicker({ onChange, existingValue = "" }) {
             setStartTime(parseTo24Hr(start));
             setEndTime(parseTo24Hr(end));
 
-            // Set formatted availability to parent
             const formatted = `${parsedDays.join(", ")}: ${start} - ${end}`;
+
+            // Validate time
+            if (start && end && start === end) {
+                setError("Start time and end time cannot be the same.");
+                setTimeError("Start time and end time cannot be the same.")
+                onChange(""); // prevent invalid output
+                return;
+            }
+            else if (dayPart.length === 0 || dayPart.length === 1) {
+                setTimeError("Please select at least one day of availability.");
+            } else {
+                setError("");
+                setTimeError("")
+
+            }
+
             onChange(formatted);
         }
     }, [existingValue]);
 
     const handleChange = (newDays = selectedDays, start = startTime, end = endTime) => {
+        // Validate time
+        if (start && end && start === end) {
+            setTimeError("Start time and end time cannot be the same.");
+            onChange("");
+            return;
+        }
+        else if (newDays.length === 0 || newDays.length === 1) {
+            setTimeError("Please select at least one day of availability.");
+        }
+        else {
+            setError("");
+            setTimeError("");
+
+        }
+
         const formatted = `${newDays.join(", ")}: ${formatTime(start)} - ${formatTime(end)}`;
         onChange(formatted);
     };
+
+    console.log(selectedDays.length)
 
     return (
         <div>
@@ -72,8 +105,8 @@ export default function AvailabilityPicker({ onChange, existingValue = "" }) {
                             handleChange(newDays);
                         }}
                         className={`px-3 py-1 text-sm rounded-lg border transition ${selectedDays.includes(day)
-                                ? "bg-blue-600 text-white border-blue-600"
-                                : "border-gray-300 text-gray-600 hover:bg-gray-100"
+                            ? "bg-blue-600 text-white border-blue-600"
+                            : "border-gray-300 text-gray-600 hover:bg-gray-100"
                             }`}
                     >
                         {day}
@@ -110,9 +143,12 @@ export default function AvailabilityPicker({ onChange, existingValue = "" }) {
                 </div>
             </div>
 
+            {/* Error message */}
+            {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+
             {/* Preview */}
             <div className="mt-3 text-gray-700 text-sm">
-                {selectedDays.length > 0 && startTime && endTime && (
+                {selectedDays.length > 0 && startTime && endTime && !error && (
                     <p>
                         <span className="font-semibold">Selected:</span>{" "}
                         {selectedDays.join(", ")} ({formatTime(startTime)} – {formatTime(endTime)})

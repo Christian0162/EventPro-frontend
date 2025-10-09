@@ -684,7 +684,7 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
                                         >
                                             <div>
                                                 <div className="rounded-t-md bg-blue-600 text-white">
-                                                    <h3 className="font-bold text-2xl text-center py-5">{contract?.service_plan?.label}</h3>
+                                                    <h3 className="font-bold text-2xl text-center py-5">{contract?.service_plan.service_plan?.label}</h3>
                                                 </div>
 
                                                 <div className="flex items-center justify-center">
@@ -920,18 +920,19 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
                                                     <button disabled={true} className='px-7 py-2 flex justify-end items-end ml-auto relative bottom-3 right-10 bg-gray-400 text-white text-sm rounded'>Awaiting Approval</button>
                                                 )}
 
-                                                {supplier_id === user_id && contract?.status === "Pending" && (
-                                                    <div className='flex justify-end items-end ml-auto relative bottom-3 right-10 gap-2'>
-                                                        <RejectReview contract={contract} supplier={supplierData} event_id={eventData.id} supplier_id={supplierData.id} className={`transition duration-50 py-1 px-5 border rounded-md hover:bg-red-600 hover:text-white`} />
-                                                        <button onClick={() => handleApprove(contract?.id)} disabled={isSubmitting} className={`transition-all duration-50 px-7 py-2 ${isSubmitting ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'} text-white text-sm rounded`}>{isSubmitting ?
-                                                            <>
-                                                                <div className='h-5 w-5 border-t-2 rounded-full animate-spin border-white'></div>
-                                                            </> : 'Approve Offer'}
-                                                        </button>
-                                                    </div>
-                                                )}
+
                                             </div>
                                         </>
+                                    )}
+                                    {supplier_id === user_id && contract?.status === "Pending" && (
+                                        <div className='flex p-2 justify-end items-end ml-auto relative bottom-3 right-10 gap-2'>
+                                            <RejectReview contract={contract} supplier={supplierData} event_id={eventData.id} supplier_id={supplierData.id} className={`transition duration-50 py-1 px-5 border rounded-md hover:bg-red-600 hover:text-white`} />
+                                            <button onClick={() => handleApprove(contract?.id)} disabled={isSubmitting} className={`transition-all duration-50 px-7 py-2 ${isSubmitting ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'} text-white text-sm rounded`}>{isSubmitting ?
+                                                <>
+                                                    <div className='h-5 w-5 border-t-2 rounded-full animate-spin border-white'></div>
+                                                </> : 'Approve Offer'}
+                                            </button>
+                                        </div>
                                     )}
                                 </div>
 

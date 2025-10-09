@@ -89,11 +89,11 @@ export default function CreateEvent({ userData }) {
     }
 
     const addTag = () => {
-        if (categories.value.trim() && !tags.includes(categories.value.trim())) {
-            setTags([...tags, categories.value])
-            setCategories(null)
+        if (categories?.value.trim() && !tags.some(tag => tag.value === categories.value)) {
+            setTags([...tags, categories]);
+            setCategories(null);
         }
-    }
+    };
 
     return (
         <>

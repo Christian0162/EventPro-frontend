@@ -39,6 +39,7 @@ export default function SupplierModal({ supplierData, applications, userData, re
     const [email_address, setEmail_address] = useState('')
     const [availability, setAvailability] = useState('')
     const [supplier_price, setSupplier_price] = useState('')
+    const [timeError, setTimeError] = useState('')
     const [hoveredReviewerId, setHoveredReviewerId] = useState(null)
     const { contracts } = useFetchContract()
     const { userProfiles } = useFetchUserProfiles()
@@ -175,9 +176,19 @@ export default function SupplierModal({ supplierData, applications, userData, re
 
     const handleBookingSubmit = async () => {
         setBookingLoading(true)
+
+        if (timeError.length > 0) {
+            setBookingLoading(false)
+            Swal.fire({
+                icon: 'error',
+                title: 'Invalid Availability',
+                text: timeError,
+            })
+            return; 
+        }
+
         try {
             await updateDoc(doc(db, "shops", auth.currentUser.uid), {
-                supplier_price: supplier_price,
                 supplier_availability: availability,
                 supplier_response_time: response_time
             })
@@ -459,7 +470,11 @@ export default function SupplierModal({ supplierData, applications, userData, re
                                                                             <AvailabilityPicker
                                                                                 onChange={(val) => setAvailability(val)}
                                                                                 existingValue={supplierData?.supplier_availability}
+                                                                                setTimeError={setTimeError}
                                                                             />
+                                                                        )}
+                                                                        {timeError && (
+                                                                            <span className="text-red-500 text-sm mt-1">{timeError}</span>
                                                                         )}
 
                                                                     </div>

@@ -72,78 +72,84 @@ export default function EventContract({ userData }) {
     }
 
     const handleSubmit = async () => {
-        // Swal.fire({
-        //     title: 'Send Contract Offer?',
-        //     text: "You're about to send a contract offer to the selected supplier. This action confirms your proposed terms and initiates the agreement process.",
-        //     showConfirmButton: true,
-        //     confirmButtonText: 'Send Offer & Approve',
-        //     showCancelButton: true,
-        // }).then(async (result) => {
-        try {
-            setIsSubmitting(true)
-            const applicationRef = application[0]?.id
+        Swal.fire({
+            title: 'Send Contract Offer?',
+            text: "You're about to send a contract offer to the selected supplier. This action confirms your proposed terms and initiates the agreement process.",
+            showConfirmButton: true,
+            confirmButtonText: 'Send Offer',
+            showCancelButton: true,
+        }).then(async (result) => {
+            if (!result.isConfirmed) return; // ✅ prevents double creation
 
-            addDoc(collection(db, "contracts"), {
-                supplier_id: supplierId,
-                event_id: eventId,
-                planner_id: userData.id,
-                service_plan: selectedService,
-                penalty_clauses: termsOfCondition,
-                additional_information: additional_information,
-                created_at: serverTimestamp(),
-                status: 'Pending'
-            })
+            if (result.isConfirmed) {
+                try {
+                    setIsSubmitting(true)
+                    const applicationRef = application[0]?.id
 
-            if (!applicationRef) {
-                await addDoc(collection(db, "applications"), {
-                    supplier_id: supplierId,
-                    event_id: eventId,
-                    AppliedAt: serverTimestamp(),
-                    status: 'Pending'
-                })
+                    await addDoc(collection(db, "contracts"), {
+                        supplier_id: supplierId,
+                        event_id: eventId,
+                        planner_id: userData?.id,
+                        service_plan: selectedService,
+                        penalty_clauses: termsOfCondition,
+                        additional_information: additional_information,
+                        created_at: serverTimestamp(),
+                        status: 'Pending'
+                    })
+
+                    if (!applicationRef) {
+                        await addDoc(collection(db, "applications"), {
+                            supplier_id: supplierId,
+                            event_id: eventId,
+                            AppliedAt: serverTimestamp(),
+                            status: 'Pending'
+                        })
+                    }
+
+                    if (applicationRef) {
+                        updateDoc(doc(db, "applications", applicationRef), {
+                            status: "Approved",
+                            ApproveAt: serverTimestamp()
+                        })
+                    }
+
+                    const currentContract = contracts.find(cont => cont.supplier_id === supplierId && cont.event_id === eventId)
+
+                    if (currentContract) {
+                        await addDoc(collection(db, "notifications"), {
+                            avatar: currentEvent.event_name.charAt(0).toUpperCase(),
+                            message: `The event planner for "${currentEvent.event_name}" applied for your service.`,
+                            createdAt: serverTimestamp(),
+                            referenced_type: 'contract',
+                            referenced_id: currentContract?.id,
+                            title: 'New service application received.',
+                            unread: true,
+                            user_id: supplierId
+                        })
+                    }
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Offer Sent Successfully',
+                        text: 'Your offer has been sent to the supplier. You will be notified once it is approved.',
+                        confirmButtonText: 'OK',
+                        timer: 2000,
+                    });
+
+                    setIsSubmitting(false)
+
+                    return navigate(`/events/edit/${eventId}`)
+
+                }
+                catch (e) {
+                    console.error(e)
+                    setIsSubmitting(false)
+
+                }
+                finally {
+                    setIsSubmitting(false)
+                }
             }
-
-            if (applicationRef) {
-                updateDoc(doc(db, "applications", applicationRef), {
-                    status: "Approved",
-                    ApproveAt: serverTimestamp()
-                })
-            }
-
-            const currentContract = contracts.filter(cont => cont.supplier_id === supplierId && cont.event_id === eventId)
-
-            await addDoc(collection(db, "notifications"), {
-                avatar: currentEvent.event_name.charAt(0).toUpperCase(),
-                message: `The event planner for "${currentEvent.event_name}" applied for your service.`,
-                createdAt: serverTimestamp(),
-                referenced_type: 'contract',
-                referenced_id: currentContract[0].id,
-                title: 'New service application received.',
-                unread: true,
-                user_id: supplierId
-            })
-            Swal.fire({
-                icon: 'success',
-                title: 'Offer Sent Successfully',
-                text: 'Your offer has been sent to the supplier. You will be notified once it is approved.',
-                confirmButtonText: 'OK',
-                timer: 2000,
-            });
-
-            setIsSubmitting(false)
-
-            return navigate(`/events/edit/${eventId}`)
-
-        }
-        catch (e) {
-            console.error(e)
-            setIsSubmitting(false)
-
-        }
-        finally {
-            setIsSubmitting(false)
-        }
-        // })
+        })
     }
 
     return (
@@ -176,7 +182,7 @@ export default function EventContract({ userData }) {
                                         return (
                                             <button
                                                 key={index}
-                                                className={`w-full h-100 flex flex-col bg-gray-50 border-2 rounded-lg transition-all duration-200 hover:border-blue-500 hover:shadow-md ${selected
+                                                className={`w-full h-100 flex flex-col bg-gray-50 border-2 rounded-lg transition-all duration-200 hover:shadow-md ${selected
                                                     ? 'border-blue-600 bg-blue-50'
                                                     : error
                                                         ? 'border-red-300'
@@ -184,6 +190,9 @@ export default function EventContract({ userData }) {
                                                     }`}
                                                 onClick={() => {
                                                     setSelectedService(service);
+                                                    if (selectedService === service) {
+                                                        setSelectedService(null)
+                                                    }
                                                     setError(false);
                                                 }}
                                             >

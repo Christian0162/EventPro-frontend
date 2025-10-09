@@ -23,7 +23,7 @@ export default function SupplierRegistration() {
     const [phone_number, setPhone_number] = useState('');
     const [response_time, setRespone_time] = useState('')
     const [supplier_availability, setSupplier_availability] = useState('')
-    const [price, setPrice] = useState('')
+    const [timeError, setTimeError] = useState('')
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [expertiseOptions, setExpertiseOptions] = useState([])
@@ -59,13 +59,29 @@ export default function SupplierRegistration() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setIsLoading(true);
+
         if (!expertise || expertise.length === 0) {
+            setIsLoading(false);
             return setError('Must fill all fields');
         }
 
-        try {
-            setIsLoading(true);
+        if (supplier_availability.length === 0) {
+            setIsLoading(false);
+            return setError('Must select atleast availability days and time');
 
+        }
+        if (timeError.length > 0) {
+            setIsLoading(false);
+            Swal.fire({
+                icon: 'error',
+                title: 'Invalid Availability',
+                text: timeError,
+            })
+            return;
+        }
+
+        try {
             Swal.fire({
                 title: 'Success',
                 icon: 'success',
@@ -84,7 +100,6 @@ export default function SupplierRegistration() {
                 supplier_number: phone_number,
                 supplier_response_time: response_time,
                 supplier_availability,
-                supplier_price: price,
                 created_at: serverTimestamp(),
                 status: "active",
                 is_verified: false
@@ -100,7 +115,7 @@ export default function SupplierRegistration() {
         }
     };
 
-    console.log(supplier_availability)
+    console.log(supplier_availability.length)
 
     console.log(location)
     return (
@@ -282,22 +297,10 @@ export default function SupplierRegistration() {
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            <PhilippinePeso className="inline w-4 h-4 mr-1" />
-                                            Pricing
-                                        </label>
-                                        <input
-                                            type="number"
-                                            name="minimumOrders"
-                                            required
-                                            onChange={(e) => setPrice(e.target.value)}
-                                            className="w-full px-4 py-[7px] border border-gray-300 rounded-md  focus:border-transparent transition-colors"
-                                            placeholder="e.g., ₱5,000"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <AvailabilityPicker onChange={(val) => setSupplier_availability(val)} />
+                                        <AvailabilityPicker onChange={(val) => setSupplier_availability(val)} setTimeError={setTimeError} />
+                                        {timeError && (
+                                            <span className="text-red-500 text-sm mt-1">{timeError}</span>
+                                        )}
                                     </div>
 
 

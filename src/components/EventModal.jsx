@@ -254,13 +254,18 @@ export default function EventModal({ eventData, event_purpose }) {
 
 
                                 {/* Footer Button */}
-                                <div className="pt-1">
+                                <div className="pt-1 flex gap-2">
                                     <button
                                         onClick={close}
                                         className="w-full bg-gray-300 hover:bg-gray-600 hover:opacity-90 text-white font-medium py-3 rounded-lg transition-all duration-200"
                                     >
                                         Close
                                     </button>
+                                    <a href={`/events/edit/${eventData.id}`}
+                                        className="w-full bg-blue-600 text-center hover:bg-blue-800 hover:opacity-90 text-white font-medium py-3 rounded-lg transition-all duration-200"
+                                    >
+                                        Edit
+                                    </a>
                                 </div>
                             </div>
                         </DialogPanel>

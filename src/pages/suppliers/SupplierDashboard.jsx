@@ -4,7 +4,7 @@ import { TabGroup, TabPanel, TabPanels, TabList, Tab } from "@headlessui/react"
 import { Title } from "react-head"
 import { where, query, collection, onSnapshot, serverTimestamp, addDoc, getDocs } from "firebase/firestore"
 import { db, auth } from "../../firebase/firebase"
-import { act, useEffect, useState } from "react"
+import { act, useEffect, useRef, useState } from "react"
 import { LineChart, PieChart, BarChart } from "../../components/Charts"
 import { useFetchReviews } from "../../hooks/useReviews"
 import FullCalendar from '@fullcalendar/react';
@@ -21,9 +21,13 @@ import PageLoading from "../../components/PageLoading"
 import { useFetchDeliveries } from "../../hooks/useDeliveries"
 import { useFetchTransactionById } from "../../hooks/useTransaction"
 import { useFetchAllApplication } from "../../hooks/useApplication"
+import autoTable from "jspdf-autotable";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
 export default function SupplierDashboard({ userData }) {
 
+    const analyticsRef = useRef(null);
     const { reviews: reviewed } = useFetchReviews()
     const { contracts } = useFetchContract()
     const { events, isLoading: isEventLoading } = useFetchEvents()
@@ -42,6 +46,75 @@ export default function SupplierDashboard({ userData }) {
 
     const userDeliveries = deliveries.filter(del => del.supplier_id === userData.id)
 
+    const generateReport = async (
+        userData,
+        totalEarning,
+        onTimeRate,
+        competitiveness,
+        totalAppliedEvents,
+        monthlyRatings
+    ) => {
+        const doc = new jsPDF();
+
+        // Title + Basic Info
+        doc.setFontSize(16);
+        doc.text("Supplier Performance Report", 14, 20);
+        doc.setFontSize(12);
+        doc.text(`Supplier: ${userData.first_name} ${userData.last_name}`, 14, 30);
+        doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 37);
+
+        // Table with stats
+        autoTable(doc, {
+            startY: 45,
+            head: [["Metric", "Value"]],
+            body: [
+                ["Total Earnings", `PHP ${totalEarning}`],
+                ["On-Time Delivery Rate", `${onTimeRate.toFixed(0)}%`],
+                ["Price Competitiveness", `${competitiveness.toFixed(1)}%`],
+                ["Total Applied Events", totalAppliedEvents],
+                [
+                    "Average Monthly Rating",
+                    (
+                        monthlyRatings?.filter(Boolean).reduce((a, b) => a + b, 0) /
+                        monthlyRatings?.filter(Boolean).length || 0
+                    ).toFixed(1),
+                ],
+            ],
+        });
+
+        // Add charts as simple tables instead of capturing the DOM
+        const finalY = doc.lastAutoTable.finalY + 10;
+
+        // Performance Metrics Table
+        doc.text("Performance Metrics:", 14, finalY);
+        autoTable(doc, {
+            startY: finalY + 5,
+            head: [["Metric", "Value (%)"]],
+            body: [
+                ["Price Competitiveness", competitiveness.toFixed(1)],
+                ["On-Time Delivery", onTimeRate.toFixed(0)],
+            ],
+        });
+
+        // Monthly Ratings Table
+        const ratingsY = doc.lastAutoTable.finalY + 10;
+        doc.text("Monthly Ratings:", 14, ratingsY);
+
+        const monthlyData = monthlyRatings.map((rating, index) => [
+            ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][index],
+            rating ? rating.toFixed(1) : 'N/A'
+        ]).filter((_, index) => monthlyRatings[index] !== null);
+
+        autoTable(doc, {
+            startY: ratingsY + 5,
+            head: [["Month", "Average Rating"]],
+            body: monthlyData,
+        });
+
+        // Save file
+        doc.save("Supplier_Analytics_Report.pdf");
+    };
+
     // price competitive 
     const suppleirsWithSameType = suppliers.filter(sup => sup.supplier_type?.value === supplier.supplier_type?.value && sup.id != userData.id)
     const supplierSameTypeServices = services.filter(serv => suppleirsWithSameType.some(supp => serv.supplier_id === supp.id))
@@ -59,7 +132,12 @@ export default function SupplierDashboard({ userData }) {
 
     // ontime deliveries
     const onTimeDeliveries = userDeliveries.filter(
-        d => d.delivered_date.toDate() <= new Date(d.planned_date)
+        d => {
+            const deliveredDate = d.delivered_date?.toDate ? d.delivered_date.toDate() : new Date(d.delivered_date)
+            const plannedDate = d.planned_date?.toDate ? d.planned_date.toDate() : new Date(d.planned_date)
+
+            return deliveredDate && plannedDate && deliveredDate < plannedDate
+        }
     ).length;
     const totalDeliveries = userDeliveries.length;
     const onTimeRate = totalDeliveries ? (onTimeDeliveries / totalDeliveries) * 100 : 0;
@@ -227,6 +305,23 @@ export default function SupplierDashboard({ userData }) {
                         </div>
                     </div>
 
+                    <button
+                        onClick={() =>
+                            generateReport(
+                                userData,
+                                totalEarning,
+                                onTimeRate,
+                                competitiveness,
+                                totalAppliedEvents,
+                                monthlyRatings
+                            )
+                        }
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                    >
+                        Generate Report
+                    </button>
+
+
                     {/* Overview Cards */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                         {[
@@ -253,7 +348,7 @@ export default function SupplierDashboard({ userData }) {
                     </div>
 
                     {/* Charts */}
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 mb-10">
+                    <div ref={analyticsRef} className="grid grid-cols-1 xl:grid-cols-2 gap-3 mb-10">
                         <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-md hover:shadow-lg transition-all">
                             <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2"><ChartNoAxesCombined /> Performance Metrics</h3>
                             <BarChart
@@ -436,10 +531,10 @@ export default function SupplierDashboard({ userData }) {
 
                             {/* Contracts Tab */}
                             < TabPanel >
-                                <div className="p-3 flex flex-col gap-3">
+                                <div className="flex flex-col gap-3">
                                     {activeContracts.map((offers, index) => (
                                         <div key={index}>
-                                            <div className={`flex flex-col sm:flex-row gap- sm:gap-2 justify-between ${AppliedColor(offers.status)} shadow-gray-200 shadow-lg items-start sm:items-center p-3 sm:py-4 rounded-lg sm:px-5`}>
+                                            <div className={`flex flex-col sm:flex-row sm:gap-2 justify-between ${AppliedColor(offers.status)} shadow-gray-200 shadow-lg items-start sm:items-center p-3 sm:py-4 rounded-lg sm:px-5`}>
                                                 <div className="flex items-start sm:items-center space-x-3 flex-1">
                                                     <Calendar size={20} className="sm:size-6 text-blue-600 bg-gray-200 rounded-full h-8 w-8 sm:h-9 sm:w-9 p-1.5 sm:p-2 flex-shrink-0 mt-0.5 sm:mt-0" />
                                                     <div className="flex flex-col min-w-0 flex-1">
@@ -499,7 +594,7 @@ export default function SupplierDashboard({ userData }) {
 
                                         <div className="flex gap-2">
                                             <ContractModal userData={userData} event_id={contract.event_id} supplier_id={contract.supplier_id} supplierData={supplier} eventData={contractEventsforComplete[index]} user_id={userData.id} />
-                                            {reviewed.find(rev => rev.reviewed_id === contract.planner_id && rev.user_id === userData.id && contract.event_id === rev.event_id) ? (
+                                            {reviewed.find(rev => rev.reviewed_id === contract.supplier_id && rev.user_id === contract.planner_id && contract.event_id === rev.event_id) ? (
                                                 <span className="text-white py-1 px-4 rounded-md text-sm flex items-center bg-gray-400">Reviewed</span>
                                             ) : (
                                                 <Review reviewed_id={contract?.planner_id} reviewer_name={supplier.supplier_name} eventData={contract} />

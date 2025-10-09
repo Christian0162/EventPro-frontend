@@ -315,7 +315,10 @@ export const ServiceEdit = ({ supplierData, service_id, services }) => {
     const [allInclusions, setAllInclusions] = useState([])
     const [price, setPrice] = useState('')
     const [payment_notice, setPayment_notice] = useState(null)
-    const [error, setError] = useState('')
+    const [errors, setErrors] = useState({
+        price: '',
+        inclusions: '',
+    });
     const { services: service } = useFetchSupplierServices()
 
     useEffect(() => {
@@ -323,7 +326,7 @@ export const ServiceEdit = ({ supplierData, service_id, services }) => {
         setPrice(services.service_price)
         setPayment_notice(services.service_payment_notice)
         setAllInclusions(services.service_inclusions)
-    }, [services])
+    }, [services, supplierData])
 
     function open() {
         setIsOpen(true)
@@ -345,33 +348,26 @@ export const ServiceEdit = ({ supplierData, service_id, services }) => {
     )
 
     const handleInclusions = (inclusions) => {
-        try {
-            const trimmed = inclusions.trim()
-            if (!trimmed) return
+        const trimmed = inclusions.trim();
+        if (!trimmed) return;
 
-            setAllInclusions(prev => {
-                if (prev.includes(inclusions)) {
-                    setError('The item is already in the list.')
-                    return prev
-                }
+        setAllInclusions(prev => {
+            if (prev.includes(trimmed)) {
+                setErrors(prev => ({ ...prev, inclusions: 'The item is already in the list.' }));
+                return prev;
+            } else {
+                setErrors(prev => ({ ...prev, inclusions: '' }));
+                return [...prev, trimmed];
+            }
+        });
+    };
 
-                else {
-                    setError('')
-                    return [...prev, inclusions]
-                }
-            })
-        }
-        catch (e) {
-            console.error(e)
-        }
-
-    }
 
     const removeInclusion = (inclusion) => {
         try {
             setAllInclusions(prev => {
                 if (prev.includes(inclusion)) {
-                    setError('')
+                    setErrors(prev => ({ ...prev, inclusions: '' }));
                     return prev.filter(remove => remove !== inclusion)
                 }
                 else {
@@ -386,32 +382,56 @@ export const ServiceEdit = ({ supplierData, service_id, services }) => {
     }
 
     const handleService = async (e) => {
-        e.preventDefault()
+        e.preventDefault();
+        setIsSubmitting(true);
 
-        setIsSubmitting(true)
+        // Reset all errors first
+        setErrors({
+            price: '',
+            inclusions: '',
+        });
 
         try {
-            await updateDoc(doc(db, "shops", auth.currentUser.uid, "services", service_id), {
+            let valid = true;
+            const newErrors = {};
+
+            // Inclusion validation
+            if (allInclusions.length === 0) {
+                newErrors.inclusions = 'Please add at least one inclusion.';
+                valid = false;
+            }
+
+            // Price validation
+            const numericPrice = parseFloat(price);
+            if (isNaN(numericPrice) || numericPrice <= 0) {
+                newErrors.price = 'Please enter a valid price greater than 0.';
+                valid = false;
+            }
+
+            // Stop if invalid
+            if (!valid) {
+                setErrors(prev => ({ ...prev, ...newErrors }));
+                setIsSubmitting(false);
+                return;
+            }
+
+            await updateDoc(doc(db, "services", service_id), {
                 service_plan: service_plan,
-                service_price: price,
+                service_price: numericPrice,
                 service_inclusions: allInclusions,
-                service_payment_notice: payment_notice
-            })
+                service_payment_notice: payment_notice,
+            });
 
-            Swal.fire('Success!', 'Your service has been added successfully.', 'success')
-
-            close()
+            Swal.fire('Success!', 'Your service has been updated successfully.', 'success');
+            close();
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsSubmitting(false);
         }
+    };
 
-        catch (e) {
-            console.error(e)
-        }
-        finally {
-            setIsSubmitting(false)
-        }
-    }
-
-    console.log(inclusions)
+    console.log(service_plan)
 
     return (
         <>
@@ -465,6 +485,9 @@ export const ServiceEdit = ({ supplierData, service_id, services }) => {
                                                 <label htmlFor="" className='text-gray-700 font-bold'>Price</label>
                                             </div>
                                             <input type="text" value={price} className='px-4 py-2 rounded-md focus:outline-none border border-gray-400' onChange={(e) => setPrice(e.target.value)} required placeholder='e.g ₱5000' />
+                                            {errors.price && <span className="text-sm text-red-500">{errors.price}</span>}
+
+
                                         </div>
 
                                         <div className='flex flex-col gap-2'>
@@ -476,9 +499,8 @@ export const ServiceEdit = ({ supplierData, service_id, services }) => {
                                                 <input value={inclusions} type="text" className='w-full px-4 py-2 rounded-md focus:outline-none border border-gray-400' onChange={(e) => setInclusions(e.target.value)} placeholder='e.g One Free Tiramisu' />
                                                 <button onClick={() => handleInclusions(inclusions)} className='w-1/3 bg-blue-600 hover:bg-blue-700 transition-all duration-200 rounded-md text-white' type='button'>Add</button>
                                             </div>
-                                            {error && (
-                                                <span className='text-sm text-red-500'>{error}</span>
-                                            )}
+                                            {errors.inclusions && <span className="text-sm text-red-500">{errors.inclusions}</span>}
+
 
                                             {allInclusions?.length > 0 && (
                                                 <>

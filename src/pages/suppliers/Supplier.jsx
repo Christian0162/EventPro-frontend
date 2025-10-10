@@ -168,126 +168,125 @@ export default function Supplier({ userData }) {
             }
 
             {/* Suppliers Grid */}
-            {
-                !isAllLoading && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                        {filteredShops.map((shopItem, index) => {
-                            const averageRating = calculateAverageRating(shopItem.id);
-                            const reviewCount = getReviewCount(shopItem.id);
+            {!isAllLoading && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                    {filteredShops.map((shopItem, index) => {
+                        const averageRating = calculateAverageRating(shopItem.id);
+                        const reviewCount = getReviewCount(shopItem.id);
 
-                            const userServices = services.filter(serv => serv.supplier_id === shopItem.id)
-                            return (
-                                <Cards key={shopItem.id || index} className="group cursor-pointer flex flex-col justify-between">
-                                    {/* Header - Applied Badge */}
-                                    <div className="relative">
-                                        {applications.some(app =>
-                                            app.supplier_id === shopItem.id &&
-                                            events.some(event => event.id === app.event_id)
-                                        ) && (
-                                                <div className="absolute top-3 left-3 z-10 bg-green-600 text-white text-xs font-semibold px-3 py-1.5 rounded-full shadow-lg border border-green-700">
-                                                    Applied
+                        const userServices = services.filter(serv => serv.supplier_id === shopItem.id)
+                        return (
+                            <Cards key={shopItem.id || index} className="group cursor-pointer flex flex-col justify-between">
+                                {/* Header - Applied Badge */}
+                                <div className="relative">
+                                    {applications.some(app =>
+                                        app.supplier_id === shopItem.id &&
+                                        events.some(event => event.id === app.event_id)
+                                    ) && (
+                                            <div className="absolute top-3 left-3 z-10 bg-green-600 text-white text-xs font-semibold px-3 py-1.5 rounded-full shadow-lg border border-green-700">
+                                                Applied
+                                            </div>
+                                        )}
+
+
+                                    {/* Image */}
+                                    <div className="relative overflow-hidden rounded-t-lg">
+                                        {shopItem.supplier_background_image.length > 0 ? (
+                                            <img
+                                                src={shopItem?.supplier_background_image}
+                                                className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                                                alt={`${shopItem.supplier_name} background`}
+                                            />
+                                        ) : (
+                                            <div className="w-full h-48 bg-gradient-to-r from-pink-500 to-violet-500"></div>
+                                        )}
+
+                                        {/* Rating Badge */}
+                                        <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg flex items-center space-x-1 shadow-sm">
+                                            <Star className="text-yellow-400 fill-current" size={14} />
+                                            <span className="text-sm font-semibold text-gray-900">{averageRating}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Content */}
+                                <div className="p-5">
+                                    <div>
+                                        <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-blue-600 transition-colors duration-200">
+                                            {shopItem.supplier_name}
+                                        </h3>
+
+                                        {/* Location */}
+                                        <div className="flex items-center space-x-2 mb-4">
+                                            <MapPin className="text-gray-400 shrink-0" size={16} />
+                                            <span className="text-gray-600 text-sm">{shopItem.supplier_location}</span>
+                                        </div>
+
+                                        <div className="flex items-center space-x-2 mb-4">
+                                            <Clock className="text-gray-400 shrink-0" size={16} />
+                                            <span className="text-sm text-gray-600">{shopItem.supplier_availability}</span>
+                                        </div>
+
+                                        {/* Categories */}
+                                        <div className="flex flex-wrap gap-2 mb-4">
+                                            {shopItem?.supplier_expertise?.map((expertise, expertiseIndex) => (
+                                                <span
+                                                    key={expertiseIndex}
+                                                    className="px-3 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full border border-blue-100"
+                                                >
+                                                    {expertise}
+                                                </span>
+                                            ))}
+                                        </div>
+
+                                        {/* Price and Hours */}
+                                        <div className="flex flex-col mb-5 gap-2">
+
+
+                                            <div className="flex items-center space-x-1">
+                                                <PhilippinePeso className="text-green-600" size={18} />
+                                                <span className="text-lg font-bold text-gray-900">{userServices[0].service_price}</span>
+                                                <span className="text-sm text-gray-500">/service</span>
+                                            </div>
+
+                                        </div>
+
+                                        {/* Reviews */}
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div className="flex items-center space-x-1">
+                                                <div className="flex">
+                                                    {[...Array(5)].map((_, i) => (
+                                                        <Star
+                                                            key={i}
+                                                            size={14}
+                                                            className={
+                                                                i < Math.floor(averageRating !== "N/A" ? parseFloat(averageRating) : 0)
+                                                                    ? "text-yellow-400 fill-current"
+                                                                    : "text-gray-300"
+                                                            }
+                                                        />
+                                                    ))}
                                                 </div>
-                                            )}
-
-
-                                        {/* Image */}
-                                        <div className="relative overflow-hidden rounded-t-lg">
-                                            {shopItem.supplier_background_image.length > 0 ? (
-                                                <img
-                                                    src={shopItem?.supplier_background_image}
-                                                    className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                                                    alt={`${shopItem.supplier_name} background`}
-                                                />
-                                            ) : (
-                                                <div className="w-full h-48 bg-gradient-to-r from-pink-500 to-violet-500"></div>
-                                            )}
-
-                                            {/* Rating Badge */}
-                                            <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg flex items-center space-x-1 shadow-sm">
-                                                <Star className="text-yellow-400 fill-current" size={14} />
-                                                <span className="text-sm font-semibold text-gray-900">{averageRating}</span>
+                                                <span className="text-sm text-gray-600">({reviewCount} reviews)</span>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* Content */}
-                                    <div className="p-5">
-                                        <div>
-                                            <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-blue-600 transition-colors duration-200">
-                                                {shopItem.supplier_name}
-                                            </h3>
-
-                                            {/* Location */}
-                                            <div className="flex items-center space-x-2 mb-4">
-                                                <MapPin className="text-gray-400 shrink-0" size={16} />
-                                                <span className="text-gray-600 text-sm">{shopItem.supplier_location}</span>
-                                            </div>
-
-                                            <div className="flex items-center space-x-2 mb-4">
-                                                <Clock className="text-gray-400 shrink-0" size={16} />
-                                                <span className="text-sm text-gray-600">{shopItem.supplier_availability}</span>
-                                            </div>
-
-                                            {/* Categories */}
-                                            <div className="flex flex-wrap gap-2 mb-4">
-                                                {shopItem?.supplier_expertise?.map((expertise, expertiseIndex) => (
-                                                    <span
-                                                        key={expertiseIndex}
-                                                        className="px-3 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full border border-blue-100"
-                                                    >
-                                                        {expertise}
-                                                    </span>
-                                                ))}
-                                            </div>
-
-                                            {/* Price and Hours */}
-                                            <div className="flex flex-col mb-5 gap-2">
-
-
-                                                <div className="flex items-center space-x-1">
-                                                    <PhilippinePeso className="text-green-600" size={18} />
-                                                    <span className="text-lg font-bold text-gray-900">{userServices[0].service_price}</span>
-                                                    <span className="text-sm text-gray-500">/service</span>
-                                                </div>
-
-                                            </div>
-
-                                            {/* Reviews */}
-                                            <div className="flex items-center justify-between mb-4">
-                                                <div className="flex items-center space-x-1">
-                                                    <div className="flex">
-                                                        {[...Array(5)].map((_, i) => (
-                                                            <Star
-                                                                key={i}
-                                                                size={14}
-                                                                className={
-                                                                    i < Math.floor(averageRating !== "N/A" ? parseFloat(averageRating) : 0)
-                                                                        ? "text-yellow-400 fill-current"
-                                                                        : "text-gray-300"
-                                                                }
-                                                            />
-                                                        ))}
-                                                    </div>
-                                                    <span className="text-sm text-gray-600">({reviewCount} reviews)</span>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Action Button */}
-                                        <SupplierModal
-                                            className={'py-2 rounded-lg font-semibold w-full bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'}
-                                            services={userServices}
-                                            supplierData={shopItem}
-                                            userData={userData}
-                                            reviews={reviews.filter(r => r.reviewed_id === shopItem.id)}
-                                            averageRating={averageRating}
-                                        />
-                                    </div>
-                                </Cards>
-                            );
-                        })}
-                    </div>
-                )
+                                    {/* Action Button */}
+                                    <SupplierModal
+                                        className={'py-2 rounded-lg font-semibold w-full bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'}
+                                        services={userServices}
+                                        supplierData={shopItem}
+                                        userData={userData}
+                                        reviews={reviews.filter(r => r.reviewed_id === shopItem.id)}
+                                        averageRating={averageRating}
+                                    />
+                                </div>
+                            </Cards>
+                        );
+                    })}
+                </div>
+            )
             }
 
             {

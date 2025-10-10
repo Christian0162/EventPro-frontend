@@ -23,6 +23,7 @@ export default function CreateEvent({ userData }) {
     const [event_time, setEvent_time] = useState([])
     const [startTime, setStartTime] = useState('');
     const [endTime, setEndTime] = useState('');
+    const [tagError, setTagError] = useState('');
 
     const { addEvent, isLoading } = useAddEvent()
 
@@ -59,6 +60,14 @@ export default function CreateEvent({ userData }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
+        // Validate if tags are empty
+        if (tags.length === 0) {
+            setTagError('Please add at least one supplier category.');
+            return;
+        } else {
+            setTagError(''); // clear if previously set
+        }
+
         const data = {
             event_name: event_name,
             event_location: event_location,
@@ -69,16 +78,16 @@ export default function CreateEvent({ userData }) {
             event_budget: event_budget,
             event_description: event_description,
             event_categories: tags,
-        }
+        };
+
         try {
             if (userData) {
-                addEvent(userData?.id, data)
+                addEvent(userData?.id, data);
             }
+        } catch (e) {
+            console.error(e);
         }
-        catch (e) {
-            console.error(e)
-        }
-    }
+    };
 
     if (userData.verification_status !== "verified") {
         return <Navigate to={'/dashboard'} replace />
@@ -90,6 +99,7 @@ export default function CreateEvent({ userData }) {
 
     const addTag = () => {
         if (categories?.value.trim() && !tags.some(tag => tag.value === categories.value)) {
+            setTagError('');
             setTags([...tags, categories]);
             setCategories(null);
         }
@@ -249,7 +259,7 @@ export default function CreateEvent({ userData }) {
                                 <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₱</span>
                                 <input
                                     placeholder="25,500"
-                                    type="text"
+                                    type="number"
                                     name="event_budget"
                                     className="pl-10 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                                     required
@@ -302,6 +312,7 @@ export default function CreateEvent({ userData }) {
                                 ))}
                             </div>
                         )}
+                        {tagError && <p className="text-red-500 text-sm font-medium">{tagError}</p>}
 
                         {/* Add Supplier Controls */}
                         <div className="flex flex-col md:flex-row gap-3 items-end">

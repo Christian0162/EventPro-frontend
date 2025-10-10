@@ -286,7 +286,7 @@ export default function EventDashboard({ userData }) {
 
                             <TabPanel>
                                 {events.length ? (
-                                    <div className="space-y-3 p-3">
+                                    <div className="space-y-3 p-3 h-[250px] overflow-y-auto">
                                         {events.map((event) => (
                                             <div key={event.id} className="p-4 flex justify-between items-center rounded-xl border border-gray-200 bg-gray-50 hover:bg-gray-100 transition-all shadow-lg">
                                                 <div>

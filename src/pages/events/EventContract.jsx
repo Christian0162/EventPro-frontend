@@ -12,7 +12,7 @@ import { termsOfCondition } from "../../constants/categories";
 import { useFetchSupplierServices } from "../../hooks/useSupplier";
 import { useFetchEvents } from "../../hooks/useEvents";
 import PageLoading from "../../components/PageLoading";
-import { useFetchContract } from "../../hooks/useContract";
+import { useFetchAllApplication } from "../../hooks/useApplication";
 
 export default function EventContract({ userData }) {
 
@@ -23,11 +23,10 @@ export default function EventContract({ userData }) {
     const [currentStep, setCurrentStep] = useState(1)
     const [selectedService, setSelectedService] = useState(null)
     const [error, setError] = useState(false)
-    const [application, setApplication] = useState([])
     const [additional_information, setAdditional_Information] = useState("")
     const { services: shopServices, isLoading: isServiceLoading } = useFetchSupplierServices()
     const { events, isLoading: isEventsLoading } = useFetchEvents()
-    const { contracts } = useFetchContract()
+    const { applications: userApplication } = useFetchAllApplication()
 
     const currentEvent = events.find(event => event.id === eventId)
 
@@ -35,27 +34,7 @@ export default function EventContract({ userData }) {
 
     const isAllLoading = isEventsLoading || isServiceLoading || isSupplierLoading
 
-    useEffect(() => {
-
-        try {
-            const fetchApplication = async () => {
-                const q = query(collection(db, "applications"),
-                    where("event_id", "==", eventId),
-                    where("supplier_id", "==", supplierId))
-                const snapShotApplication = await getDocs(q)
-                const application = snapShotApplication.docs.map(app => ({ id: app.id, ...app.data() }))
-                setApplication(application)
-            }
-
-            fetchApplication()
-        }
-
-        catch (e) {
-            console.error(e)
-        }
-
-
-    }, [supplierId])
+    const application = userApplication.find(app => app.event_id === eventId && app.supplier_id === supplierId)
 
     const goToNextStep = () => {
         if (!selectedService) {
@@ -84,9 +63,9 @@ export default function EventContract({ userData }) {
             if (result.isConfirmed) {
                 try {
                     setIsSubmitting(true)
-                    const applicationRef = application[0]?.id
+                    const applicationRef = application?.id
 
-                    await addDoc(collection(db, "contracts"), {
+                    const newContractRef = await addDoc(collection(db, "contracts"), {
                         supplier_id: supplierId,
                         event_id: eventId,
                         planner_id: userData?.id,
@@ -113,20 +92,17 @@ export default function EventContract({ userData }) {
                         })
                     }
 
-                    const currentContract = contracts.find(cont => cont.supplier_id === supplierId && cont.event_id === eventId)
+                    await addDoc(collection(db, "notifications"), {
+                        avatar: currentEvent.event_name.charAt(0).toUpperCase(),
+                        message: `The event planner for "${currentEvent.event_name}" applied for your service.`,
+                        createdAt: serverTimestamp(),
+                        referenced_type: 'contract',
+                        referenced_id: newContractRef?.id,
+                        title: 'New service application received.',
+                        unread: true,
+                        user_id: supplierId
+                    })
 
-                    if (currentContract) {
-                        await addDoc(collection(db, "notifications"), {
-                            avatar: currentEvent.event_name.charAt(0).toUpperCase(),
-                            message: `The event planner for "${currentEvent.event_name}" applied for your service.`,
-                            createdAt: serverTimestamp(),
-                            referenced_type: 'contract',
-                            referenced_id: currentContract?.id,
-                            title: 'New service application received.',
-                            unread: true,
-                            user_id: supplierId
-                        })
-                    }
                     Swal.fire({
                         icon: 'success',
                         title: 'Offer Sent Successfully',

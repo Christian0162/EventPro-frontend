@@ -8,7 +8,6 @@ export const SupplierOptions = [
     { label: 'Music & Entertainment (Bands, DJs, Performers)', value: 'entertainment' },
     { label: 'Lighting & Sound (Audio/Visual Setup)', value: 'lighting' },
     { label: 'Decor & Styling (Design & Decorations)', value: 'decor' },
-    { label: 'Venue (Event Locations)', value: 'venue' },
     { label: 'Transportation (Guest & Event Transport)', value: 'transportation' },
     { label: 'Makeup & Styling (Hair & Beauty)', value: 'makeup' },
     { label: 'Invitations & Printing (Cards & Materials)', value: 'printing' }

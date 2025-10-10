@@ -46,9 +46,11 @@ export default function CreateEvent({ userData }) {
 
         const years = date.getFullYear();
         const months = date.toLocaleDateString([], { month: "long" })
-        const days = date.getDay()
+        const days = date.getDate()
 
         const previewDate = [years, months, days]
+
+        console.log("preview:", previewDate)
 
         setEvent_date({
             date_value: dateString,

@@ -44,18 +44,14 @@ export default function Profile({ userData }) {
         );
     };
 
-    console.log(contactInformationEditing)
+    console.log(userProfile)
 
     useEffect(() => {
-        const unsubscribe = onSnapshot(doc(db, "userProfiles", userData.id), (onsnapshot) => {
-            const userProfile = onsnapshot.data()
 
-            setContact_number(userProfile?.contact_number)
-            setDescription(userProfile?.description)
-        })
+        setContact_number(userProfile?.contact_number)
+        setDescription(userProfile?.description)
 
-        return () => unsubscribe()
-    }, [userData])
+    }, [userProfile])
 
     const handleDescription = async (e) => {
         e.preventDefault()
@@ -189,6 +185,18 @@ export default function Profile({ userData }) {
                                 {!contactInformationLoading && (
                                     <form onSubmit={handleContactInformation} className='flex justify-center flex-col'>
                                         <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Email Address:
+                                                </label>
+                                                <input
+                                                    type="email"
+                                                    value={userData.email_address}
+                                                    disabled
+                                                    className={`w-full p-3 rounded-lg bg-gray-50 text-gray-700 der-blue-600 border border-gray-300`}
+                                                />
+                                            </div>
+
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                                     Contact Number:

@@ -1,6 +1,6 @@
 import { useMemo } from "react"
 import { Title } from "react-head";
-import { Users, IdCard,  Calendar, BarChart3, ChartNoAxesCombined, TrendingUp, AlertTriangle, ReceiptText, PhilippinePeso, Package, BanknoteArrowUp, ShieldAlert } from "lucide-react";
+import { Users, IdCard, Calendar, BarChart3, ChartNoAxesCombined, TrendingUp, AlertTriangle, ReceiptText, PhilippinePeso, Package, BanknoteArrowUp, ShieldAlert } from "lucide-react";
 import { Tab, TabList, TabPanels, TabGroup, TabPanel } from "@headlessui/react";
 import { PieChart, BarChart, LineChart } from "../../components/Charts";
 import PageLoading from "../../components/PageLoading";
@@ -10,6 +10,7 @@ import { useFetchSuppliers } from "../../hooks/useSupplier";
 import { useFetchEvents } from "../../hooks/useEvents";
 import { useFetchAllTransaction } from "../../hooks/useTransaction";
 import { useFetchContract } from "../../hooks/useContract";
+import GenerateReport from "../../components/GeneraeReport";
 
 export default function AdminDashboard({ userData }) {
     const { verifications, isLoading: isVerificationLoading } = useFetchAllVerification()
@@ -26,8 +27,6 @@ export default function AdminDashboard({ userData }) {
 
     const supplierVerification = verifications.filter(v => pendingSupplier.some(sup => v.id === sup.id))
     const eventVerification = verifications.filter(v => pendingPlanner.some(sup => v.id === sup.id))
-
-    console.log(transactions)
 
     const totalUsers = users.length
     const totalEarnings = transactions.reduce((sum, t) => sum + (Number(t.platform_fee) || 0), 0);
@@ -70,6 +69,38 @@ export default function AdminDashboard({ userData }) {
         borderColors: ["#60a5fa", "#a78bfa", "#f97316", "#34d399"]
     }), []);
 
+    const fields = [
+        { label: "Total Platform Earnings", value: `PHP ${totalEarnings.toLocaleString()}` },
+        { label: "Active Events", value: activeEvents },
+        { label: "Total Suppliers", value: totalSuppliers },
+        { label: "Verified Users", value: verifiedUsers },
+        { label: "Pending Requests", value: pendingRequests },
+        { label: "Total Contracts", value: totalContracts },
+        { label: "Top Earning Supplier", value: topEarningSupplier },
+        { label: "Total Users", value: totalUsers },
+    ];
+
+    const sections = useMemo(() => [
+        {
+            title: "Supplier Verification Summary",
+            head: ["Category", "Pending", "Verified"],
+            body: [
+                ["Suppliers", supplierVerification.length, suppliers.filter(s => s.verification_status === "verified").length],
+                ["Planners", eventVerification.length, users.filter(u => u.role === "Event Planner" && u.verification_status === "verified").length],
+            ],
+        },
+        {
+            title: "Contract Overview",
+            head: ["Status", "Count"],
+            body: Object.entries(
+                contracts.reduce((acc, c) => {
+                    acc[c.status] = (acc[c.status] || 0) + 1;
+                    return acc;
+                }, {})
+            ),
+        },
+    ], [supplierVerification, eventVerification, suppliers, users, contracts]);
+
     return (
         <>
             {allLoading && <PageLoading />}
@@ -79,7 +110,7 @@ export default function AdminDashboard({ userData }) {
                     <Title>Admin Dashboard</Title>
 
                     {/* Header */}
-                    <div className="flex flex-col lg:flex-row justify-between items-start gap-4 mb-10">
+                    <div className="flex flex-col lg:flex-row justify-between items-baseline gap-4 mb-10">
                         <div>
                             <h1 className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-blue-600 to-violet-600 bg-clip-text text-transparent">
                                 Admin Dashboard
@@ -87,6 +118,17 @@ export default function AdminDashboard({ userData }) {
                             <p className="text-gray-600 text-sm sm:text-base mt-1">
                                 Welcome back, <span className="font-semibold text-gray-800">{userData?.first_name}</span>
                             </p>
+                        </div>
+
+                        {/* Generate Report Section */}
+                        <div className="flex justify-end">
+                            <GenerateReport
+                                title="EventPro Platform Summary Report"
+                                filename={`EventPro_Admin_Report_${new Date().toISOString().split("T")[0]}`}
+                                userData={userData}
+                                fields={fields}
+                                sections={sections}
+                            />
                         </div>
                     </div>
 

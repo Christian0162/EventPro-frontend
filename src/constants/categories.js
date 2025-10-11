@@ -52,33 +52,42 @@ export const supplierTypeToExpertise = {
 
 
 export const termsOfCondition = {
-    title: "Penalties for Service Failure",
+    title: "Terms and Conditions",
     description:
-        "The following penalties apply for delays, non-delivery, or service issues to ensure accountability and protect client interests.",
+        "These terms and conditions outline the responsibilities, penalties, and obligations of both planners and suppliers to ensure fairness, accountability, and the successful execution of contracted services.",
     clauses: [
         {
             title: "Late Delivery",
             details: [
-                "Liquidated Damages: A penalty of 0.5% of the total contract value per day of delay will be charged.",
-                "Capped Maximum: Damages shall not exceed 10% to 20% of the total contract amount.",
+                "A penalty of 0.5% of the total contract value per day of delay will be applied to the supplier.",
+                "Total penalties shall not exceed 10% to 20% of the total contract amount.",
             ],
         },
         {
             title: "Non-Delivery / No Service",
             details: [
-                "Full Refund of payment made.",
-                "Replacement Cost Coverage: Supplier shall shoulder any costs incurred by the client to secure an alternative service.",
-                "Direct Client Cost Recovery: Any additional costs directly resulting from the non-delivery must be reimbursed by the supplier.",
+                "A full refund of the total contract amount will be issued to the planner.",
+                "All payments made by the planner must be reimbursed if no service or delivery was provided.",
+                "Supplier’s account will be subject to termination due to failure to deliver the agreed service or fulfill contractual obligations.",
             ],
         },
         {
             title: "Service Non-Conformity or Damage",
             details: [
-                "Deduction of Repair or Replacement Costs from the supplier’s payment.",
-                "Based on actual cost incurred by the client.",
+                "The supplier shall bear the cost of repair, replacement, or any loss incurred due to defective or non-conforming service.",
+                "Deductions will be made from the supplier’s payment based on the actual cost verified by the client.",
+            ],
+        },
+        {
+            title: "Non-Payment by Planner",
+            details: [
+                "Planners are required to complete all agreed payments as stated in the contract.",
+                "Failure to pay the supplier without valid justification will result in account suspension or permanent termination.",
+                "Repeated payment violations may also lead to platform-wide banning of the planner’s account.",
             ],
         },
     ],
+
 };
 
 export const paymentMethods = [

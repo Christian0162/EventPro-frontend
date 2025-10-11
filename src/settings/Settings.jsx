@@ -22,11 +22,15 @@ export default function Settings({ userData, user }) {
     const [activeTab, setActiveTab] = useState('privacy');
     const [firstName, setFirstName] = useState('')
     const [lastName, setLastName] = useState('')
+    const [contactNumber, setContactNumber] = useState('')
     const [emailAddress, setEmailAddress] = useState('')
     const [isFirstNameEditing, setIsFirstNameEditing] = useState(false)
     const [isLastNameEditing, setIsLastNameEditing] = useState(false)
-    const [isFirstNameSubmitting, setIsFirstNameSubmitting] = useState(false)
-    const [isLastNameSubmitting, setIsLastNameSubmitting] = useState(false)
+    const [isContactNumberEditing, setIsContactNumberEditing] = useState(false)
+    const [isSavingFirstName, setIsSavingFirstName] = useState(false);
+    const [isSavingLastName, setIsSavingLastName] = useState(false);
+    const [isSavingContact, setIsSavingContact] = useState(false);
+
     const [balanceError, setBalanceError] = useState('')
     const [form, setForm] = useState({
         current_password: '',
@@ -34,8 +38,6 @@ export default function Settings({ userData, user }) {
         confirm_password: '',
     })
     const [errors, setErrors] = useState({});
-    const [errorCurrentPassword, setErrorCurrentPassword] = useState('')
-    const [errorConfirmPassword, setErrorConfirmPassword] = useState('')
     const [isPasswordSubmitting, setIsPasswordSubmitting] = useState(false)
     const [selectedPayment, setSelectedPayment] = useState([])
     const { userProfile, isLoading: isUserProfileLoading } = useFetchUserProfileById(userData?.id)
@@ -44,7 +46,8 @@ export default function Settings({ userData, user }) {
         setFirstName(userData.first_name)
         setLastName(userData.last_name)
         setEmailAddress(userData.email_address)
-    }, [userData])
+        setContactNumber(userProfile.contract_number)
+    }, [userData, userProfile])
 
     const [credentials, setCredentials] = useState({
         user_id: userData?.id,
@@ -91,55 +94,64 @@ export default function Settings({ userData, user }) {
     )
 
     const handleFirstName = async () => {
+        if (!firstName.trim()) {
+            Swal.fire("Warning", "First name cannot be empty.", "warning");
+            return;
+        }
+
         try {
-            setIsFirstNameSubmitting(true)
-
-            await updateDoc(doc(db, "userProfiles", userData.id), {
-                first_name: firstName
-            })
-
-            await updateDoc(doc(db, "users", userData.id), {
-                first_name: firstName
-            })
-
+            setIsSavingFirstName(true);
+            await updateDoc(doc(db, "userProfiles", userData.id), { first_name: firstName });
+            await updateDoc(doc(db, "users", userData.id), { first_name: firstName });
+            Swal.fire("Success", "First name updated successfully.", "success");
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsSavingFirstName(false);
+            setIsFirstNameEditing(false);
         }
+    };
 
-        catch (e) {
-            console.error(e)
-            setIsFirstNameEditing(false)
-        }
-
-        finally {
-            setIsFirstNameEditing(false)
-            setIsFirstNameSubmitting(false)
-        }
-    }
 
     const handleLastName = async () => {
-        setIsLastNameSubmitting(true)
+        if (!lastName.trim()) {
+            Swal.fire("Warning", "Last name cannot be empty.", "warning");
+            return;
+        }
+
         try {
+            setIsSavingLastName(true);
+            await updateDoc(doc(db, "userProfiles", userData.id), { last_name: lastName });
+            await updateDoc(doc(db, "users", userData.id), { last_name: lastName });
+            Swal.fire("Success", "Last name updated successfully.", "success");
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsSavingLastName(false);
+            setIsLastNameEditing(false);
+        }
+    };
 
-            await updateDoc(doc(db, "userProfiles", userData.id), {
-                last_name: lastName
-            })
 
-            await updateDoc(doc(db, "users", userData.id), {
-                last_name: lastName
-            })
+    const handleContactNumber = async () => {
+        if (!contactNumber.trim()) {
+            Swal.fire("Warning", "Contact number cannot be empty.", "warning");
+            return;
         }
 
-        catch (e) {
-            console.error(e)
-            setIsLastNameEditing(false)
-            setIsLastNameSubmitting(false)
-
+        try {
+            setIsSavingContact(true);
+            await updateDoc(doc(db, "userProfiles", userData.id), { contact_number: contactNumber });
+            Swal.fire("Success", "Contact number updated successfully.", "success");
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsSavingContact(false);
+            setIsContactNumberEditing(false);
         }
+    };
 
-        finally {
-            setIsLastNameEditing(false)
-            setIsLastNameSubmitting(false)
-        }
-    }
+
 
     const handleForm = async (e) => {
         e.preventDefault();
@@ -165,8 +177,6 @@ export default function Settings({ userData, user }) {
         } else if (form.new_password !== form.confirm_password) {
             newErrors.confirm_password = "Passwords do not match.";
         }
-
-
 
         // stop here if errors exist
         if (Object.keys(newErrors).length > 0) {
@@ -350,10 +360,19 @@ export default function Settings({ userData, user }) {
                                                 <>
                                                     <button
                                                         onClick={handleFirstName}
-                                                        className="text-sm px-3 py-1 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                                                        disabled={isSavingFirstName}
+                                                        className="text-sm px-3 py-1 rounded-lg bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-2"
                                                     >
-                                                        Save
+                                                        {isSavingFirstName ? (
+                                                            <>
+                                                                <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                                <span>Saving...</span>
+                                                            </>
+                                                        ) : (
+                                                            "Save"
+                                                        )}
                                                     </button>
+
                                                     <button
                                                         onClick={() => {
                                                             setFirstName(userData.first_name)
@@ -392,14 +411,81 @@ export default function Settings({ userData, user }) {
                                                 <>
                                                     <button
                                                         onClick={handleLastName}
-                                                        className="text-sm px-3 py-1 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                                                        disabled={isSavingLastName}
+                                                        className="text-sm px-3 py-1 rounded-lg bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-2"
                                                     >
-                                                        Save
+                                                        {isSavingLastName ? (
+                                                            <>
+                                                                <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                                <span>Saving...</span>
+                                                            </>
+                                                        ) : (
+                                                            "Save"
+                                                        )}
                                                     </button>
                                                     <button
                                                         onClick={() => {
                                                             setLastName(userData.last_name)
                                                             setIsLastNameEditing(false)
+                                                        }}
+                                                        className="text-sm px-3 py-1 rounded-lg bg-gray-300 text-gray-700 hover:bg-gray-400"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Contract Number*/}
+                                    <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
+                                        <div className="flex-1">
+                                            <label className="block text-xs text-gray-500 mb-1">Contact Number</label>
+                                            <input
+                                                type="tel"
+                                                disabled={!isContactNumberEditing}
+                                                onChange={(e) => {
+                                                    const value = e.target.value.replace(/\D/g, "");
+                                                    setContactNumber(value);
+                                                }}
+                                                value={contactNumber}
+                                                placeholder="No contact number"
+                                                className={`w-full bg-transparent text-lg font-medium text-gray-800 focus:outline-none ${isContactNumberEditing ? "border-b border-blue-500" : ""
+                                                    }`}
+                                                inputMode="numeric"
+                                                maxLength={11}
+                                                pattern="[0-9]*"
+                                            />
+                                        </div>
+                                        <div className="flex gap-2">
+                                            {!isContactNumberEditing ? (
+                                                <button
+                                                    onClick={() => setIsContactNumberEditing(true)}
+                                                    className="text-sm px-3 py-1 rounded-lg bg-gray-600 text-white hover:bg-blue-600"
+                                                >
+                                                    Edit
+                                                </button>
+                                            ) : (
+                                                <>
+                                                    <button
+                                                        onClick={handleContactNumber}
+                                                        disabled={isSavingContact}
+                                                        className="text-sm px-3 py-1 rounded-lg bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-2"
+                                                    >
+                                                        {isSavingContact ? (
+                                                            <>
+                                                                <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                                <span>Saving...</span>
+                                                            </>
+                                                        ) : (
+                                                            "Save"
+                                                        )}
+                                                    </button>
+
+                                                    <button
+                                                        onClick={() => {
+                                                            setContactNumber(userProfile.contract_number)
+                                                            setIsContactNumberEditing(false)
                                                         }}
                                                         className="text-sm px-3 py-1 rounded-lg bg-gray-300 text-gray-700 hover:bg-gray-400"
                                                     >

@@ -16,6 +16,8 @@ import LoadingOverlay from './LoadingOverlay'
 import { RejectReview } from './ReviewModal'
 import { useFetchUsers } from '../hooks/useUsers'
 import { useFetchContract } from '../hooks/useContract'
+import DamagePenaltiesModal from './DamagePenaltiesModal'
+import ReportModal from './ReportModal'
 
 export default function ContractModal({ userData, event_id, supplier_id, eventData, supplierData, user_id }) {
     const [isOpen, setIsOpen] = useState(false)
@@ -41,15 +43,71 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
     const process_fee = payment_method?.process_fee || 0;
     const processFee = (service_price / 2) * process_fee;
 
+    const contractDeliveries = deliveries.filter(del => del.contract_id === contract?.id && del.supplier_id === supplier_id)
+
+    const computeTotalDeductions = (delivery, servicePrice) => {
+        let totalDeduction = 0;
+
+        delivery.forEach((d) => {
+            if (!d.penalty_applied || d.penalty_applied.length === 0) return;
+
+            d.penalty_applied.forEach((penalty) => {
+                // 🕒 Late Delivery
+                if (penalty.includes("Late Delivery")) {
+                    const planned = new Date(d.planned_date);
+                    const delivered = d.delivered_date?.seconds
+                        ? new Date(d.delivered_date.seconds * 1000)
+                        : new Date(d.delivered_date);
+
+                    // Calculate days late (if any)
+                    const diffDays = Math.max(
+                        0,
+                        Math.ceil((delivered - planned) / (1000 * 60 * 60 * 24))
+                    );
+
+                    const perDay = servicePrice * 0.005; // 0.5% per day
+                    const maxDeduction = servicePrice * 0.2; // Max 20%
+                    const lateDeduction = Math.min(diffDays * perDay, maxDeduction);
+
+                    totalDeduction += lateDeduction;
+                }
+
+                // ⚙️ Service Non-Conformity
+                if (penalty.includes("Service Non-Conformity")) {
+                    if (penalty.includes("Slight Damage")) {
+                        totalDeduction += servicePrice * 0.05; // Example: 5% deduction
+                    } else if (penalty.includes("Badly Damaged")) {
+                        totalDeduction += servicePrice * 0.5; // Example: 50% deduction
+                    }
+                }
+            });
+        });
+
+        return totalDeduction;
+    };
+
+    const totalDeductions = computeTotalDeductions(contractDeliveries, service_price);
+
     const netAmount = Number(service_price - platformFee);
+    const finalAmount = netAmount - totalDeductions;
+
     const downpayment = (service_price / 2) + processFee;
     const nextpayment = (service_price / 2) + processFee;
-
 
     const total_paid = contract_transaction.reduce((sum, trans) => sum + trans.amount, 0)
     const total_fees = contract_transaction.reduce((sum, trans) => sum + trans.process_fee, 0)
 
     const not_include_fees = total_paid - total_fees
+
+    // Collect and count unique issues
+    const issueCount = contractDeliveries
+        .flatMap((d) => d.penalty_applied || [])
+        .filter((p) => p && p.trim() !== "")
+        .reduce((acc, issue) => {
+            acc[issue] = (acc[issue] || 0) + 1;
+            return acc;
+        }, {});
+
 
     useEffect(() => {
         const eventUser = users.filter(user => user.id === eventData?.user_id)
@@ -62,14 +120,13 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
     console.log(eventUser)
 
     useEffect(() => {
-        const filteredTransaction = transactions.filter(trans => trans.contract_id === contract?.id && trans.status === "COMPLETED")
+        const filteredTransaction = transactions.filter(trans => trans.contract_id === contract?.id && trans.status === "HOLD")
 
         setContract_Transaction(filteredTransaction)
     }, [user_id, transactions, contract])
 
 
 
-    const contractDeliveries = deliveries.filter(del => del.contract_id === contract?.id && del.supplier_id === supplier_id)
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -94,6 +151,38 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
 
     function close() {
         setIsOpen(false)
+    }
+
+    const handleDeliveryStatus = async (deliveryId) => {
+        Swal.fire({
+            title: 'Mark as Received?',
+            text: 'Are you sure you want to confirm that this delivery has been received?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, Mark as Received',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#16a34a',
+            cancelButtonColor: '#d33',
+            reverseButtons: true
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                // proceed to mark as received
+                const deliveryRef = doc(db, "deliveries", deliveryId);
+                await updateDoc(deliveryRef, {
+                    status: "Confirmed",
+                    confirmed_at: serverTimestamp(),
+                    updated_at: serverTimestamp()
+                });
+
+                Swal.fire({
+                    title: 'Delivery Received!',
+                    text: 'The delivery has been successfully marked as received.',
+                    icon: 'success',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            }
+        });
     }
 
     const handleApprove = async (contract_id) => {
@@ -146,160 +235,6 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
         });
     }
 
-    const handleDeliveryStatus = async (deliveryId, status) => {
-        // For Damaged status, show a special dialog with penalty options
-        if (status === 'Damaged') {
-            const { value: formValues } = await Swal.fire({
-                title: 'Select Damage Penalties',
-                html:
-                    '<div class="text-left">' +
-                    '<p class="font-semibold mb-3">Please select applicable penalties:</p>' +
-
-                    '<div class="mb-3 p-2 border rounded">' +
-                    '<label class="flex items-center mb-2">' +
-                    '<input type="checkbox" id="lateDelivery" class="mr-2">' +
-                    '<span class="font-medium">Late Delivery Penalty</span>' +
-                    '</label>' +
-                    '<p class="text-sm text-gray-600 ml-6">0.5% of total contract value per day of delay (max 10-20%)</p>' +
-                    '</div>' +
-
-                    '<div class="mb-3 p-2 border rounded">' +
-                    '<label class="flex items-center mb-2">' +
-                    '<input type="checkbox" id="nonDelivery" class="mr-2">' +
-                    '<span class="font-medium">Non-Delivery Penalties</span>' +
-                    '</label>' +
-                    '<p class="text-sm text-gray-600 ml-6">Full refund + replacement costs + client cost recovery</p>' +
-                    '</div>' +
-
-                    '<div class="mb-3 p-2 border rounded">' +
-                    '<label class="flex items-center mb-2">' +
-                    '<input type="checkbox" id="serviceNonConformity" class="mr-2">' +
-                    '<span class="font-medium">Service Non-Conformity</span>' +
-                    '</label>' +
-                    '<p class="text-sm text-gray-600 ml-6">Deduction of repair/replacement costs from payment</p>' +
-                    '</div>' +
-                    '</div>',
-                focusConfirm: false,
-                showCancelButton: true,
-                confirmButtonText: 'Apply Selected Penalties',
-                cancelButtonText: 'Cancel',
-                preConfirm: () => {
-                    return {
-                        lateDelivery: document.getElementById('lateDelivery').checked,
-                        nonDelivery: document.getElementById('nonDelivery').checked,
-                        serviceNonConformity: document.getElementById('serviceNonConformity').checked
-                    }
-                }
-            });
-
-            if (formValues) {
-                // Process the selected penalties
-                let penaltyDetails = [];
-
-                if (formValues.lateDelivery) {
-                    penaltyDetails.push("Late Delivery: 0.5% of contract value per day (max 10-20%)");
-                }
-
-                if (formValues.nonDelivery) {
-                    penaltyDetails.push("Non-Delivery: Full refund + replacement costs + client cost recovery");
-                }
-
-                if (formValues.serviceNonConformity) {
-                    penaltyDetails.push("Service Non-Conformity: Deduction of repair/replacement costs");
-                }
-
-                // Proceed with marking as damaged
-                try {
-                    const deliveryRef = doc(db, "deliveries", deliveryId);
-                    await updateDoc(deliveryRef, {
-                        status: status,
-                        penalty_applied: penaltyDetails,
-                        updated_at: serverTimestamp()
-                    });
-
-                    Swal.fire({
-                        title: 'Status Updated!',
-                        text: `Delivery marked as Damaged with ${penaltyDetails.length} penalty(ies) applied`,
-                        icon: 'success',
-                        timer: 2000,
-                        showConfirmButton: false
-                    });
-                } catch (error) {
-                    console.error("Error updating delivery status:", error);
-                    Swal.fire({
-                        title: 'Error!',
-                        text: 'Failed to update delivery status',
-                        icon: 'error'
-                    });
-                }
-            }
-            return;
-        }
-
-        // For other statuses (Received, Not Received)
-        let confirmationMessage = '';
-        let confirmButtonText = '';
-        let iconType = 'question';
-
-        switch (status) {
-            case 'Confirmed':
-                confirmationMessage = 'Mark this delivery as Received?';
-                confirmButtonText = 'Yes, Mark as Received';
-                iconType = 'success';
-                break;
-            case 'Not Received':
-                confirmationMessage = 'Mark this delivery as Not Received?';
-                confirmButtonText = 'Yes, Mark as Not Received';
-                iconType = 'warning';
-                break;
-            default:
-                confirmationMessage = 'Update delivery status?';
-                confirmButtonText = 'Yes, Update Status';
-        }
-
-        // Show confirmation dialog for other statuses
-        const result = await Swal.fire({
-            title: 'Are you sure?',
-            text: confirmationMessage,
-            icon: iconType,
-            showCancelButton: true,
-            confirmButtonColor: '#3085d6',
-            cancelButtonColor: '#d33',
-            confirmButtonText: confirmButtonText,
-            cancelButtonText: 'Cancel',
-            reverseButtons: true
-        });
-
-        // If user confirms, proceed with the update
-        if (result.isConfirmed) {
-            try {
-                Swal.fire({
-                    title: 'Status Updated!',
-                    text: `Delivery marked as ${status}`,
-                    icon: 'success',
-                    timer: 2000,
-                    showConfirmButton: false
-                });
-
-                const deliveryRef = doc(db, "deliveries", deliveryId);
-                await updateDoc(deliveryRef, {
-                    status: status,
-                    confirmed_at: serverTimestamp(),
-                    updated_at: serverTimestamp()
-                });
-
-
-            } catch (error) {
-                console.error("Error updating delivery status:", error);
-                Swal.fire({
-                    title: 'Error!',
-                    text: 'Failed to update delivery status',
-                    icon: 'error'
-                });
-            }
-        }
-    };
-
     const handlePaymentMethod = (method) => {
         if (method !== payment_method) {
             setPayment_method(method)
@@ -333,7 +268,7 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
                     payment_method: null,
                     event_email: eventUser.email_address,
                     event_contact: eventUser?.contact_number || null,
-                    amount: netAmount,
+                    amount: finalAmount,
                     platform_fee: platform_fee,
                     process_fee: 0,
                     type: "CREDIT",
@@ -598,6 +533,12 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
                                                                 </p>
                                                             )}
 
+                                                            {delivery.issue_reason && (
+                                                                <p className="text-sm text-red-700 mb-4">
+                                                                    <strong>Issue:</strong> {delivery.issue_reason}
+                                                                </p>
+                                                            )}
+
                                                             {/* Proofs */}
                                                             {delivery.proof?.length > 0 && (
                                                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-4">
@@ -620,18 +561,7 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
                                                             {/* Action Buttons - Only show if user is event planner and delivery is pending */}
                                                             {userData?.role !== "Supplier" && delivery.status === "Pending" && (
                                                                 <div className="flex justify-end gap-2 mt-4">
-                                                                    <button
-                                                                        onClick={() => handleDeliveryStatus(delivery.id, "Damaged")}
-                                                                        className="px-3 py-1.5 bg-orange-500 text-white text-sm rounded hover:bg-orange-600 transition-colors"
-                                                                    >
-                                                                        Damaged
-                                                                    </button>
-                                                                    <button
-                                                                        onClick={() => handleDeliveryStatus(delivery.id, "Not Received")}
-                                                                        className="px-3 py-1.5 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition-colors"
-                                                                    >
-                                                                        Not Received
-                                                                    </button>
+                                                                    <DamagePenaltiesModal delivery={delivery} deliveryId={delivery.id} eventData={eventData} />
 
                                                                     <button
                                                                         onClick={() => handleDeliveryStatus(delivery.id, "Confirmed")}
@@ -773,7 +703,7 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
                                                 )}
 
                                                 {/* Payment Summary */}
-                                                <div className={`w-full ${userData?.role === "Supplier" ? 'h-[390px]' : 'h-[410px]'}  rounded-lg p-6 mt-8 border border-gray-300`}>
+                                                <div className={`w-full ${userData?.role === "Supplier" ? 'h-[470px]' : 'h-[410px]'}  rounded-lg p-6 mt-8 border border-gray-300`}>
                                                     <div className='flex items-center justify-between mb-2'>
                                                         <div className='flex gap-2 items-center'>
                                                             <PhilippinePeso className='text-green-600' />
@@ -797,13 +727,35 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
                                                                     <>
                                                                         <div className="flex justify-between items-center">
                                                                             <span className="text-gray-600">Platform Fee</span>
-                                                                            <span className="font-semibold text-gray-600"> - ₱{platformFee.toLocaleString()}</span>
+                                                                            <span className="font-semibold text-red-600"> - ₱{platformFee.toLocaleString()}</span>
+                                                                        </div>
+
+                                                                        <div className="flex flex-col gap-2">
+
+                                                                            <div className="flex flex-col gap-2">
+                                                                                <div className="flex justify-between items-center">
+                                                                                    <span className="text-gray-600 font-medium">Total Deductions (from deliveries)</span>
+                                                                                    <span className="font-semibold text-red-600">
+                                                                                        - ₱{totalDeductions.toLocaleString()}
+                                                                                    </span>
+                                                                                </div>
+
+                                                                                {Object.keys(issueCount).length > 0 && (
+                                                                                    <ul className="list-disc list-inside text-sm text-gray-600 mt-1">
+                                                                                        {Object.entries(issueCount).map(([issue, count]) => (
+                                                                                            <li key={issue}>
+                                                                                                {issue} {count > 1 && <span className="text-gray-500">(×{count})</span>}
+                                                                                            </li>
+                                                                                        ))}
+                                                                                    </ul>
+                                                                                )}
+                                                                            </div>
                                                                         </div>
 
                                                                         <div className="border-t border-gray-300 pt-3">
                                                                             <div className="flex justify-between items-center">
                                                                                 <span className="text-md font-semibold text-gray-800">Amount To Recieve</span>
-                                                                                <span className="text-lg font-semibold text-gray-800">₱{userData?.role === "Supplier" ? netAmount.toLocaleString() : service_price}</span>
+                                                                                <span className="text-lg font-semibold text-gray-800">₱{userData?.role === "Supplier" ? finalAmount.toLocaleString() : service_price}</span>
                                                                             </div>
                                                                         </div>
                                                                     </>
@@ -861,14 +813,18 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
                                     {userData?.role != "Supplier" && contract?.status !== "Completed" && (
                                         <>
                                             <div className='flex mb-2'>
-                                                <button
-                                                    onClick={handleChat}
-                                                    className="left-12 relative bottom-3 right-10 transition-all duration-50 text-sm items-center hover:bg-gray-700 py-2 px-5 rounded-md bg-gray-600 text-white"
-                                                >
-                                                    {userData?.role === "Supplier"
-                                                        ? `Message Planner`
-                                                        : `Message Supplier`}
-                                                </button>
+                                                <div className='flex left-12 relative bottom-3 right-10 gap-2'>
+                                                    <button
+                                                        onClick={handleChat}
+                                                        className=" transition-all duration-50 text-sm items-center hover:bg-gray-700 py-2 px-5 rounded-md bg-gray-600 text-white"
+                                                    >
+                                                        {userData?.role === "Supplier"
+                                                            ? `Message Planner`
+                                                            : `Message Supplier`}
+                                                    </button>
+
+                                                    <ReportModal />
+                                                </div>
 
                                                 {(total_paid - total_fees) === service_price && (
                                                     <div className='flex justify-end ml-auto gap-3 relative bottom-3 right-10'>

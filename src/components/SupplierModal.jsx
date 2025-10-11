@@ -184,7 +184,7 @@ export default function SupplierModal({ supplierData, applications, userData, re
                 title: 'Invalid Availability',
                 text: timeError,
             })
-            return; 
+            return;
         }
 
         try {
@@ -675,11 +675,6 @@ export default function SupplierModal({ supplierData, applications, userData, re
                                             className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
                                         >
                                             Close
-                                        </Button>
-                                        <Button
-                                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                                        >
-                                            Edit
                                         </Button>
                                     </div>
                                 )}

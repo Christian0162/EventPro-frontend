@@ -245,7 +245,7 @@ export default function Supplier({ userData }) {
 
                                             <div className="flex items-center space-x-1">
                                                 <PhilippinePeso className="text-green-600" size={18} />
-                                                <span className="text-lg font-bold text-gray-900">{userServices[0].service_price}</span>
+                                                <span className="text-lg font-bold text-gray-900">{userServices[0]?.service_price}</span>
                                                 <span className="text-sm text-gray-500">/service</span>
                                             </div>
 

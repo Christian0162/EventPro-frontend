@@ -16,43 +16,53 @@ export const useCreatePayment = () => {
             title: '<strong class="text-2xl font-bold text-gray-800">Payment Terms and Conditions</strong>',
             icon: 'info',
             html: `
-            <div class="text-left max-h-[300px] overflow-y-auto pr-2">
-            <h4 class="text-lg font-semibold text-gray-700 mt-4">1. Payment Methods</h4>
-            <p class="text-gray-600 mb-3">We accept Visa, MasterCard, American Express, and PayPal.</p>
-            
-            <h4 class="text-lg font-semibold text-gray-700 mt-4">2. Billing Cycle</h4>
-            <p class="text-gray-600 mb-3">Payments are due monthly on the same date as your initial purchase.</p>
-            
-            <h4 class="text-lg font-semibold text-gray-700 mt-4">3. Late Payments</h4>
-            <p class="text-gray-600 mb-3">A late fee of 5% will be applied to payments received more than 7 days after the due date.</p>
-            
-            <h4 class="text-lg font-semibold text-gray-700 mt-4">4. Refund Policy</h4>
-            <p class="text-gray-600 mb-3">Refunds are available within 30 days of purchase for unused services.</p>
-            
-            <h4 class="text-lg font-semibold text-gray-700 mt-4">5. Automatic Renewal</h4>
-            <p class="text-gray-600 mb-3">Your subscription will automatically renew unless canceled at least 24 hours before the end of the current period.</p>
-            <div class="flex items-center">
+    <div class="text-left max-h-[300px] overflow-y-auto pr-2">
+        <h4 class="text-lg font-semibold text-gray-700 mt-4">1. Payment Method</h4>
+        <p class="text-gray-600 mb-3">
+            Payments for event contracts must be made securely through the platform’s approved payment channels. 
+            Accepted methods include credit/debit cards, Gcash, Mayaand other supported digital payment services.
+        </p>
+
+        <h4 class="text-lg font-semibold text-gray-700 mt-4">2. Payment Schedule</h4>
+        <p class="text-gray-600 mb-3">
+            Payment must be completed before the supplier begins providing the agreed services. 
+            In some cases, a partial deposit may be required, followed by full payment before the event date.
+        </p>
+
+        <h4 class="text-lg font-semibold text-gray-700 mt-4">3. Late or Missed Payments</h4>
+        <p class="text-gray-600 mb-3">
+            Failure to complete payment within the agreed timeframe may result in automatic cancellation of the contract, 
+            forfeiture of any deposits made, and potential penalties based on the supplier’s terms.
+        </p>
+
+        <h4 class="text-lg font-semibold text-gray-700 mt-4">4. Refund and Cancellation Policy</h4>
+        <p class="text-gray-600 mb-3">
+            If a contract is canceled by the planner before the supplier begins the service, the planner may request a refund. 
+            However, any applicable transaction, processing, or platform fees will not be included in the refund amount.
+            <br><br>
+            In cases of non-delivery or breach of contract by the supplier, the planner will receive a full refund of the paid amount.
+        </p>
+
+        <div class="flex items-center mt-4">
             <input type="checkbox" id="acceptTerms" class="mt-1 mr-2">
-            <label for="acceptTerms" class="text-gray-700">I agree to the payment terms and conditions</label>
-            </div>
-            </div>
-      `,
+            <label for="acceptTerms" class="text-gray-700">I agree to the event contract payment terms and conditions</label>
+        </div>
+    </div>
+    `,
             showCancelButton: true,
             confirmButtonText: "Pay Contract",
             showConfirmButton: true,
             width: '800px',
             preConfirm: () => {
-                const isChecked = document.getElementById("acceptTerms").checked
-
+                const isChecked = document.getElementById("acceptTerms").checked;
                 if (!isChecked) {
-                    Swal.showValidationMessage("You must accept the terms to proceed")
-                    return false
+                    Swal.showValidationMessage("You must accept the terms to proceed");
+                    return false;
                 }
-
                 return true;
             }
+        });
 
-        })
 
         if (payment_terms.isConfirmed) {
             try {
@@ -97,7 +107,7 @@ export const useCreatePayment = () => {
                         if (status.status === "PAID") {
                             setIsProcessing(false)
                             updateDoc(doc(db, "transactions", invoice_id), {
-                                status: "COMPLETED"
+                                status: "HOLD"
                             })
 
                             await addDoc(collection(db, "notifications"), {

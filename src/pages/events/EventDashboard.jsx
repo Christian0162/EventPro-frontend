@@ -15,6 +15,7 @@ import { useFetchReviews } from "../../hooks/useReviews"
 import dayGridPlugin from "@fullcalendar/daygrid";
 import FullCalendar from "@fullcalendar/react"
 import EventModal from "../../components/EventModal"
+import GenerateReport from "../../components/GeneraeReport"
 
 export default function EventDashboard({ userData }) {
 
@@ -30,6 +31,34 @@ export default function EventDashboard({ userData }) {
     });
 
     const isAllLoading = isEventLoading || isSuppliersLoading || isTransactionsLoading || isReviewsLoading
+
+    const totalEvents = events.length;
+    const approvedContracts = contracts.filter(c => c.status === "Approved").length;
+    const totalSpent = transactions.reduce((sum, t) => sum + t.amount, 0);
+    const avgRating =
+        reviews.length > 0
+            ? (reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length).toFixed(1)
+            : "N/A";
+
+    const fields = [
+        { label: "Total Events Organized".toUpperCase(), value: totalEvents },
+        { label: "Approved Contracts".toUpperCase(), value: approvedContracts },
+        { label: "Total Budget Spent".toUpperCase(), value: `PHP ${totalSpent.toLocaleString()}` },
+        { label: "Average Supplier Rating".toUpperCase(), value: avgRating },
+    ];
+
+    const sections = useMemo(() => [
+        {
+            title: "Event Summary",
+            head: ["Event Name", "Type", "Budget", "Status"],
+            body: events.map(e => [
+                e.event_name.toUpperCase(),
+                e.event_type?.value.toUpperCase() || "N/A",
+                `PHP ${(Number(e.event_budget) || 0).toLocaleString()}`,    
+                e.event_status?.value.toUpperCase() || "N/A",
+            ]),
+        },
+    ], [events]);
 
     const reviewedSuppliers = reviews.filter(rev => rev.user_id === userData.id)
 
@@ -49,36 +78,33 @@ export default function EventDashboard({ userData }) {
     }, [events, transactions]);
 
 
-    const pendingContracts = useMemo(() =>
-        contracts.filter(contract => events.some(event => contract?.status === "Pending" && event.id === contract.event_id)),
+    const bookingContracts = useMemo(() =>
+        contracts.filter(contract => events.some(event => event.id === contract.event_id)),
         [contracts, events]);
 
     const eventContracts = events.filter(event =>
-        pendingContracts.some(cont => cont.event_id === event.id)
+        bookingContracts.some(cont => cont.event_id === event.id)
     );
-
-    console.log(eventContracts)
-
 
     const activeContracts = useMemo(() =>
         contracts.filter(contract => events.some(event => contract?.status === "Approved" && event.id === contract.event_id)),
         [contracts, events]);
 
     const contractEventsforPending = useMemo(() =>
-        pendingContracts.map(contract =>
+        bookingContracts.map(contract =>
             events.find(event => event.id === contract.event_id)
         ).filter(Boolean),
-        [pendingContracts, events]);
+        [bookingContracts, events]);
 
-    const contractSuppliersForPending = useMemo(() =>
+    const contractSuppliers = useMemo(() =>
         suppliers.reduce((acc, supplier) => {
-            const contract = pendingContracts.find(c => c.supplier_id === supplier.id);
+            const contract = bookingContracts.find(c => c.supplier_id === supplier.id);
             if (contract) {
                 acc[supplier.id] = { ...supplier, contract };
             }
             return acc;
         }, {}),
-        [pendingContracts, suppliers]
+        [bookingContracts, suppliers]
     );
 
     const eventsByType = useMemo(() => {
@@ -132,16 +158,26 @@ export default function EventDashboard({ userData }) {
                 <>
                     <Title>Dashboard</Title>
                     {/* Header Section */}
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                        <div className="flex flex-col lg:flex-row justify-between items-start gap-4 mb-10">
-                            <div>
-                                <h1 className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-blue-600 to-violet-600 bg-clip-text text-transparent">
-                                    Event Dashboard
-                                </h1>
-                                <p className="text-gray-600 text-sm sm:text-base mt-1">
-                                    Welcome back, <span className="font-semibold text-gray-800">{userData?.first_name}</span>
-                                </p>
+                    <div>
+                        <div className="flex justify-between items-baseline">
+                            <div className="flex flex-col lg:flex-row justify-between items-start gap-4 mb-10">
+                                <div>
+                                    <h1 className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-blue-600 to-violet-600 bg-clip-text text-transparent">
+                                        Event Dashboard
+                                    </h1>
+                                    <p className="text-gray-600 text-sm sm:text-base mt-1">
+                                        Welcome back, <span className="font-semibold text-gray-800">{userData?.first_name}</span>
+                                    </p>
+                                </div>
                             </div>
+
+                            <GenerateReport
+                                title="Planner Event Summary Report"
+                                filename={`${userData.first_name}_Event_Report`}
+                                userData={userData}
+                                fields={fields}
+                                sections={sections}
+                            />
                         </div>
 
                         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
@@ -305,16 +341,16 @@ export default function EventDashboard({ userData }) {
                                 )}
                             </TabPanel>
 
-                            <TabPanel className="p-3 sm:p-5 sm:px-7">
-                                <div className="p-1  flex flex-col gap-3">
-                                    {pendingContracts.map((offers, index) => (
+                            <TabPanel>
+                                <div className="p-2 flex flex-col gap-3">
+                                    {bookingContracts.map((offers, index) => (
                                         <div key={index}>
                                             <div className={`flex flex-col sm:flex-row gap- sm:gap-2 justify-between ${AppliedColor(offers.status)} shadow-gray-200 shadow-lg items-start sm:items-center p-3 sm:py-4 rounded-lg sm:px-5`}>
                                                 <div className="flex items-start sm:items-center space-x-3 flex-1">
                                                     <Calendar size={20} className="sm:size-6 text-blue-600 bg-gray-200 rounded-full h-8 w-8 sm:h-9 sm:w-9 p-1.5 sm:p-2 flex-shrink-0 mt-0.5 sm:mt-0" />
                                                     <div className="flex flex-col min-w-0 flex-1">
                                                         <span className="font-medium text-gray-900 text-sm sm:text-base break-words">
-                                                            Supplier name: {contractSuppliersForPending[offers.supplier_id].supplier_name}
+                                                            Supplier name: {contractSuppliers[offers.supplier_id].supplier_name}
                                                         </span>
 
                                                         <span className="text-gray-500 text-xs sm:text-sm">
@@ -323,13 +359,13 @@ export default function EventDashboard({ userData }) {
                                                     </div>
                                                 </div>
 
-                                                <ContractModal eventData={eventContracts[index]} event_id={offers.event_id} supplier_id={offers.supplier_id} supplierData={contractSuppliersForPending[offers.supplier_id]} barEventData={contractEventsforPending[index]} user_id={userData.id} />
+                                                <ContractModal userData={userData} eventData={eventContracts[index]} event_id={offers.event_id} supplier_id={offers.supplier_id} supplierData={contractSuppliers[offers.supplier_id]} user_id={userData.id} />
 
                                             </div>
                                         </div>
                                     ))}
 
-                                    {pendingContracts.length === 0 && (
+                                    {bookingContracts.length === 0 && (
                                         <div className="text-center py-8 text-gray-500 text-sm sm:text-base">
                                             <span className="block font-semibold">No applied bookings.</span>
                                         </div>

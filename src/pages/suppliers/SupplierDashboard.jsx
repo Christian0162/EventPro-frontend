@@ -21,9 +21,7 @@ import PageLoading from "../../components/PageLoading"
 import { useFetchDeliveries } from "../../hooks/useDeliveries"
 import { useFetchTransactionById } from "../../hooks/useTransaction"
 import { useFetchAllApplication } from "../../hooks/useApplication"
-import autoTable from "jspdf-autotable";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
+import GenerateReport from "../../components/GeneraeReport"
 
 export default function SupplierDashboard({ userData }) {
 
@@ -46,74 +44,6 @@ export default function SupplierDashboard({ userData }) {
 
     const userDeliveries = deliveries.filter(del => del.supplier_id === userData.id)
 
-    const generateReport = async (
-        userData,
-        totalEarning,
-        onTimeRate,
-        competitiveness,
-        totalAppliedEvents,
-        monthlyRatings
-    ) => {
-        const doc = new jsPDF();
-
-        // Title + Basic Info
-        doc.setFontSize(16);
-        doc.text("Supplier Performance Report", 14, 20);
-        doc.setFontSize(12);
-        doc.text(`Supplier: ${userData.first_name} ${userData.last_name}`, 14, 30);
-        doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 37);
-
-        // Table with stats
-        autoTable(doc, {
-            startY: 45,
-            head: [["Metric", "Value"]],
-            body: [
-                ["Total Earnings", `PHP ${totalEarning}`],
-                ["On-Time Delivery Rate", `${onTimeRate.toFixed(0)}%`],
-                ["Price Competitiveness", `${competitiveness.toFixed(1)}%`],
-                ["Total Applied Events", totalAppliedEvents],
-                [
-                    "Average Monthly Rating",
-                    (
-                        monthlyRatings?.filter(Boolean).reduce((a, b) => a + b, 0) /
-                        monthlyRatings?.filter(Boolean).length || 0
-                    ).toFixed(1),
-                ],
-            ],
-        });
-
-        // Add charts as simple tables instead of capturing the DOM
-        const finalY = doc.lastAutoTable.finalY + 10;
-
-        // Performance Metrics Table
-        doc.text("Performance Metrics:", 14, finalY);
-        autoTable(doc, {
-            startY: finalY + 5,
-            head: [["Metric", "Value (%)"]],
-            body: [
-                ["Price Competitiveness", competitiveness.toFixed(1)],
-                ["On-Time Delivery", onTimeRate.toFixed(0)],
-            ],
-        });
-
-        // Monthly Ratings Table
-        const ratingsY = doc.lastAutoTable.finalY + 10;
-        doc.text("Monthly Ratings:", 14, ratingsY);
-
-        const monthlyData = monthlyRatings.map((rating, index) => [
-            ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][index],
-            rating ? rating.toFixed(1) : 'N/A'
-        ]).filter((_, index) => monthlyRatings[index] !== null);
-
-        autoTable(doc, {
-            startY: ratingsY + 5,
-            head: [["Month", "Average Rating"]],
-            body: monthlyData,
-        });
-
-        // Save file
-        doc.save("Supplier_Analytics_Report.pdf");
-    };
 
     // price competitive 
     const suppleirsWithSameType = suppliers.filter(sup => sup.supplier_type?.value === supplier.supplier_type?.value && sup.id != userData.id)
@@ -294,34 +224,41 @@ export default function SupplierDashboard({ userData }) {
             ) : (
                 <div className="bg-gradient-to-br ">
                     {/* Header */}
-                    <div className="flex flex-col lg:flex-row justify-between items-start gap-4 mb-10">
-                        <div>
-                            <h1 className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-blue-600 to-violet-600 bg-clip-text text-transparent">
-                                Supplier Dashboard
-                            </h1>
-                            <p className="text-gray-600 text-sm sm:text-base mt-1">
-                                Welcome back, <span className="font-semibold text-gray-800">{userData?.first_name}</span>
-                            </p>
+
+                    <div className="flex justify-between items-baseline">
+                        <div className="flex flex-col lg:flex-row justify-between items-start gap-4 mb-10">
+                            <div>
+                                <h1 className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-blue-600 to-violet-600 bg-clip-text text-transparent">
+                                    Supplier Dashboard
+                                </h1>
+                                <p className="text-gray-600 text-sm sm:text-base mt-1">
+                                    Welcome back, <span className="font-semibold text-gray-800">{userData?.first_name}</span>
+                                </p>
+                            </div>
                         </div>
+
+                        <GenerateReport
+                            title="Supplier Performance Report"
+                            filename={`${userData.first_name}_Supplier_Report`}
+                            userData={userData}
+                            fields={[
+                                { label: "Total Earnings", value: `PHP ${totalEarning.toLocaleString()}` },
+                                { label: "On-Time Delivery Rate", value: `${onTimeRate.toFixed(0)}%` },
+                                { label: "Price Competitiveness", value: `${competitiveness.toFixed(1)}%` },
+                                { label: "Total Applied Events", value: totalAppliedEvents },
+                            ]}
+                            sections={[
+                                {
+                                    title: "Monthly Ratings",
+                                    head: ["Month", "Average Rating"],
+                                    body: monthlyRatings.map((rating, i) => [
+                                        ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][i],
+                                        rating ? rating.toFixed(1) : "N/A",
+                                    ]),
+                                },
+                            ]}
+                        />
                     </div>
-
-                    <button
-                        onClick={() =>
-                            generateReport(
-                                userData,
-                                totalEarning,
-                                onTimeRate,
-                                competitiveness,
-                                totalAppliedEvents,
-                                monthlyRatings
-                            )
-                        }
-                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                    >
-                        Generate Report
-                    </button>
-
-
                     {/* Overview Cards */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                         {[

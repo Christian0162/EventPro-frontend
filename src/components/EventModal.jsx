@@ -1,5 +1,5 @@
 import { Button, Dialog, DialogPanel } from '@headlessui/react';
-import { MapPin, X, Eye, CalendarDays, CircleDollarSign, Mail, User, Bold } from 'lucide-react';
+import { MapPin, X, Eye, CalendarDays, CircleDollarSign, Mail, User, Bold, Phone } from 'lucide-react';
 import { useState } from 'react';
 import { useFetchUserProfiles } from '../hooks/useProfile';
 import { useFetchReviews } from '../hooks/useReviews';
@@ -19,7 +19,7 @@ export default function EventModal({ eventData, event_purpose }) {
     const userProfile = userProfiles.find(user => user.id === eventData.user_id)
 
     const userReviews = reviews.filter(rev => rev.reviewed_id === eventData.user_id)
-    console.log(userProfile)
+    console.log(eventData)
 
     const open = () => setIsOpen(true);
     const close = () => setIsOpen(false);
@@ -124,7 +124,7 @@ export default function EventModal({ eventData, event_purpose }) {
                                 {/* Event Categories */}
                                 <div className='mb-3'>
                                     <h3 className="text-sm font-semibold text-gray-700 mb-2">Looking for Suppliers</h3>
-                                    {eventData?.event_categories > 0 ? (
+                                    {eventData?.event_categories.length > 0 ? (
                                         <div>
                                             <div className="flex flex-wrap gap-2">
                                                 {(eventData?.event_categories ?? [])
@@ -152,11 +152,15 @@ export default function EventModal({ eventData, event_purpose }) {
                                 </div>
 
                                 {/* Contact Info */}
-                                <div>
+                                <div className='space-y-1'>
                                     <h3 className="text-sm font-semibold text-gray-700 mb-2">Contact Information</h3>
                                     <div className="flex items-center text-gray-600 text-sm gap-2">
                                         <Mail size={16} className="text-blue-500" />
-                                        <span>{eventData?.contact_email || "test123@example.com"}</span>
+                                        <span>{userProfile?.email_address || "No email address provided."}</span>
+                                    </div>
+                                    <div className="flex items-center text-gray-600 text-sm gap-2">
+                                        <Phone size={16} className="text-blue-500" />
+                                        <span>{userProfile?.contact_number || "No contact number provided."}</span>
                                     </div>
                                 </div>
 

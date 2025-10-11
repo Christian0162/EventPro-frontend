@@ -53,8 +53,6 @@ export default function AdminDashboard({ userData }) {
         }).length
     );
 
-
-
     const AppliedColor = (status) => ({
         approved: 'bg-green-100',
         pending: 'bg-yellow-100',
@@ -220,7 +218,7 @@ export default function AdminDashboard({ userData }) {
                             ))}
                         </TabList>
                         <TabPanels className="rounded-xl border border-gray-300 bg-white shadow-xl">
-                            <TabPanel className="p-3 sm:p-5 sm:px-7">
+                            <TabPanel className="p-3">
                                 {supplierVerification.length ? supplierVerification.map((v, i) => (
                                     <div key={i} className={`flex flex-col sm:flex-row gap-2 justify-between ${AppliedColor("pending")} shadow-lg items-start sm:items-center p-3 sm:py-4 rounded-lg sm:px-5`}>
                                         <div className="flex items-start sm:items-center space-x-3 flex-1">
@@ -239,7 +237,7 @@ export default function AdminDashboard({ userData }) {
                                 )}
                             </TabPanel>
 
-                            <TabPanel className="p-3 sm:p-5 sm:px-7">
+                            <TabPanel className="p-3">
                                 {eventVerification.length ? eventVerification.map((v, i) => (
                                     <div key={i} className={`flex flex-col sm:flex-row gap-2 justify-between ${AppliedColor("pending")} shadow-lg items-start sm:items-center p-3 sm:py-4 rounded-lg sm:px-5`}>
                                         <div className="flex items-start sm:items-center space-x-3 flex-1">

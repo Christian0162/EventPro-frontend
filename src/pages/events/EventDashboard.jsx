@@ -54,7 +54,7 @@ export default function EventDashboard({ userData }) {
             body: events.map(e => [
                 e.event_name.toUpperCase(),
                 e.event_type?.value.toUpperCase() || "N/A",
-                `PHP ${(Number(e.event_budget) || 0).toLocaleString()}`,    
+                `PHP ${(Number(e.event_budget) || 0).toLocaleString()}`,
                 e.event_status?.value.toUpperCase() || "N/A",
             ]),
         },
@@ -318,8 +318,9 @@ export default function EventDashboard({ userData }) {
                                 </Tab>
                             ))}
                         </TabList>
-                        <TabPanels className={'rounded-xl border border-gray-300 bg-white shadow-xl'}>
 
+                        {/* Upcoming events */}
+                        <TabPanels className={'rounded-xl border border-gray-300 bg-white shadow-xl'}>
                             <TabPanel>
                                 {events.length ? (
                                     <div className="space-y-3 p-3 h-[250px] overflow-y-auto">
@@ -341,6 +342,7 @@ export default function EventDashboard({ userData }) {
                                 )}
                             </TabPanel>
 
+                            {/* Supplier Booking */}
                             <TabPanel>
                                 <div className="p-2 flex flex-col gap-3">
                                     {bookingContracts.map((offers, index) => (
@@ -373,6 +375,7 @@ export default function EventDashboard({ userData }) {
                                 </div>
                             </TabPanel>
 
+                            {/* Calendar */}
                             < TabPanel >
                                 <div className="p-3 sm:p-6 lg:p-10">
                                     <div className="overflow-x-auto">

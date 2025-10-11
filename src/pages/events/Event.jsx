@@ -56,7 +56,7 @@ export default function Event({ userData }) {
 
             const activeEvents = events.filter(event =>
                 event.status === "active" &&
-                event.event_date?.date_value < today &&
+                event.event_date?.date_value >= today &&
                 event.event_status?.value?.toLowerCase() !== "completed"
             ); setAllEvents(activeEvents)
         }

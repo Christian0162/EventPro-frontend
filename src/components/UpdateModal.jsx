@@ -336,12 +336,14 @@ export const ServiceEdit = ({ supplierData, service_id, services }) => {
         setService_plan("")
     }
 
-    const supplierService = service[supplierData.id]
+    const supplierService = service.filter(s => s.supplier_id === supplierData.id)
 
     // Filter out options that already exist
     const existingPlans = supplierService
         ? Object.values(supplierService).map(service => service.service_plan.value.toLowerCase())
         : []
+
+        console.log(supplierService)
 
     const filteredPlanOptions = planTypeOptions.filter(
         option => !existingPlans.includes(option.value.toLowerCase())
@@ -504,13 +506,24 @@ export const ServiceEdit = ({ supplierData, service_id, services }) => {
 
                                             {allInclusions?.length > 0 && (
                                                 <>
-                                                    <span className='text-sm font-bold text-gray-600 mt-3'>Added inclusions</span>
-                                                    <div className='flex gap-2'>
+                                                    <span className="text-sm font-semibold text-gray-600 mt-2">
+                                                        Added inclusions
+                                                    </span>
+                                                    <div className="flex flex-wrap gap-2">
                                                         {allInclusions.map((inclusion, index) => (
-                                                            <button onClick={() => removeInclusion(inclusion)} type='button' className='px-5 flex text-white py-1 rounded-full bg-blue-600 hover:bg-red-500 transition-all duration-200 group' key={index}>
+                                                            <span
+                                                                key={index}
+                                                                className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-blue-100 text-blue-700 font-medium text-sm"
+                                                            >
                                                                 {inclusion}
-                                                                <span className='ml-3 block font-bold opacity-0 group-hover:opacity-100 transition-all duration-200'>-</span>
-                                                            </button>
+                                                                <button
+                                                                    onClick={() => removeInclusion(inclusion)}
+                                                                    type="button"
+                                                                    className="text-blue-600 hover:text-red-500 transition"
+                                                                >
+                                                                    ×
+                                                                </button>
+                                                            </span>
                                                         ))}
                                                     </div>
                                                 </>

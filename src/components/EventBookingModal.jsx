@@ -24,7 +24,10 @@ export default function EventBookingModal({ events = [], activeContracts = [], s
             setError("This event already has an active contract.");
             return;
         }
+
         navigate(`/events/${selectedEvent}/contract/${supplierData.id}`);
+        window.location.reload();
+
         setIsOpen(false);
     };
 

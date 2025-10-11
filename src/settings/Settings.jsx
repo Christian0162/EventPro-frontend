@@ -46,8 +46,10 @@ export default function Settings({ userData, user }) {
         setFirstName(userData.first_name)
         setLastName(userData.last_name)
         setEmailAddress(userData.email_address)
-        setContactNumber(userProfile.contract_number)
+        setContactNumber(userProfile.contact_number)
     }, [userData, userProfile])
+
+    console.log(userProfile)
 
     const [credentials, setCredentials] = useState({
         user_id: userData?.id,
@@ -74,7 +76,7 @@ export default function Settings({ userData, user }) {
 
     const total = totalEarinngs - totalWithdrawn
 
-    console.log(userProfile.profile_pic)
+    console.log(contactNumber)
 
     const payoutPaymentMethod = paymentMethods.filter(payment => payment.name !== "Credit Card")
 

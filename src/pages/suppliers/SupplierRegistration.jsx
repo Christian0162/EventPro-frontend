@@ -232,7 +232,7 @@ export default function SupplierRegistration() {
                                         required
                                         onChange={(e) => setSupplier_specialization(e.target.value)}
                                         className="w-full px-4 py-3 border border-gray-300 rounded-lg  focus:border-transparent transition-colors"
-                                        placeholder="Describe any unique specializations or rare flowers you offer..."
+                                        placeholder="Describe any unique specializations you offer."
                                     />
                                 </div>
                             </div>

@@ -1,7 +1,7 @@
 import { db } from "../../firebase/firebase";
-import { getDoc, doc, updateDoc, collection, addDoc, serverTimestamp, deleteDoc } from "firebase/firestore";
+import { doc, updateDoc, collection, addDoc, serverTimestamp, deleteDoc } from "firebase/firestore";
 import { Navigate, useParams } from "react-router-dom";
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { IdCard } from "lucide-react";
 import AddressAutocomplete from "../../components/AddressAutoComplete";
 import Select from 'react-select'
@@ -10,36 +10,23 @@ import Loading from "../../components/Loading";
 import Swal from "sweetalert2";
 import { RejectReview } from "../../components/ReviewModal";
 import LoadingOverlay from "../../components/LoadingOverlay";
+import { useFetchUsers } from "../../hooks/useUsers";
+import { useFetchAllVerification } from "../../hooks/useVerification";
+import PageLoading from "../../components/PageLoading";
 
 export default function Review({ userData }) {
 
     const [isLoading, setIsLoading] = useState(false);
-    const [reviewData, setReviewData] = useState(null)
-    const [user, setUser] = useState([])
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [isSumitted, setIsSubmitted] = useState(false)
-
+    const { users, isLoading: isUserLoading } = useFetchUsers()
+    const { verifications, isLoading: isVerificationLoading } = useFetchAllVerification()
     const { id } = useParams();
 
-    console.log(reviewData)
+    const user = users.find(user => user.id === id)
+    const verification = verifications.find(v => v.id === id)
 
-    useEffect(() => {
-        const fetchReviewData = async () => {
-
-            setIsLoading(true)
-            const onSnapShotVerification = await getDoc(doc(db, 'verification', id))
-
-            const onSnapShotUser = await getDoc(doc(db, "users", id))
-
-            setUser(onSnapShotUser.data())
-            setReviewData(onSnapShotVerification.data())
-            setIsLoading(false)
-
-        }
-
-        fetchReviewData()
-
-    }, [id])
+    const isAllLoading = isUserLoading || isVerificationLoading
 
     const handleSubmit = async (e) => {
         e.preventDefault()
@@ -55,10 +42,10 @@ export default function Review({ userData }) {
 
         try {
             if (result.isConfirmed) {
-
+                setIsLoading(true)
                 setIsSubmitting(true)
 
-                if (user.role === "Event Planner") {
+                if (user?.role === "Event Planner") {
 
                     await updateDoc(doc(db, "users", id), {
                         verification_status: 'verified'
@@ -122,18 +109,20 @@ export default function Review({ userData }) {
         catch (e) {
             console.log(e)
             await Swal.fire('Error', 'Something went wrong!', 'error');
+            setIsLoading(false)
             setIsSubmitting(false)
             setIsSubmitted(false);
         }
 
         finally {
+            setIsLoading(false)
             setIsSubmitting(false)
             setIsSubmitted(true)
         }
     }
 
 
-    if (isSumitted || reviewData?.is_verified) {
+    if (isSumitted || verification?.is_verified) {
         return <Navigate to={'/dashboard'} />
     }
 
@@ -141,33 +130,33 @@ export default function Review({ userData }) {
     console.log(isSumitted)
     return (
         <>
-            {isLoading && (
-                <Loading />
+            {isAllLoading && (
+                <PageLoading />
             )}
 
             {isSubmitting && (
                 <LoadingOverlay isLoading={isSubmitting} message="Proccesing.." />
             )}
 
-            {!isLoading && (
+            {!isAllLoading && (
                 <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-10 max-w-5xl mx-auto">
                     {/* Header */}
                     <div className="flex justify-between items-center mb-6 border-b pb-4">
                         <div className="flex items-center gap-3">
                             <IdCard size={40} strokeWidth={1.5} className="text-blue-600" />
                             <span className="text-2xl font-bold">
-                                {user.role === "Event Planner"
+                                {user?.role === "Event Planner"
                                     ? "Planner Verification Request"
                                     : "Supplier Verification Request"}
                             </span>
                         </div>
                         <span
-                            className={`px-3 py-1 text-sm rounded-full ${user.role === "Supplier"
+                            className={`px-3 py-1 text-sm rounded-full ${user?.role === "Supplier"
                                 ? "bg-purple-100 text-purple-700"
                                 : "bg-green-100 text-green-700"
                                 }`}
                         >
-                            {user.role}
+                            {user?.role}
                         </span>
                     </div>
 
@@ -179,12 +168,12 @@ export default function Review({ userData }) {
                     <form onSubmit={handleSubmit} className="space-y-10">
                         {/* Info Section */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {user.role === "Supplier" ? (
+                            {user?.role === "Supplier" ? (
                                 <div>
                                     <label className="block text-sm font-medium mb-1">Business Name</label>
                                     <input
                                         disabled
-                                        value={reviewData?.supplier_name || ""}
+                                        value={verification?.supplier_name || ""}
                                         className="w-full rounded-lg border border-gray-300 px-3 py-2 bg-gray-100 text-gray-700"
                                     />
                                 </div>
@@ -222,7 +211,7 @@ export default function Review({ userData }) {
                                 <AddressAutocomplete
                                     disabled
                                     default_location={
-                                        reviewData?.supplier_location || reviewData?.location || ""
+                                        verification?.supplier_location || verification?.location || ""
                                     }
                                     className="w-full rounded-lg border border-gray-300 px-3 py-2 bg-gray-100"
                                 />
@@ -232,15 +221,15 @@ export default function Review({ userData }) {
                                 <label className="block text-sm font-medium mb-1">Contact Number</label>
                                 <input
                                     disabled
-                                    value={reviewData?.supplier_number || reviewData?.contact_number || ""}
+                                    value={verification?.supplier_number || verification?.contact_number || ""}
                                     className="w-full rounded-lg border border-gray-300 px-3 py-2 bg-gray-100 text-gray-700"
                                 />
                             </div>
 
-                            {user.role === "Supplier" && (
+                            {user?.role === "Supplier" && (
                                 <div>
                                     <label className="block text-sm font-medium mb-1">Supplier Type</label>
-                                    <Select value={reviewData?.supplier_type} isDisabled isClearable />
+                                    <Select value={verification?.supplier_type} isDisabled isClearable />
                                 </div>
                             )}
                         </div>
@@ -253,7 +242,7 @@ export default function Review({ userData }) {
                             <textarea
                                 disabled
                                 value={
-                                    reviewData?.additional_information ||
+                                    verification?.additional_information ||
                                     "No additional information provided."
                                 }
                                 className="w-full rounded-lg border border-gray-300 px-3 py-2 h-28 bg-gray-100 text-gray-700"
@@ -267,8 +256,8 @@ export default function Review({ userData }) {
                                 <span className="font-semibold">Uploaded Valid IDs</span>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
-                                {reviewData?.valid_id?.length ? (
-                                    reviewData.valid_id.map((id, idx) => (
+                                {verification?.valid_id?.length ? (
+                                    verification.valid_id.map((id, idx) => (
                                         <img
                                             key={idx}
                                             src={id}
@@ -291,9 +280,9 @@ export default function Review({ userData }) {
                                 <span className="font-semibold">Uploaded Documents</span>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
-                                {reviewData?.documents_information ? (
+                                {verification?.documents_information ? (
                                     <img
-                                        src={reviewData?.documents_information}
+                                        src={verification?.documents_information}
                                         alt="Business Document"
                                         className="rounded-lg border shadow-sm object-contain h-64 w-full"
                                     />

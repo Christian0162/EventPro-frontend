@@ -73,37 +73,6 @@ export default function Profile({ userData }) {
         }
     }
 
-    const handleContactInformation = async (e) => {
-        e.preventDefault()
-        setError("");
-        setContactInformationLoading(true)
-
-        if (!/^\d{11}$/.test(contact_number)) {
-            setError("Contact number must be exactly 11 digits.");
-            setContactInformationLoading(false);
-            return;
-        }
-
-        try {
-            await updateDoc(doc(db, "userProfiles", userData.id), {
-                contact_number: contact_number,
-            })
-        }
-
-        catch (e) {
-            console.error(e)
-        }
-
-        finally {
-            setContactInformationLoading(false)
-            setContactInformationEditing(false)
-
-        }
-    }
-
-
-
-
     return (
         <>
             {isAllLoading && (
@@ -176,63 +145,35 @@ export default function Profile({ userData }) {
 
                             {/* Contact Information Section */}
                             <div className="bg-white border border-gray-200 rounded-lg p-4">
-                                <div className='flex justify-between items-center'>
-                                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Contact Information</h2>
-                                    <button type='button' onClick={() => setContactInformationEditing(!contactInformationEditing)} className="px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-colors">
-                                        {contactInformationEditing ? 'Cancel' : 'Edit'}
-                                    </button>
-                                </div>
-                                {!contactInformationLoading && (
-                                    <form onSubmit={handleContactInformation} className='flex justify-center flex-col'>
-                                        <div className="space-y-4">
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                    Email Address:
-                                                </label>
-                                                <input
-                                                    type="email"
-                                                    value={userData.email_address}
-                                                    disabled
-                                                    className={`w-full p-3 rounded-lg bg-gray-50 text-gray-700 der-blue-600 border border-gray-300`}
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                    Contact Number:
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    inputMode="numeric"
-                                                    pattern="[0-9]*"
-                                                    value={contact_number}
-                                                    disabled={!contactInformationEditing}
-                                                    onChange={(e) => {
-                                                        // Remove all non-digit characters
-                                                        const value = e.target.value.replace(/\D/g, "");
-                                                        // Limit to 11 digits
-                                                        if (value.length <= 11) {
-                                                            setContact_number(value);
-                                                            // Clear error on input change
-                                                        }
-                                                    }}
-                                                    maxLength={11}
-                                                    placeholder="e.g. 09487623432"
-                                                    className={`w-full p-3 rounded-lg bg-gray-50 text-gray-700 ${contactInformationEditing ? 'border border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent' : 'border border-gray-300'}`}
-                                                />
-                                                {error && <span className="text-red-600 text-sm mt-2 block">{error}</span>}
-                                            </div>
-                                        </div>
-                                        {contactInformationEditing && (
-                                            <button className='px-7 py-2 mt-5 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-colors self-center'>Save</button>
-                                        )}
-                                    </form>
-                                )}
-                                {contactInformationLoading && (
-                                    <div className='flex justify-center items-center h-40'>
-                                        <div className='h-10 w-10 border-t border-blue-600 animate-spin rounded-full'></div>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Email Address:
+                                        </label>
+                                        <input
+                                            type="email"
+                                            value={userData.email_address}
+                                            disabled
+                                            className={`w-full p-3 rounded-lg bg-gray-50 text-gray-700 der-blue-600 border border-gray-300`}
+                                        />
                                     </div>
-                                )}
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Contact Number:
+                                        </label>
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            pattern="[0-9]*"
+                                            value={contact_number}
+                                            disabled={!contactInformationEditing}
+                                            maxLength={11}
+                                            placeholder="e.g. 09487623432"
+                                            className={`w-full p-3 rounded-lg bg-gray-50 text-gray-700 border border-gray-300`}
+                                        />
+                                    </div>
+                                </div>
                             </div>
 
                             {userData?.role !== "Admin" && (

@@ -1,20 +1,21 @@
 import Select from "react-select"
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
 import AddressAutocomplete from "../../components/AddressAutoComplete";
 import { FileText, IdCard } from "lucide-react";
 import VerificationCheckbox from "../../components/VerificationCheckBox";
-import { Link } from "react-router-dom";
 import { auth, db } from "../../firebase/firebase";
-import { setDoc, doc, getDoc, updateDoc, query, where } from "firebase/firestore";
+import { setDoc, doc, getDoc, updateDoc, query, where, serverTimestamp } from "firebase/firestore";
 import UploadWidget from "../../components/UploadWidgen";
 import { SupplierOptions, idOptions, documentOptions, exampleIds, exampleDocuments } from "../../constants/categories";
 import Swal from "sweetalert2";
+import LoadingOverlay from "../../components/LoadingOverlay";
 
 export default function Verification({ userData }) {
 
     const [errorId, setErrorId] = useState('')
     const [errorDoc, setErrorDoc] = useState('')
+    const [isSubmitting, setIsSubmitting] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
     const [supplierType, setSupplierType] = useState(null)
     const [location, setLocation] = useState('')
@@ -25,13 +26,15 @@ export default function Verification({ userData }) {
     const [first_name, setFirst_Name] = useState('')
     const [last_name, setLast_Name] = useState('')
     const [email_address, setEmail_Address] = useState('')
-    const [id_picture, setId_picture] = useState([]);
+    const [validId, setValidId] = useState([]);
     const [agree, setAgree] = useState(false)
     const [redirect, setRedirect] = useState(false)
     const [documents, setDocuments] = useState(null)
     const [uploadDocs, setUploadDocs] = useState([])
     const [exampleId, setExampleId] = useState([])
     const [exampleDocument, setExampleDocument] = useState([])
+    const idSectionRef = useRef(null);
+    const docSectionRef = useRef(null);
 
     useEffect(() => {
         if (supplier_id && exampleIds) {
@@ -49,6 +52,7 @@ export default function Verification({ userData }) {
 
     useEffect(() => {
         const fetchData = async () => {
+            setIsLoading(true)
             try {
 
                 if (userData.role === 'Supplier') {
@@ -59,7 +63,6 @@ export default function Verification({ userData }) {
                     setContact_number(data?.supplier_number)
                     setLocation(data?.supplier_location)
                     setSupplierType(data?.supplier_type)
-                    setIsLoading(false)
 
                 }
 
@@ -70,12 +73,15 @@ export default function Verification({ userData }) {
                     setLast_Name(userData.last_name)
                     setEmail_Address(userData.email_address)
                     setContact_number(data.contact_number || '')
-                    setIsLoading(false)
 
                 }
             }
             catch (e) {
                 console.log(e)
+            }
+
+            finally {
+                setIsLoading(false)
             }
 
         }
@@ -104,23 +110,34 @@ export default function Verification({ userData }) {
 
     }, [])
 
+    console.log({ validId, documents })
+
     const handleSubmit = async (e) => {
         e.preventDefault()
-        setIsLoading(true)
+        setIsSubmitting(true)
+        setErrorDoc('')
+        setErrorId('')
 
-        if (supplier_id?.length > 1) {
+        if (validId?.length < 2 || !supplier_id) {
             setErrorId('At least 2 ID images required');
-            setIsLoading(false)
+            idSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+
+            setIsSubmitting(false)
             return
         }
 
-        if (documents?.length === 0) {
+        if (!documents || uploadDocs.length === 0) {
             setErrorDoc('Must upload At least 1 document');
-            setIsLoading(false)
+            docSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+            setIsSubmitting(false)
             return
         }
 
         try {
+
+            await updateDoc(doc(db, "users", auth.currentUser.uid), {
+                verification_status: 'pending'
+            })
 
             if (userData.role === 'Supplier') {
                 await setDoc(doc(db, "verification", auth.currentUser.uid), {
@@ -129,15 +146,11 @@ export default function Verification({ userData }) {
                     supplier_location: location,
                     supplier_id: supplier_id,
                     supplier_type: supplierType,
-                    id_picture: id_picture,
+                    valid_id: validId,
                     documents_information: uploadDocs,
                     additional_information: additional_information,
-                    isAgree: agree,
-                    status: "pending"
-                })
-
-                await updateDoc(doc(db, "shops", auth.currentUser.uid), {
-                    status: "pending"
+                    is_verified: false,
+                    createdAt: serverTimestamp(),
                 })
             }
 
@@ -148,15 +161,11 @@ export default function Verification({ userData }) {
                     email_address: email_address,
                     location: location,
                     contact_number: contact_number,
-                    id_picture: id_picture,
+                    valid_id: validId,
                     documents_information: uploadDocs,
                     additional_information: additional_information,
-                    isAgree: agree,
-                    status: "pending"
-                })
-
-                await updateDoc(doc(db, "users", auth.currentUser.uid), {
-                    status: 'pending'
+                    createdAt: serverTimestamp(),
+                    is_verified: false
                 })
             }
 
@@ -167,14 +176,14 @@ export default function Verification({ userData }) {
                 confirmButtonText: "OK"
             });
 
-            setIsLoading(false)
+            setIsSubmitting(false)
             setRedirect(true)
         }
         catch (e) {
             console.log(e)
         }
         finally {
-            setIsLoading(false)
+            setIsSubmitting(false)
         }
     }
 
@@ -187,163 +196,251 @@ export default function Verification({ userData }) {
     return (
         <>
 
-            <div className="bg-white rounded-xl shadow-2xl border border-gray-200 py-10 px-15">
-                <div className="flex items-center space-x-5">
-                    <span className="text-3xl font-semibold">{userData.role === 'Supplier' ? 'Supplier Verification' : 'Planner Verification'}</span>
-                    <IdCard size={50} strokeWidth={1} />
+            {isLoading && (
+                <div className="flex justify-center items-center mt-55  ">
+                    <div className="rounded-full h-10 w-10 animate-spin border border-t-blue-600"></div>
                 </div>
-                <span className="block text-gray-600">Submit your business information for verification to get verified</span>
-                <form onSubmit={handleSubmit} className="mt-8">
+            )}
 
-                    {/* business name */}
-                    {userData.role === 'Supplier' && (
-                        <div className="flex flex-col mb-5">
-                            <label htmlFor="business_name">Business Name</label>
-                            <input value={business_name} onChange={(e) => setBusiness_name(e.target.value)} type="text" name="business_name" placeholder="Floral Design" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black" />
+            {isSubmitting && (
+                <LoadingOverlay isLoading={isSubmitting} message="Processing.." />
+            )}
+
+            {!isLoading && (
+                <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-10 max-w-3xl mx-auto">
+                    {/* Header */}
+                    <div className="flex items-center space-x-4 mb-6">
+                        <IdCard size={40} strokeWidth={1.5} className="text-blue-600" />
+                        <div>
+                            <h1 className="text-2xl font-bold">
+                                {userData.role === "Supplier" ? "Supplier Verification" : "Planner Verification"}
+                            </h1>
+                            <p className="text-gray-500 text-sm">
+                                Submit your information for verification to get verified.
+                            </p>
                         </div>
-                    )}
-
-                    {/* first name, last name and email address */}
-                    {userData.role === 'Event Planner' && (
-                        <>
-                            <div className="flex flex-col mb-5">
-                                <label htmlFor="contact_number">First Name</label>
-                                <input value={first_name} onChange={(e) => setFirst_Name(e.target.value)} type="text" name="first_name" placeholder="e.g Juan Dela" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black" />
-                            </div>
-
-                            <div className="flex flex-col mb-5">
-                                <label htmlFor="contact_number">Last Name</label>
-                                <input value={last_name} onChange={(e) => setLast_Name(e.target.value)} type="text" name="last_name" placeholder="e.g Cruz" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black" />
-                            </div>
-
-                            <div className="flex flex-col mb-5">
-                                <label htmlFor="contact_number">Email Address</label>
-                                <input value={email_address} onChange={(e) => setEmail_Address(e.target.value)} type="email" name="email_addess" placeholder="e.g test@gmail.com" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black" />
-                            </div>
-                        </>
-                    )}
-
-                    {/* address */}
-                    <div className="flex flex-col mb-5">
-                        <label htmlFor="address">Address</label>
-                        <AddressAutocomplete setLocation={setLocation} default_location={location} className={'mt-2 py-1 rounded-sm ring-1 ring-black'} />
                     </div>
 
-                    {/* contact number */}
-                    <div className="flex flex-col mb-5">
-                        <label htmlFor="contact_number">Contact</label>
-                        <input value={contact_number} onChange={(e) => setContact_number(e.target.value)} type="tel" name="contact_number" maxLength={11} placeholder="e.g 09123456789" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black" />
-                    </div>
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        {/* Business Name */}
+                        {userData.role === "Supplier" && (
+                            <div>
+                                <label className="block text-sm font-medium mb-2">Business Name</label>
+                                <input
+                                    value={business_name}
+                                    onChange={(e) => setBusiness_name(e.target.value)}
+                                    type="text"
+                                    placeholder="e.g. Floral Design"
+                                    className="w-full rounded-lg border border-gray-300 px-3 py-2 
+                                        focus:outline-none focus:ring-2 focus:ring-blue-500 
+                                        focus:border-blue-500 shadow-sm"
+                                />
+                            </div>
+                        )}
 
-                    {/* supplier type */}
-                    {userData.role === 'Supplier' && (
+                        {/* First/Last Name + Email for Event Planner */}
+                        {userData.role === "Event Planner" && (
+                            <>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">First Name</label>
+                                    <input
+                                        value={first_name}
+                                        onChange={(e) => setFirst_Name(e.target.value)}
+                                        type="text"
+                                        placeholder="e.g. Juan"
+                                        className="w-full rounded-lg border border-gray-300 px-3 py-2 
+                                            focus:outline-none focus:ring-2 focus:ring-blue-500 
+                                            focus:border-blue-500 shadow-sm"                                    />
+                                </div>
 
-                        < div className="flex flex-col mb-5">
-                            <label htmlFor="supplier_type" className="mb-2">Supplier Type</label>
-                            <Select
-                                onChange={setSupplierType}
-                                options={SupplierOptions}
-                                value={supplierType}
-                                isClearable
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">Last Name</label>
+                                    <input
+                                        value={last_name}
+                                        onChange={(e) => setLast_Name(e.target.value)}
+                                        type="text"
+                                        placeholder="e.g. Cruz"
+                                        className="w-full rounded-lg border border-gray-300 px-3 py-2 
+                                            focus:outline-none focus:ring-2 focus:ring-blue-500 
+                                            focus:border-blue-500 shadow-sm"                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">Email Address</label>
+                                    <input
+                                        value={email_address}
+                                        onChange={(e) => setEmail_Address(e.target.value)}
+                                        type="email"
+                                        placeholder="e.g. test@gmail.com"
+                                        className="w-full rounded-lg border border-gray-300 px-3 py-2 
+                                            focus:outline-none focus:ring-2 focus:ring-blue-500 
+                                            focus:border-blue-500 shadow-sm"                                    />
+                                </div>
+                            </>
+                        )}
+
+                        {/* Address */}
+                        <div>
+                            <label className="block text-sm font-medium mb-2">Address</label>
+                            <AddressAutocomplete
+                                setLocation={setLocation}
+                                default_location={location}
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2 
+                                            focus:outline-none focus:ring-2 focus:ring-blue-500 
+                                            focus:border-blue-500 shadow-sm"
                             />
                         </div>
-                    )}
 
-                    {/* additional information */}
-                    <div className="flex flex-col w-full mb-5">
-                        <label htmlFor="addtional_information">Additional Information (Optional)</label>
-                        <textarea onChange={(e) => setAdditional_information(e.target.value)} placeholder="Optional" name="addtional_information" id="addtional_information" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-38 py-2 ring-black"></textarea>
-                    </div>
-
-                    <div className="flex flex-col mb-8">
-                        <div className="flex items-center space-x-1 mb-2">
-                            <IdCard size={24} />
-                            <span className="block font-semibold">Upload Your Valid ID</span>
+                        {/* Contact Number */}
+                        <div>
+                            <label className="block text-sm font-medium mb-2">Contact Number</label>
+                            <input
+                                required
+                                value={contact_number}
+                                onChange={(e) => setContact_number(e.target.value)}
+                                type="tel"
+                                maxLength={11}
+                                placeholder="e.g. 09123456789"
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2 
+                                            focus:outline-none focus:ring-2 focus:ring-blue-500 
+                                            focus:border-blue-500 shadow-sm"                            />
                         </div>
-                        <span className="block text-gray-600 mb-2 text-sm">To verify your business credentials, please upload a clear photo or scanned copy of a valid government-issued ID (e.g., Passport, Driver’s License, or National ID).</span>
-                        <Select
-                            onChange={(e) => { setSupplier_Id(e); setErrorId('') }}
-                            options={idOptions}
-                            value={supplier_id}
-                            placeholder="Select ID"
-                            isClearable
-                        />
-                        {supplier_id && (
-                            <div className="mt-3">
-                                <span className="ml-1 text-gray-600 block text-sm">Refer to the sample id below. Only 2 pictures are allowed. </span>
-                                <div className="flex justify-center">
-                                    <div className="flex mt-5 gap-4 justify-center">
+
+                        {/* Supplier Type */}
+                        {userData.role === "Supplier" && (
+                            <div>
+                                <label className="block text-sm font-medium mb-2">Supplier Type</label>
+                                <Select
+                                    onChange={setSupplierType}
+                                    options={SupplierOptions}
+                                    value={supplierType}
+                                    isClearable
+                                />
+                            </div>
+                        )}
+
+                        {/* Additional Info */}
+                        <div>
+                            <label className="block text-sm font-medium mb-2">Additional Information (Optional)</label>
+                            <textarea
+                                onChange={(e) => setAdditional_information(e.target.value)}
+                                placeholder="Any extra details..."
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2 h-24  
+                                    focus:outline-none focus:ring-2 focus:ring-blue-500 
+                                    focus:border-blue-500 shadow-sm"                            />
+                        </div>
+
+                        {/* Valid ID Section */}
+                        <div ref={idSectionRef} className="border-t pt-6">
+                            <div className="flex items-center space-x-2 mb-3">
+                                <IdCard className="text-blue-600" size={20} />
+                                <span className="font-semibold">Upload Your Valid ID</span>
+                            </div>
+                            <p className="text-sm text-gray-500 mb-2">
+                                Please upload at least 2 clear images of a government-issued ID.
+                            </p>
+                            <Select
+                                onChange={(e) => {
+                                    setSupplier_Id(e);
+                                    setErrorId("");
+                                }}
+                                options={idOptions}
+                                value={supplier_id}
+                                placeholder="Select ID type"
+                                isClearable
+                            />
+                            {supplier_id && (
+                                <div className="mt-4">
+                                    <div className="flex gap-3 justify-center">
                                         {exampleId?.map((id, index) => (
                                             <img
                                                 key={index}
                                                 src={id}
                                                 alt={`Example ${index + 1}`}
-                                                className="w-[35rem] rounded  object-cover"
+                                                className="w-72 rounded-lg border"
                                             />
                                         ))}
                                     </div>
+                                    <UploadWidget className="w-80 mt-4" type="id" setId={setValidId} setError={setErrorId} />
                                 </div>
-                                <UploadWidget className={'w-80 mt-5'} type={'id'} setId={setId_picture} setError={setErrorId} />
-                            </div>
-
-                        )}
-                        {errorId && (
-                            <span className="block mt-2 text-red-500 text-sm">{errorId}</span>
-                        )}
-                    </div>
-
-                    <div className="flex flex-col mb-5">
-                        <div className="flex items-center space-x-1 mb-2">
-                            <FileText size={24} />
-                            <span className="block font-semibold">Document Upload</span>
+                            )}
+                            {errorId && (
+                                <p className="mt-2 text-sm bg-red-100 border border-red-400 text-red-600 rounded px-3 py-1">
+                                    {errorId}
+                                </p>
+                            )}
                         </div>
-                        <span className="block text-gray-600 mb-2 text-sm">Upload documents to verify your business credentials</span>
-                        <Select
-                            onChange={(e) => { setDocuments(e); setErrorDoc('') }}
-                            options={documentOptions}
-                            value={documents}
-                            placeholder="Business Document"
-                            isClearable
-                        />
-                        {documents && (
-                            <div className="mt-3">
-                                <span className="ml-1 text-gray-600 block text-sm">Refer to the sample document below. Only 2 pictures are allowed. </span>
-                                <div className="flex justify-center">
-                                    <div className="flex mt-5 gap-4 justify-center">
+
+                        {/* Document Upload Section */}
+                        <div ref={docSectionRef} className="border-t pt-6">
+                            <div className="flex items-center space-x-2 mb-3">
+                                <FileText className="text-blue-600" size={20} />
+                                <span className="font-semibold">Upload Business Document</span>
+                            </div>
+                            <p className="text-sm text-gray-500 mb-2">
+                                Upload at least 1 supporting business document.
+                            </p>
+                            <Select
+                                onChange={(e) => {
+                                    setDocuments(e);
+                                    setErrorDoc("");
+                                }}
+                                options={documentOptions}
+                                value={documents}
+                                placeholder="Select document type"
+                                isClearable
+                            />
+                            {documents && (
+                                <div className="mt-4">
+                                    <div className="flex gap-3 justify-center">
                                         {exampleDocument?.map((doc, index) => (
                                             <img
                                                 key={index}
                                                 src={doc}
                                                 alt={`Example ${index + 1}`}
-                                                className="w-[35rem] rounded  object-cover"
+                                                className="w-72 rounded-lg border"
                                             />
                                         ))}
                                     </div>
+                                    <UploadWidget className="w-80 mt-4" type="doc" setDoc={setUploadDocs} setError={setErrorDoc} />
                                 </div>
-                                <UploadWidget className={'w-80 mt-5'} type={'doc'} setDoc={setUploadDocs} setError={setErrorDoc} />
-                            </div>
-                        )}
-                        {errorDoc && (
-                            <span className="block mt-2 text-red-500 text-sm">{errorDoc}</span>
+                            )}
+                            {errorDoc && (
+                                <p className="mt-2 text-sm bg-red-100 border border-red-400 text-red-600 rounded px-3 py-1">
+                                    {errorDoc}
+                                </p>
+                            )}
+                        </div>
 
-                        )}
-                    </div>
+                        {/* Checkbox */}
+                        <VerificationCheckbox checked={agree} onChange={(e) => setAgree(e.target.checked)} />
 
-                    {/* verification */}
-                    <VerificationCheckbox checked={agree} onChange={(e) => setAgree(e.target.checked)} />
+                        {/* Buttons */}
+                        <div className="flex justify-center gap-4 pt-4">
+                            <a
+                                href="/dashboard"
+                                className="px-6 py-2 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition"
+                            >
+                                Cancel
+                            </a>
+                            <button
+                                disabled={isSubmitting}
+                                className={`px-6 py-2 rounded-lg flex items-center gap-2 transition 
+          ${isSubmitting ? "bg-blue-300 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 text-white"}`}
+                            >
+                                {isSubmitting ? (
+                                    <div className="h-5 w-5 border-2 border-t-white border-blue-200 rounded-full animate-spin" />
+                                ) : (
+                                    <>
+                                        <IdCard size={18} /> Submit
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </form>
+                </div>
 
-                    {/* cancel/submit */}
-                    <div className="flex space-x-3 mt-7 justify-center text-white">
-                        <Link to={'/dashboard'} className="transition-all duration-75 bg-blue-600 px-7 py-2 rounded-xl hover:bg-blue-700">Cancel</Link>
-                        <button disabled={isLoading} className={`${isLoading ? 'bg-blue-300' : 'bg-blue-600 hover:bg-blue-700'} transition-all duration-75 px-7 py-2 rounded-xl flex space-x-3`}>
-
-                            <span>{isLoading ? <div className="px-7">
-                                <div className="h-6 w-6 rounded-full border-t-2 border-blue-600 animate-spin"></div>
-                            </div> : <div className="flex items-center gap-2"><IdCard strokeWidth={2} /> Submit</div>}</span>
-                        </button>
-                    </div>\
-                </form >
-            </div >
+            )}
         </>
     )
 }

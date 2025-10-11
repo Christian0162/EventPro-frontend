@@ -1,8 +1,10 @@
 import { Button, Dialog, DialogPanel } from '@headlessui/react'
-import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore'
+import { collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore'
 import { Bot, X, Search } from "lucide-react"
 import { useState } from 'react'
 import { db } from '../firebase/firebase'
+import { useFetchReviews } from '../hooks/useReviews'
+import nlp from 'compromise';
 
 export default function AIModal({ ai_response, ai_shops }) {
     const [isOpen, setIsOpen] = useState(false)
@@ -10,18 +12,21 @@ export default function AIModal({ ai_response, ai_shops }) {
     const [recommendations, setRecommendations] = useState('')
     const [error, setError] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const { reviews } = useFetchReviews()
 
     function open() {
         setIsOpen(true)
     }
 
     function close() {
+        setError('')
         setIsOpen(false)
     }
 
     const handleAiSearch = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
+        ai_response('')
         setError('');
 
         if (!prompt.trim()) {
@@ -34,32 +39,29 @@ export default function AIModal({ ai_response, ai_shops }) {
             // Get all shops (no category filter)
             const q = query(collection(db, "shops"));
             const snapShop = await getDocs(q);
-            const shops = snapShop.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-            ai_shops([]);
-            ai_response('');
 
             const shopData = await Promise.all(snapShop.docs.map(async (doc) => {
                 const data = doc.data();
                 const shopId = doc.id;
 
-                const reviewSnapshot = await getDocs(collection(db, "shops", shopId, "reviews"));
-
+                const userReviews = reviews.filter(rev => rev.reviewed_id === shopId)
                 let sum = 0;
-                reviewSnapshot.forEach((rev) => {
-                    sum += parseFloat(rev.data().rating || 0);
+                userReviews.forEach((rev) => {
+                    sum += parseFloat(rev.rating || 0);
                 });
 
-                const avgRating = reviewSnapshot.size > 0 ?
-                    (sum / reviewSnapshot.size).toFixed(1) : 0;
+                const avgRating = userReviews.length > 0 ?
+                    (sum / userReviews.length).toFixed(1) : 0;
 
                 const latestReviewQuery = query(
-                    collection(db, "shops", shopId, "reviews"),
+                    collection(db, "reviews"),
                     orderBy("createdAt", "desc"),
+                    where("reviewed_id", "==", shopId),
                     limit(1)
                 );
 
                 const latestReviewSnapshot = await getDocs(latestReviewQuery);
+
                 let latestReviewText = '';
 
                 if (!latestReviewSnapshot.empty) {
@@ -85,29 +87,59 @@ export default function AIModal({ ai_response, ai_shops }) {
 
             // Filter shops based on prompt keywords
             const promptLower = prompt.toLowerCase();
-            const filteredShops = shopData.filter(shop => {
-                // Check if prompt mentions rating
-                const ratingMatch = promptLower.includes('rating') ||
-                    promptLower.includes('5') ||
-                    promptLower.includes('five');
 
-                // Check if shop matches any keywords in prompt
+            // Extract rating threshold from prompt
+            const doc = nlp(promptLower);
+            const ratingMatch = doc.numbers().out('array');
+            let ratingThreshold = null;
+            let shouldFilterByRating = false;
+
+            console.log()
+
+            console.log(ratingMatch)
+
+            if (ratingMatch) {
+                ratingThreshold = parseFloat(ratingMatch[1]);
+                shouldFilterByRating = true;
+            }
+
+            const filteredShops = shopData.filter(shop => {
+                // If rating threshold is specified, filter by rating
+                if (shouldFilterByRating && ratingThreshold !== null) {
+                    if (promptLower.includes('below') || promptLower.includes('less') || promptLower.includes('under')) {
+                        // Show shops with rating <= threshold
+                        if (shop.avg_rating > ratingThreshold) {
+                            return true;
+                        }
+
+                    } else if (promptLower.includes('above') || promptLower.includes('more') || promptLower.includes('over')) {
+                        // Show shops with rating >= threshold
+                        if (shop.avg_rating < ratingThreshold) {
+                            return true;
+                        }
+                    } else {
+                        // Default: show shops with exact rating or higher
+                        if (shop.avg_rating < ratingThreshold) {
+                            return false;
+                        }
+                    }
+                }
+
+                // Check if shop matches any other keywords in prompt (excluding rating terms)
                 const keywordMatch =
                     shop.supplier_name.toLowerCase().includes(promptLower) ||
-                    shop.supplier_type.value.toLowerCase().includes(promptLower) ||
-                    shop.supplier_expertise.some(expertise =>
+                    shop.supplier_type?.value?.toLowerCase().includes(promptLower) ||
+                    (shop.supplier_expertise || []).some(expertise =>
                         expertise.toLowerCase().includes(promptLower)
                     ) ||
-                    promptLower.includes(shop.category.toLowerCase()) ||
-                    shop.expertise.some(expertise =>
+                    (shop.category || '').toLowerCase().includes(promptLower) ||
+                    (shop.expertise || []).some(expertise =>
                         promptLower.includes(expertise.toLowerCase())
                     );
 
-                // Apply rating filter if mentioned
-                if (ratingMatch) {
-                    return shop.avg_rating >= 5 && keywordMatch;
-                }
-                return keywordMatch;
+                // If rating filter is active, return all shops that pass the rating filter
+                // Otherwise, use keyword matching
+                return shouldFilterByRating ? true : keywordMatch;
             });
 
             if (filteredShops.length === 0) {
@@ -116,11 +148,11 @@ export default function AIModal({ ai_response, ai_shops }) {
                 return;
             }
 
-            // Sort shops by rating in ascending order
+            // Sort shops by rating in descending order (highest first)
             const sortedShops = [...filteredShops].sort((a, b) => b.avg_rating - a.avg_rating);
 
             // Send data to AI recommendation endpoint
-            const response = await fetch("https://eventpro-backend.onrender.com/recommend", {
+            const response = await fetch("http://localhost:8000/api/v1/recommend", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -131,20 +163,22 @@ export default function AIModal({ ai_response, ai_shops }) {
 
             const data = await response.json();
 
-            // Update state with results
-            setRecommendations(data.recommendations);
-            ai_response(data.recommendations);
+            if (data) {
+                // Update state with results
+                setRecommendations(data.recommendations);
+                ai_response(data.recommendations);
 
-            // Map back to full shop objects for display
-            const recommendedShops = sortedShops.filter(shop =>
-                data.recommendations.includes(shop.name)
-            );
-            ai_shops(recommendedShops);
+                // Map back to full shop objects for display
+                const recommendedShops = sortedShops.filter(shop =>
+                    data.recommendations.includes(shop.name)
+                );
+                ai_shops(recommendedShops);
+            }
 
             setIsSubmitting(false);
             close();
         }
-         catch (error) {
+        catch (error) {
             console.error("Error during AI search:", error);
             setError("An error occurred while processing your request.");
             setIsSubmitting(false);

@@ -1,12 +1,16 @@
 import { Button, Dialog, DialogPanel, } from '@headlessui/react'
 import { updateDoc, doc } from 'firebase/firestore'
-import { Edit3, X, UserPen, Store, MapPin, Container, MessageSquareWarning, SquarePen, PackagePlus, PhilippinePeso } from 'lucide-react'
+import { Edit3, X, UserPen, Store, MapPin, Container, MessageSquareWarning, SquarePen, PackagePlus, PhilippinePeso, Pencil } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { auth, db } from '../firebase/firebase'
 import Select from 'react-select'
 import { SupplierOptions, planTypeOptions, paymentNoticeOptions } from '../constants/categories'
 import AddressAutocomplete from './AddressAutoComplete'
+import { supplierTypeToExpertise } from '../constants/categories'
 import Swal from 'sweetalert2'
+import { useFetchSupplierServices } from '../hooks/useSupplier'
+import UploadWidget from './UploadWidgen'
+import LoadingOverlay from './LoadingOverlay'
 
 export const AboutOurBusiessEdit = ({ supplierData }) => {
     const [isOpen, setIsOpen] = useState(false)
@@ -16,12 +20,14 @@ export const AboutOurBusiessEdit = ({ supplierData }) => {
     const [supplier_description, setSupplier_description] = useState('')
     const [removedExpertise, setRemovedExpertise] = useState([])
 
+    const supplierType = supplierData?.supplier_type?.value
+
     useEffect(() => {
         setExpertise(supplierData?.supplier_expertise)
-        setSupplier_description(supplierData.supplier_description)
+        setSupplier_description(supplierData?.supplier_description)
     }, [supplierData])
 
-
+    console.log(supplierTypeToExpertise[supplierType])
 
     const handleExpertiseChange = (option) => {
         setExpertise(prev => {
@@ -32,19 +38,6 @@ export const AboutOurBusiessEdit = ({ supplierData }) => {
                 return prev.filter(prev => prev !== option)
             }
             else {
-                return [...prev, option]
-            }
-        })
-    }
-
-    const handleExpertiseRemoved = (option) => {
-        setExpertise(prev => {
-            if (prev.includes(option)) {
-                return prev.filter(prev => prev !== option)
-            }
-            else {
-                setRemovedExpertise(removed => removed.filter(rev => rev !== option))
-
                 return [...prev, option]
             }
         })
@@ -94,7 +87,7 @@ export const AboutOurBusiessEdit = ({ supplierData }) => {
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
                             transition
-                            className="w-full max-w-3xl rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                            className="w-full max-w-3xl rounded-2xl bg-white shadow-2xl mt-18 duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
                         >
                             <div className='relative px-10 py-5 bg-gray-100 rounded-t-xl'>
                                 <button
@@ -141,34 +134,35 @@ export const AboutOurBusiessEdit = ({ supplierData }) => {
                                             {expertise?.length > 0 && (
                                                 <>
                                                     {expertise.map((supplier, index) => (
-                                                        <button type='button' onClick={() => handleExpertiseChange(supplier)} className={`group px-4 py-1 rounded-full bg-green-500 flex items-center text-white hover:bg-red-500 transition-all duration-200 `} key={index}>
+                                                        <button type='button' onClick={() => handleExpertiseChange(supplier)} className={`group px-4 py-1 rounded-full bg-blue-500 flex items-center text-white hover:bg-red-500 transition-all duration-200 `} key={index}>
                                                             {supplier} <span className='ml-2 transition-all duration-200 group-hover:opacity-100 opacity-0 font-bold flex'> - </span>
                                                         </button>
                                                     ))}
                                                 </>
                                             )}
+
+
                                         </div>
+
                                         {expertise?.length === 0 && (
                                             <div className='flex justify-center items-center'>
                                                 <span className='text-gray-600 block text-center'>No expertise</span>
                                             </div>
                                         )}
+
+                                        <span className='block text-gray-800 font-bold mt-3 text-sm'>Available Expertise</span>
+                                        <div className='grid grid-cols-3 gap-2'>
+                                            <>
+                                                {supplierTypeToExpertise[supplierType]?.map((supplier, index) => (
+                                                    <button type='button' onClick={() => handleExpertiseChange(supplier)} className={`group px-4 py-1 rounded-full border flex items-center text-black hover:bg-blue-500 hover:text-white transition-all duration-200 `} key={index}>
+                                                        {supplier} <span className='ml-2 transition-all duration-200 group-hover:opacity-100 opacity-0 font-bold flex'> + </span>
+                                                    </button>
+                                                ))}
+                                            </>
+                                        </div>
                                     </div>
 
-                                    {removedExpertise.length > 0 && (
-                                        <div className='flex flex-col gap-3'>
-                                            <span className='block text-gray-800 font-bold mt-3 text-sm'>Removed</span>
-                                            <div className='flex gap-2'>
-                                                <>
-                                                    {removedExpertise.map((supplier, index) => (
-                                                        <button type='button' onClick={() => handleExpertiseRemoved(supplier)} className={`group px-4 py-1 rounded-full bg-yellow-500 flex items-center text-white hover:bg-green-500 transition-all duration-200 `} key={index}>
-                                                            {supplier} <span className='ml-2 transition-all duration-200 group-hover:opacity-100 opacity-0 font-bold flex'> + </span>
-                                                        </button>
-                                                    ))}
-                                                </>
-                                            </div>
-                                        </div>
-                                    )}
+
 
                                     <button
                                         disabled={isSubmitting}
@@ -247,7 +241,7 @@ export const SupplierDetails = ({ supplierData }) => {
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
                             transition
-                            className="w-full max-w-3xl rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                            className="w-full max-w-3xl mt-15 rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
                         >
                             <div className='relative px-10 py-5 bg-gray-100 rounded-t-xl'>
                                 <button
@@ -321,50 +315,61 @@ export const ServiceEdit = ({ supplierData, service_id, services }) => {
     const [allInclusions, setAllInclusions] = useState([])
     const [price, setPrice] = useState('')
     const [payment_notice, setPayment_notice] = useState(null)
-    const [error, setError] = useState('')
+    const [errors, setErrors] = useState({
+        price: '',
+        inclusions: '',
+    });
+    const { services: service } = useFetchSupplierServices()
 
     useEffect(() => {
         setService_plan(services.service_plan)
         setPrice(services.service_price)
         setPayment_notice(services.service_payment_notice)
         setAllInclusions(services.service_inclusions)
-    }, [services])
+    }, [services, supplierData])
 
     function open() {
         setIsOpen(true)
     }
     function close() {
         setIsOpen(false)
+        setService_plan("")
     }
+
+    const supplierService = service.filter(s => s.supplier_id === supplierData.id)
+
+    // Filter out options that already exist
+    const existingPlans = supplierService
+        ? Object.values(supplierService).map(service => service.service_plan.value.toLowerCase())
+        : []
+
+        console.log(supplierService)
+
+    const filteredPlanOptions = planTypeOptions.filter(
+        option => !existingPlans.includes(option.value.toLowerCase())
+    )
 
     const handleInclusions = (inclusions) => {
-        try {
-            setAllInclusions(prev => {
-                if (prev.includes(inclusions)) {
-                    setError('The item is already in the list.')
-                    return prev
-                }
+        const trimmed = inclusions.trim();
+        if (!trimmed) return;
 
-                else {
-                    setError('')
-                    return [...prev, inclusions]
-                }
-            })
-        }
-        catch (e) {
-            console.error(e)
-        }
-        finally {
-            setInclusions('')
-        }
+        setAllInclusions(prev => {
+            if (prev.includes(trimmed)) {
+                setErrors(prev => ({ ...prev, inclusions: 'The item is already in the list.' }));
+                return prev;
+            } else {
+                setErrors(prev => ({ ...prev, inclusions: '' }));
+                return [...prev, trimmed];
+            }
+        });
+    };
 
-    }
 
     const removeInclusion = (inclusion) => {
         try {
             setAllInclusions(prev => {
                 if (prev.includes(inclusion)) {
-                    setError('')
+                    setErrors(prev => ({ ...prev, inclusions: '' }));
                     return prev.filter(remove => remove !== inclusion)
                 }
                 else {
@@ -379,32 +384,56 @@ export const ServiceEdit = ({ supplierData, service_id, services }) => {
     }
 
     const handleService = async (e) => {
-        e.preventDefault()
+        e.preventDefault();
+        setIsSubmitting(true);
 
-        setIsSubmitting(true)
+        // Reset all errors first
+        setErrors({
+            price: '',
+            inclusions: '',
+        });
 
         try {
-            await updateDoc(doc(db, "shops", auth.currentUser.uid, "services", service_id), {
+            let valid = true;
+            const newErrors = {};
+
+            // Inclusion validation
+            if (allInclusions.length === 0) {
+                newErrors.inclusions = 'Please add at least one inclusion.';
+                valid = false;
+            }
+
+            // Price validation
+            const numericPrice = parseFloat(price);
+            if (isNaN(numericPrice) || numericPrice <= 0) {
+                newErrors.price = 'Please enter a valid price greater than 0.';
+                valid = false;
+            }
+
+            // Stop if invalid
+            if (!valid) {
+                setErrors(prev => ({ ...prev, ...newErrors }));
+                setIsSubmitting(false);
+                return;
+            }
+
+            await updateDoc(doc(db, "services", service_id), {
                 service_plan: service_plan,
-                service_price: price,
+                service_price: numericPrice,
                 service_inclusions: allInclusions,
-                service_payment_notice: payment_notice
-            })
+                service_payment_notice: payment_notice,
+            });
 
-            Swal.fire('Success!', 'Your service has been added successfully.', 'success')
-
-            close()
+            Swal.fire('Success!', 'Your service has been updated successfully.', 'success');
+            close();
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsSubmitting(false);
         }
+    };
 
-        catch (e) {
-            console.error(e)
-        }
-        finally {
-            setIsSubmitting(false)
-        }
-    }
-
-    console.log(inclusions)
+    console.log(service_plan)
 
     return (
         <>
@@ -423,7 +452,7 @@ export const ServiceEdit = ({ supplierData, service_id, services }) => {
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
                             transition
-                            className="w-full max-w-3xl rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                            className="w-full max-w-3xl mt-17 rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
                         >
                             <div className='relative px-10 py-7 bg-gray-100 rounded-t-xl'>
                                 <button
@@ -449,7 +478,7 @@ export const ServiceEdit = ({ supplierData, service_id, services }) => {
                                                 <SquarePen size={20} className='text-blue-600' />
                                                 <label htmlFor="" className='text-gray-700 font-bold'>Service Plan Type</label>
                                             </div>
-                                            <Select onChange={setService_plan} value={service_plan} options={planTypeOptions} placeholder="e.g Basic Plan" required />
+                                            <Select onChange={setService_plan} value={service_plan} options={filteredPlanOptions} placeholder="e.g Basic Plan" required />
                                         </div>
 
                                         <div className='flex flex-col gap-2'>
@@ -458,6 +487,9 @@ export const ServiceEdit = ({ supplierData, service_id, services }) => {
                                                 <label htmlFor="" className='text-gray-700 font-bold'>Price</label>
                                             </div>
                                             <input type="text" value={price} className='px-4 py-2 rounded-md focus:outline-none border border-gray-400' onChange={(e) => setPrice(e.target.value)} required placeholder='e.g ₱5000' />
+                                            {errors.price && <span className="text-sm text-red-500">{errors.price}</span>}
+
+
                                         </div>
 
                                         <div className='flex flex-col gap-2'>
@@ -469,19 +501,29 @@ export const ServiceEdit = ({ supplierData, service_id, services }) => {
                                                 <input value={inclusions} type="text" className='w-full px-4 py-2 rounded-md focus:outline-none border border-gray-400' onChange={(e) => setInclusions(e.target.value)} placeholder='e.g One Free Tiramisu' />
                                                 <button onClick={() => handleInclusions(inclusions)} className='w-1/3 bg-blue-600 hover:bg-blue-700 transition-all duration-200 rounded-md text-white' type='button'>Add</button>
                                             </div>
-                                            {error && (
-                                                <span className='text-sm text-red-500'>{error}</span>
-                                            )}
+                                            {errors.inclusions && <span className="text-sm text-red-500">{errors.inclusions}</span>}
+
 
                                             {allInclusions?.length > 0 && (
                                                 <>
-                                                    <span className='text-sm font-bold text-gray-600 mt-3'>Added inclusions</span>
-                                                    <div className='flex gap-2'>
+                                                    <span className="text-sm font-semibold text-gray-600 mt-2">
+                                                        Added inclusions
+                                                    </span>
+                                                    <div className="flex flex-wrap gap-2">
                                                         {allInclusions.map((inclusion, index) => (
-                                                            <button onClick={() => removeInclusion(inclusion)} type='button' className='px-5 flex text-white py-1 rounded-full bg-blue-600 hover:bg-red-500 transition-all duration-200 group' key={index}>
+                                                            <span
+                                                                key={index}
+                                                                className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-blue-100 text-blue-700 font-medium text-sm"
+                                                            >
                                                                 {inclusion}
-                                                                <span className='ml-3 block font-bold opacity-0 group-hover:opacity-100 transition-all duration-200'>-</span>
-                                                            </button>
+                                                                <button
+                                                                    onClick={() => removeInclusion(inclusion)}
+                                                                    type="button"
+                                                                    className="text-blue-600 hover:text-red-500 transition"
+                                                                >
+                                                                    ×
+                                                                </button>
+                                                            </span>
                                                         ))}
                                                     </div>
                                                 </>
@@ -512,3 +554,172 @@ export const ServiceEdit = ({ supplierData, service_id, services }) => {
         </>
     )
 }
+
+export const UpdateProfile = ({ userData }) => {
+    const [isOpen, setIsOpen] = useState(false)
+    const [isProfileLoading, setIsProfileLoading] = useState(false)
+    const [profile, setProfile] = useState('')
+
+    function open() {
+        setIsOpen(true)
+    }
+
+    function close() {
+        setIsOpen(false)
+    }
+
+    const handleSubmit = async () => {
+        setIsProfileLoading(true)
+        try {
+            await updateDoc(doc(db, "userProfiles", userData.id), {
+                profile_pic: profile
+            })
+        }
+        catch (e) {
+            console.error(e)
+        }
+        finally {
+            setIsProfileLoading(false)
+            close()
+            setProfile('')
+        }
+    }
+
+    return (
+        <>
+            <Button onClick={open} className={'transition-all absolute hover:ring-2 hover:ring-blue-600 -bottom-2 -right-2 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center'}>
+
+                <Pencil className="w-4 h-4 text-gray-800" />
+            </Button>
+
+            <Dialog open={isOpen} as='div' className={'z-50 relative focus:outline-none'} onClose={close}>
+                <div className="fixed inset-0 bg-black/25 " />
+                <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
+                    <div className="flex min-h-full items-center justify-center p-4">
+                        <DialogPanel
+                            transition
+                            className="w-full max-w-xl mt-18 rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                        >
+                            <div className='relative px-8 py-4 bg-gray-100 rounded-t-xl'>
+                                <button
+                                    onClick={close}
+                                    className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/80 hover:bg-white transition-colors duration-200"
+                                >
+                                    <X size={20} className="text-gray-600" />
+                                </button>
+
+                                <div className="flex items-center gap-3 mb-2">
+                                    <h2 className="text-xl font-bold text-blue-600">
+                                        Update Profile
+                                    </h2>
+                                </div>
+                            </div>
+
+                            <div className='p-8'>
+                                <UploadWidget className={'py-2'} setPicture={setProfile} />
+                                <div className="flex justify-end mt-6">
+                                    <button
+                                        onClick={() => handleSubmit()}
+                                        disabled={!profile}
+                                        className={`transition-all duration-75 px-4 h-10 rounded-md text-white ${profile ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-300'
+                                            }`}
+                                    >
+                                        Submit
+                                    </button>
+                                </div>
+                                {isProfileLoading && (
+                                    <LoadingOverlay isLoading={isProfileLoading} message="Processing.." />
+                                )}
+                            </div>
+                        </DialogPanel>
+                    </div>
+                </div >
+            </Dialog >
+        </>
+    )
+}
+
+export const UpdateEventBackground = ({ id, className }) => {
+    const [isOpen, setIsOpen] = useState(false)
+    const [isBackgroundProcessing, setIsBackgroundProcessing] = useState(false)
+    const [background, setBackground] = useState('')
+
+    function open() {
+        setIsOpen(true)
+    }
+
+    function close() {
+        setIsOpen(false)
+    }
+
+    const handleSubmit = async () => {
+        setIsBackgroundProcessing(true)
+        try {
+            await updateDoc(doc(db, "events", id), {
+                event_background: background
+            })
+        }
+        catch (e) {
+            console.error(e)
+        }
+        finally {
+            setIsBackgroundProcessing(false)
+            close()
+            setBackground('')
+        }
+    }
+
+    return (
+        <>
+            <Button onClick={open} className={`${className} transition-all text-sm gap-1 text-white hover:ring-2 hover:ring-blue-600 px-3 py-2 bg-blue-600 rounded-lg shadow-lg flex items-center justify-center`}>
+                Edit
+                <Pencil className="w-4 h-4 text-white" />
+            </Button>
+
+            <Dialog open={isOpen} as='div' className={'z-50 relative focus:outline-none'} onClose={close}>
+                <div className="fixed inset-0 bg-black/25 " />
+                <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
+                    <div className="flex min-h-full items-center justify-center p-4">
+                        <DialogPanel
+                            transition
+                            className="w-full max-w-xl mt-18 rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                        >
+                            <div className='relative px-8 py-4 bg-gray-100 rounded-t-xl'>
+                                <button
+                                    onClick={close}
+                                    className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/80 hover:bg-white transition-colors duration-200"
+                                >
+                                    <X size={20} className="text-gray-600" />
+                                </button>
+
+                                <div className="flex items-center gap-3 mb-2">
+                                    <h2 className="text-xl font-bold text-blue-600">
+                                        Update Background
+                                    </h2>
+                                </div>
+                            </div>
+
+                            <div className='p-8'>
+                                <UploadWidget className={'py-2'} setPicture={setBackground} />
+                                <div className="flex justify-end mt-6">
+                                    <button
+                                        onClick={() => handleSubmit()}
+                                        disabled={!background}
+                                        className={`transition-all duration-75 px-4 h-10 rounded-md text-white ${background ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-300'
+                                            }`}
+                                    >
+                                        Submit
+                                    </button>
+                                </div>
+                                {isBackgroundProcessing && (
+                                    <LoadingOverlay isLoading={isBackgroundProcessing} message="Processing.." />
+                                )}
+                            </div>
+                        </DialogPanel>
+                    </div>
+                </div >
+            </Dialog >
+        </>
+    )
+}
+

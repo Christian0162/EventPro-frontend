@@ -106,7 +106,7 @@ export default function NavBar({ user, userData }) {
                             }><MessageCircleMore size={20} /></NavLink>
 
 
-                            <UserNotifications />
+                            <UserNotifications userData={userData} />
 
 
                             <div className="flex items-center gap-5 ml-3">

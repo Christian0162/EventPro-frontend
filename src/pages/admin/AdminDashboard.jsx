@@ -1,141 +1,264 @@
-import { useState, useEffect } from "react"
-import { collection, onSnapshot } from "firebase/firestore";
-import { db } from "../../firebase/firebase";
+import { useMemo } from "react"
 import { Title } from "react-head";
-import DashboardCard from "../../components/DashboardCards";
-import { Users, IdCard, CalendarPlus } from "lucide-react";
-import { Link } from "react-router-dom";
-import { Tab, TabList, TabPanels, TabPanel, TabGroup } from "@headlessui/react";
+import { Users, IdCard, Calendar, BarChart3, ChartNoAxesCombined, TrendingUp, AlertTriangle, ReceiptText, PhilippinePeso, Package, BanknoteArrowUp, ShieldAlert } from "lucide-react";
+import { Tab, TabList, TabPanels, TabGroup, TabPanel } from "@headlessui/react";
+import { PieChart, BarChart, LineChart } from "../../components/Charts";
+import PageLoading from "../../components/PageLoading";
+import { useFetchAllVerification } from "../../hooks/useVerification";
+import { useFetchUsers } from "../../hooks/useUsers";
+import { useFetchSuppliers } from "../../hooks/useSupplier";
+import { useFetchEvents } from "../../hooks/useEvents";
+import { useFetchAllTransaction } from "../../hooks/useTransaction";
+import { useFetchContract } from "../../hooks/useContract";
+import GenerateReport from "../../components/GeneraeReport";
 
-export default function AdminDashboard() {
+export default function AdminDashboard({ userData }) {
+    const { verifications, isLoading: isVerificationLoading } = useFetchAllVerification()
+    const { users, isLoading: isUsersLoading } = useFetchUsers()
+    const { suppliers } = useFetchSuppliers()
+    const { events } = useFetchEvents()
+    const { transactions } = useFetchAllTransaction()
+    const { contracts } = useFetchContract()
 
-    const [isLoading, setIsLoading] = useState(false);
-    const [data, setData] = useState([])
+    const allLoading = isUsersLoading || isVerificationLoading
 
-    useEffect(() => {
-        setIsLoading(true)
-        const unsubscribe = onSnapshot(collection(db, "verification"), (onsnapshot) => {
-            const verified = onsnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-            const filteredVerified = verified.filter(verifed => verifed.status === 'pending')
+    const pendingPlanner = users.filter(user => user.role === "Event Planner" && user.verification_status === "pending")
+    const pendingSupplier = users.filter(user => user.role === "Supplier" && user.verification_status === "pending")
 
-            setData(filteredVerified)
-            setIsLoading(false)
-        })
+    const supplierVerification = verifications.filter(v => pendingSupplier.some(sup => v.id === sup.id))
+    const eventVerification = verifications.filter(v => pendingPlanner.some(sup => v.id === sup.id))
 
-        return () => unsubscribe()
-    }, [])
+    const totalUsers = users.length
+    const totalEarnings = transactions.reduce((sum, t) => sum + (Number(t.platform_fee) || 0), 0);
+    const activeEvents = useMemo(() => events.filter(e => e.status !== "completed").length, [events]);
+    const totalSuppliers = suppliers.length;
+    const verifiedUsers = users.filter(s => s.verification_status === "verified").length;
+    const pendingRequests = supplierVerification.length + eventVerification.length;
+    const totalContracts = contracts.length;
+    const topEarningSupplier = useMemo(() => {
+        if (!transactions.length) return "N/A";
+        const supplierEarnings = {};
+        transactions.forEach(t => {
+            supplierEarnings[t.supplier_id] = (supplierEarnings[t.supplier_id] || 0) + t.amount;
+        });
+        const topSupplierId = Object.keys(supplierEarnings).reduce((a, b) => supplierEarnings[a] > supplierEarnings[b] ? a : b);
+        const topSupplier = suppliers.find(s => s.id === topSupplierId);
+        return topSupplier ? topSupplier.name : "N/A";
+    }, [transactions, suppliers]);
 
-    console.log(data)
+    const userCountsPerMonth = Array(12).fill(null).map((_, month) =>
+        users.filter(u => {
+            const date = u.createdAt?.toDate ? u.createdAt.toDate() : null;
+            return date && date.getMonth() === month;
+        }).length
+    );
+
+    const AppliedColor = (status) => ({
+        approved: 'bg-green-100',
+        pending: 'bg-yellow-100',
+        reject: 'bg-red-100',
+    }[status]);
+
+    // Example Pie chart data (you can replace with actual logic)
+    const pieChartData = useMemo(() => ({
+        labels: ["Catering", "Venue", "Photography", "Others"],
+        dataValues: [45, 30, 15, 10],
+        backgroundColors: ["#60a5fa", "#a78bfa", "#f97316", "#34d399"],
+        borderColors: ["#60a5fa", "#a78bfa", "#f97316", "#34d399"]
+    }), []);
+
+    const fields = [
+        { label: "Total Platform Earnings", value: `PHP ${totalEarnings.toLocaleString()}` },
+        { label: "Active Events", value: activeEvents },
+        { label: "Total Suppliers", value: totalSuppliers },
+        { label: "Verified Users", value: verifiedUsers },
+        { label: "Pending Requests", value: pendingRequests },
+        { label: "Total Contracts", value: totalContracts },
+        { label: "Top Earning Supplier", value: topEarningSupplier },
+        { label: "Total Users", value: totalUsers },
+    ];
+
+    const sections = useMemo(() => [
+        {
+            title: "Supplier Verification Summary",
+            head: ["Category", "Pending", "Verified"],
+            body: [
+                ["Suppliers", supplierVerification.length, suppliers.filter(s => s.verification_status === "verified").length],
+                ["Planners", eventVerification.length, users.filter(u => u.role === "Event Planner" && u.verification_status === "verified").length],
+            ],
+        },
+        {
+            title: "Contract Overview",
+            head: ["Status", "Count"],
+            body: Object.entries(
+                contracts.reduce((acc, c) => {
+                    acc[c.status] = (acc[c.status] || 0) + 1;
+                    return acc;
+                }, {})
+            ),
+        },
+    ], [supplierVerification, eventVerification, suppliers, users, contracts]);
 
     return (
         <>
-            <Title>Admin - Dashboard</Title>
-            <div className="flex justify-between items-center flex-col lg:flex-row md:flex-row">
-                <div className="flex flex-col">
-                    <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Dashboard</h1>
-                </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
-                {/* Total Supplier*/}
-                <DashboardCard>
-                    <div className="flex flex-col space-y-1">
-                        <span className="block text-lg text-gray-800 font-bold">Revenue</span>
-                        <span className="block text-2xl text-gray-900 font-bold">24</span>
-                        <span className="block text-gray-600 text-sm">from last month</span>
-                    </div>
-                    <span className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-full py-1 px-1">{<Users width={50} height={50} className="p-3 text-white" />}</span>
-                </DashboardCard>
+            {allLoading && <PageLoading />}
 
-                {/* Verify Supplier */}
-                <DashboardCard>
-                    <div className="flex flex-col space-y-1">
-                        <span className="block text-lg text-gray-800 font-bold">Revenue</span>
-                        <span className="block text-2xl text-gray-900 font-bold">24</span>
-                        <span className="block text-gray-600 text-sm">from last month</span>
-                    </div>
-                    <span className="bg-gradient-to-r from-violet-500 to-violet-600 rounded-full py-1 px-1">{<IdCard width={50} height={50} className="p-3 text-white" />}</span>
-                </DashboardCard>
+            {!allLoading && (
+                <>
+                    <Title>Admin Dashboard</Title>
 
-                {/* Active Events*/}
-                <DashboardCard>
-                    <div className="flex flex-col space-y-1">
-                        <span className="block text-lg text-gray-800 font-bold">Revenue</span>
-                        <span className="block text-2xl text-gray-900 font-bold">24</span>
-                        <span className="block text-gray-600 text-sm">from last month</span>
-                    </div>
-                    <span className="bg-gradient-to-r from-green-500 to-green-600 rounded-full py-1 px-1">{<CalendarPlus width={50} height={50} className="p-3 text-white" />}</span>
-                </DashboardCard>
-            </div>
-
-            <TabGroup className={'mt-8'}>
-                <TabList className="flex gap-4 mb-3">
-                    <Tab
-                        className="rounded-full px-5 py-3 text-sm font-semibold text-gray-700 focus:outline-none data-selected:bg-white shadow-xl data-selected:text-gray-800 data-hover:bg-gray-100 transition-colors"
-                    >
-                        Applied Supplier
-                    </Tab>
-
-                </TabList>
-                <TabPanels className={'rounded-xl border border-gray-300 bg-white shadow-xl'}>
-                    <TabPanel className="p-5  px-7">
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full bg-white border border-gray-200 rounded overflow-hidden">
-                                <thead className="border-b border-gray-400">
-                                    <tr>
-                                        <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">User</th>
-                                        <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">Status</th>
-                                        <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr className="border-b border-gray-400">
-                                        <td className="py-5 px-4 text-gray-700">John Doe</td>
-                                        <td className="py-5 px-4 text-gray-700">john@example.com</td>
-                                        <td className="py-5 px-4 text-gray-700 flex gap-1">
-                                            <button className="transition-all duration-200 bg-blue-500 hover:bg-blue-600 px-4 py-1 rounded-full text-white text-sm">View</button>
-                                            <button className="transition-all duration-200 bg-red-500 hover:bg-red-600 px-4 py-1 rounded-full text-white text-sm">Cancel</button>
-                                        </td>
-                                    </tr>
-                                    
-                                </tbody>
-                            </table>
+                    {/* Header */}
+                    <div className="flex flex-col lg:flex-row justify-between items-baseline gap-4 mb-10">
+                        <div>
+                            <h1 className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-blue-600 to-violet-600 bg-clip-text text-transparent">
+                                Admin Dashboard
+                            </h1>
+                            <p className="text-gray-600 text-sm sm:text-base mt-1">
+                                Welcome back, <span className="font-semibold text-gray-800">{userData?.first_name}</span>
+                            </p>
                         </div>
-                    </TabPanel>
-                </TabPanels>
-            </TabGroup>
 
-            {/* admin tabs */}
-            {/* <div className="w-full border-1 mt-7 font-semibold border-black rounded-lg py-7 px-8">
-                <span className="block text-2xl">Verify Supplier Accounts</span>
-                <div className="flex flex-col mt-5 px-5 space-y-3">
-                    {!isLoading && data.map((datas, index) => (
-                        <div key={index}>
-                            <div className="flex justify-between items-center">
-                                <div className="flex items-center space-x-3">
-                                    <div className="text-white flex items-center justify-center rounded-full bg-gradient-to-r from-violet-600 via-100% via-blue-600 to-pink-600 h-10 w-10">
-                                        <span className="text-xl">{datas.first_name ? datas.first_name.charAt(0).toUpperCase() : datas?.supplier_name?.charAt(0).toUpperCase()}</span>
+                        {/* Generate Report Section */}
+                        <div className="flex justify-end">
+                            <GenerateReport
+                                title="EventPro Platform Summary Report"
+                                filename={`EventPro_Admin_Report_${new Date().toISOString().split("T")[0]}`}
+                                userData={userData}
+                                fields={fields}
+                                sections={sections}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Stats Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+                        {[
+                            { title: "Total Platform Earnings", value: `₱${(totalEarnings)}`, icon: PhilippinePeso, color: "from-violet-500 to-violet-600" },
+                            { title: "Active Events", value: activeEvents, icon: Calendar, color: "from-yellow-500 to-yellow-600" },
+                            { title: "Total Suppliers", value: totalSuppliers, icon: Package, color: "from-blue-500 to-blue-600" },
+                            { title: "Verified Users", value: verifiedUsers, icon: IdCard, color: "from-green-500 to-green-600" },
+                            { title: "Pending Requests", value: pendingRequests, icon: ShieldAlert, color: "from-red-500 to-red-600" },
+                            { title: "Total Contracts", value: totalContracts, icon: ReceiptText, color: "from-orange-500 to-orange-600" },
+                            { title: "Top Earning Supplier", value: topEarningSupplier, icon: BanknoteArrowUp, color: "from-pink-500 to-pink-600" },
+                            { title: "Total Users", value: totalUsers, icon: Users, color: "from-pink-500 to-pink-600" },
+                            // { title: "Reported Issues", value: reportedIssues.length, icon: AlertTriangle, color: "from-gray-500 to-gray-600" },
+                        ].map(({ title, value, icon: Icon, color }, i) => (
+                            <div key={i} className="relative bg-white rounded-2xl p-6 shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-100 group overflow-hidden">
+                                <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 bg-gradient-to-r ${color} transition-opacity duration-300`} />
+                                <div className="flex justify-between items-center relative z-10">
+                                    <div>
+                                        <p className="text-sm text-gray-500">{title}</p>
+                                        <p className="text-3xl font-bold text-gray-800 mt-1">{value}</p>
                                     </div>
-                                    <div className="flex gap-2">
-                                        <span>{datas.first_name ? datas.first_name : datas?.supplier_name}</span>
-                                        {datas.last_name && (
-                                            <span>{datas.last_name}</span>
-                                        )}
+                                    <div className={`w-12 h-12 flex items-center justify-center rounded-full bg-gradient-to-r ${color} shadow-md`}>
+                                        <Icon className="text-white w-6 h-6" />
                                     </div>
                                 </div>
-                                <Link to={`/review/${datas.id}`} className="px-6 py-1 bg-blue-600 rounded-lg text-white">Review</Link>
                             </div>
-                            {index !== data.length - 1 && (
-                                <hr className="border-t mt-3 border-gray-800" />
-                            )}
-                        </div>
-                    ))}
-                    {isLoading && (
-                        <span className="text-center">Loading..</span>
-                    )}
-                    <span className={` ${data.length > 0 || isLoading ? 'hidden' : 'block'} text-center text-gray-500`}>No Pending Request..</span>
+                        ))}
+                    </div>
 
-                </div>
-            </div> */}
+                    {/* Charts Section */}
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6 mb-8">
+                        {/* Pie Chart */}
+                        <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100">
+                            <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2"><BarChart3 /> Supplier Distribution</h3>
+                            <div className="flex justify-center">
+                                <div className="w-full max-w-[250px] mt-5">
+                                    <PieChart
+                                        className="w-full h-64"
+                                        labels={pieChartData.labels}
+                                        dataValues={pieChartData.dataValues}
+                                        backgroundColors={pieChartData.backgroundColors}
+                                        borderColors={pieChartData.borderColors}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-md hover:shadow-lg transition-all">
+                            <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2"><TrendingUp />Registered Users Overview</h3>
+                            <LineChart
+                                className="w-full h-64"
+                                dataPoints={userCountsPerMonth}
+                                labels={['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']}
+                                label="Registerd Users"
+                            />
+                        </div>
+
+                        {/* Bar Chart */}
+                        <div className="xl:col-span-2 bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100">
+                            <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2"><ChartNoAxesCombined /> Supplier Verification Comparison</h3>
+                            <div className="mt-4 sm:mt-6 overflow-x-auto">
+                                <div className="min-w-[300px]">
+                                    <BarChart
+                                        labels={["Suppliers", "Planners"]}
+                                        datasets={[
+                                            { label: "Pending", data: [supplierVerification.length, eventVerification.length], backgroundColor: "#facc15", borderRadius: 10 },
+                                        ]}
+                                        title="Pending Verifications"
+                                        xLabel="Roles"
+                                        yLabel="Count"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Tabs for Verification */}
+                    <TabGroup className="mt-5 bg-white border border-gray-200 rounded-2xl shadow-md p-3 transition-all">
+                        <TabList className="flex flex-wrap gap-2 sm:gap-3 mb-6">
+                            {["Suppliers Request", "Planners Request"].map((tab, i) => (
+                                <Tab
+                                    key={i}
+                                    className="rounded-full px-5 py-2 text-sm font-medium border border-gray-200 bg-white hover:bg-gray-100 data-[selected]:bg-gradient-to-r data-[selected]:from-blue-500 data-[selected]:to-blue-600 data-[selected]:text-white shadow-sm transition-all"
+                                >
+                                    {tab}
+                                </Tab>
+                            ))}
+                        </TabList>
+                        <TabPanels className="rounded-xl border border-gray-300 bg-white shadow-xl">
+                            <TabPanel className="p-3">
+                                {supplierVerification.length ? supplierVerification.map((v, i) => (
+                                    <div key={i} className={`flex flex-col sm:flex-row gap-2 justify-between ${AppliedColor("pending")} shadow-lg items-start sm:items-center p-3 sm:py-4 rounded-lg sm:px-5`}>
+                                        <div className="flex items-start sm:items-center space-x-3 flex-1">
+                                            <Calendar size={20} className="text-blue-600 bg-gray-200 rounded-full h-8 w-8 p-2 flex-shrink-0" />
+                                            <div className="flex flex-col min-w-0 flex-1">
+                                                <span className="font-medium text-gray-900">{v.supplier_name}</span>
+                                                <span className="text-gray-500 text-xs sm:text-sm">
+                                                    Requested: {v.createdAt?.toDate().toLocaleDateString()}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <a href={`/review/${v.id}`} className="px-6 py-1 bg-blue-600 rounded-lg text-white">Review</a>
+                                    </div>
+                                )) : (
+                                    <p className="text-center text-gray-500 py-10">No pending supplier verification.</p>
+                                )}
+                            </TabPanel>
+
+                            <TabPanel className="p-3">
+                                {eventVerification.length ? eventVerification.map((v, i) => (
+                                    <div key={i} className={`flex flex-col sm:flex-row gap-2 justify-between ${AppliedColor("pending")} shadow-lg items-start sm:items-center p-3 sm:py-4 rounded-lg sm:px-5`}>
+                                        <div className="flex items-start sm:items-center space-x-3 flex-1">
+                                            <Calendar size={20} className="text-blue-600 bg-gray-200 rounded-full h-8 w-8 p-2 flex-shrink-0" />
+                                            <div className="flex flex-col min-w-0 flex-1">
+                                                <span className="font-medium text-gray-900">{v.first_name} {v.last_name}</span>
+                                                <span className="text-gray-500 text-xs sm:text-sm">
+                                                    Requested: {v.createdAt?.toDate().toLocaleDateString()}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <a href={`/review/${v.id}`} className="px-6 py-1 bg-blue-600 rounded-lg text-white">Review</a>
+                                    </div>
+                                )) : (
+                                    <p className="text-center text-gray-500 py-10">No pending planner verification.</p>
+                                )}
+                            </TabPanel>
+                        </TabPanels>
+                    </TabGroup>
+                </>
+            )}
         </>
     )
 }

@@ -11,6 +11,8 @@ export const useFetchSuppliers = () => {
         try {
             const unsubscribe = onSnapshot(collection(db, "shops"), (onsnapshot) => {
                 setSuppliers(onsnapshot.docs.map(suppliers => ({ id: suppliers.id, ...suppliers.data() })))
+                setIsLoading(false)
+
             })
 
             return () => unsubscribe()
@@ -19,10 +21,6 @@ export const useFetchSuppliers = () => {
 
         catch (e) {
             console.error(e)
-            setIsLoading(false)
-        }
-
-        finally {
             setIsLoading(false)
         }
 
@@ -43,7 +41,7 @@ export const useFetchSupplierById = (supplier_id) => {
 
             const fetchSupplier = async () => {
                 const onSnapShotSupplier = await getDoc(doc(db, "shops", supplier_id))
-                setSupplier(onSnapShotSupplier.data())
+                setSupplier({ id: onSnapShotSupplier.id, ...onSnapShotSupplier.data() })
             }
 
             fetchSupplier()
@@ -64,36 +62,24 @@ export const useFetchSupplierById = (supplier_id) => {
 
 export const useFetchSupplierServices = () => {
     const [services, setServices] = useState([])
-    const [isLoading, setIsLoading] = useState(true)
-    const { suppliers } = useFetchSuppliers()
+    const [isLoading, setIsLoading] = useState(false)
 
     useEffect(() => {
-
-        const fetchServices = async () => {
-            try {
-
-                const serviceData = {}
-
-                await Promise.all(suppliers.map(async (suppliers) => {
-                    const serviceSnapShot = await getDocs(collection(db, "shops", suppliers.id, "services"))
-                    serviceData[suppliers.id] = serviceSnapShot.docs.map(service => ({ id: service.id, ...service.data() }))
-                }))
-
-                setServices(serviceData)
-            }
-
-            catch (e) {
-                console.error(e)
-            }
-
-            finally {
+        setIsLoading(true)
+        try {
+            const unsubscribe = onSnapshot(collection(db, "services"), (onsnapshot) => {
+                setServices(onsnapshot.docs.map(serv => ({ id: serv.id, ...serv.data() })))
                 setIsLoading(false)
-            }
-        }
+            })
 
-        fetchServices()
-    }, [suppliers])
+            return () => unsubscribe()
+        }
+        catch (e) {
+            console.error(e)
+        }
+    }, [])
 
     return { services, isLoading }
 }
+
 

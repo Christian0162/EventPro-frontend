@@ -1,18 +1,25 @@
 import { Button, Dialog, DialogPanel, } from '@headlessui/react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { X, Star, ThumbsUp, MessageSquare } from 'lucide-react'
 import { addDoc, updateDoc, collection, serverTimestamp, doc, query, where, deleteDoc, getDocs } from 'firebase/firestore'
 import { useNavigate } from 'react-router-dom'
 import { auth, db } from '../firebase/firebase'
 import Swal from 'sweetalert2'
+import LoadingOverlay from './LoadingOverlay'
 
-export const Review = ({ supplier_id, event_name }) => {
+export const Review = ({ reviewed_id, reviewer_name, eventData }) => {
     const [isOpen, setIsOpen] = useState(false)
     const [rating, setRating] = useState(0)
     const [hoverRating, setHoverRating] = useState(0)
     const [reviewText, setReviewText] = useState('')
     const [reviewerName, setReviewerName] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
+
+    useEffect(() => {
+        setReviewerName(reviewer_name)
+    }, [reviewer_name])
+
+    console.log(reviewer_name)
 
     function open() {
         setIsOpen(true)
@@ -24,7 +31,6 @@ export const Review = ({ supplier_id, event_name }) => {
         setRating(0)
         setHoverRating(0)
         setReviewText('')
-        setReviewerName('')
         setIsSubmitting(false)
     }
 
@@ -42,7 +48,6 @@ export const Review = ({ supplier_id, event_name }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault()
-        setIsSubmitting(true)
         Swal.fire({
             title: 'Are you sure',
             text: 'Do you want to submit this for review?',
@@ -53,22 +58,37 @@ export const Review = ({ supplier_id, event_name }) => {
         }).then(async (result) => {
             try {
                 if (result.isConfirmed) {
-                    await addDoc(collection(db, "shops", supplier_id, 'reviews'), {
-                        event_id: auth.currentUser.uid,
-                        event_name: event_name,
-                        supplier_id: supplier_id,
+                    setIsSubmitting(true)
+                    await addDoc(collection(db, 'reviews'), {
+                        user_id: auth.currentUser.uid,
+                        reviewer_name: reviewerName,
+                        reviewed_id: reviewed_id,
+                        event_id: eventData.id || eventData.event_id,
                         rating: rating,
                         comment: reviewText,
                         createdAt: serverTimestamp()
                     })
 
+                    await addDoc(collection(db, "notifications"), {
+                        avatar: reviewer_name.charAt(0).toUpperCase(),
+                        title: "New Review Received",
+                        message: `"${reviewer_name}" left a review for you — "${reviewText}"`,
+                        feedback: reviewText,
+                        createdAt: serverTimestamp(),
+                        referenced_id: reviewed_id,
+                        unread: true,
+                        user_id: reviewed_id
+                    });
+
                     Swal.fire('Success', 'Review has been submitted', 'success')
                     close()
-                    setIsSubmitting(false)
                 }
             }
             catch (e) {
-                console.log(e)
+                console.error(e)
+            }
+            finally {
+                setIsSubmitting(false)
             }
         })
     }
@@ -86,7 +106,7 @@ export const Review = ({ supplier_id, event_name }) => {
 
     return (
         <>
-            <Button onClick={open} className={'transition-all duration-100 hover:bg-blue-700 px-6 py-1 text-sm rounded-md bg-blue-600 text-white '}>Review</Button>
+            <Button onClick={open} className={'transition-all duration-100 hover:bg-blue-700 px-6 py-2 text-sm rounded-md bg-blue-600 text-white '}>Review</Button>
 
             <Dialog open={isOpen} as='div' className={'z-50 relative focus:outline-none'} onClose={close}>
                 <div className="fixed inset-0 bg-black/25 " />
@@ -96,6 +116,7 @@ export const Review = ({ supplier_id, event_name }) => {
                             transition
                             className="w-full max-w-xl mt-18 rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
                         >
+                            <LoadingOverlay isLoading={isSubmitting} message='Processing..' />
                             <div className='relative'>
                                 <button
                                     onClick={close}
@@ -108,9 +129,6 @@ export const Review = ({ supplier_id, event_name }) => {
                             <div className='p-8'>
                                 {/* Header */}
                                 <div className="text-center mb-8">
-                                    <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
-                                        <MessageSquare size={32} className="text-blue-600" />
-                                    </div>
                                     <h2 className="text-3xl font-bold text-gray-900 mb-2">Write a Review</h2>
                                     <p className="text-gray-600">Share your experience with others</p>
                                 </div>
@@ -151,13 +169,13 @@ export const Review = ({ supplier_id, event_name }) => {
                                     {/* Name Input */}
                                     <div>
                                         <label htmlFor="reviewer-name" className="block text-sm font-medium text-gray-700 mb-2">
-                                            Your Name (Optional)
+                                            Your Name
                                         </label>
                                         <div className="relative">
                                             <input
                                                 type="text"
                                                 id="reviewer-name"
-                                                value={event_name}
+                                                value={reviewerName}
                                                 onChange={(e) => setReviewerName(e.target.value)}
                                                 placeholder="Enter your name"
                                                 className="w-full pl-5 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
@@ -228,7 +246,7 @@ export const Review = ({ supplier_id, event_name }) => {
     )
 }
 
-export const RejectReview = ({ id, event_id, supplier_id, event_name, supplier, className }) => {
+export const RejectReview = ({ id, event_id, supplier_id, userData, event_name, supplier, contract, className }) => {
     const [isOpen, setIsOpen] = useState(false)
     const [reviewText, setReviewText] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -247,7 +265,6 @@ export const RejectReview = ({ id, event_id, supplier_id, event_name, supplier, 
 
     const handleSubmit = async (e) => {
         e.preventDefault()
-        setIsSubmitting(true)
         Swal.fire({
             title: 'Reject this submission?',
             text: 'Are you sure you want to reject this request? This action cannot be undone.',
@@ -257,14 +274,16 @@ export const RejectReview = ({ id, event_id, supplier_id, event_name, supplier, 
             cancelButtonText: 'Cancel'
         }).then(async (result) => {
             try {
+                setIsSubmitting(true)
+
                 if (result.isConfirmed) {
-                    if (!supplier) {
+                    if (userData?.role === "Admin") {
                         await updateDoc(doc(db, "verification", id), {
-                            status: 'rejected'
+                            is_verified: false
                         })
 
                         await updateDoc(doc(db, "users", id), {
-                            status: 'rejected'
+                            verification_status: 'rejected'
                         })
 
                         await addDoc(collection(db, "notifications"), {
@@ -277,6 +296,7 @@ export const RejectReview = ({ id, event_id, supplier_id, event_name, supplier, 
                             unread: true
                         })
                     }
+
                     else {
                         const q = query(collection(db, "applications"),
                             where("event_id", "==", event_id),
@@ -284,29 +304,44 @@ export const RejectReview = ({ id, event_id, supplier_id, event_name, supplier, 
                         const snapShotApplications = await getDocs(q)
                         const applications = snapShotApplications.docs.map(app => ({ id: app.id, ...app.data() }))
 
-                        for (const app of applications) {
-                            await deleteDoc(doc(db, "applications", app.id));
-
+                        if (contract) {
                             await addDoc(collection(db, "notifications"), {
-                                user_id: app?.supplier_id,
-                                avatar: 'A',
+                                user_id: contract.planner_id,
+                                avatar: supplier.supplier_name.charAt(0).toUpperCase(),
+                                title: "Offer Rejected",
+                                referenced_id: event_id,
+                                referenced_type: 'event',
+                                message: `Unfortunately, ${supplier.supplier_name} has rejected your offer for their event.`,
+                                feedback: reviewText,
+                                createdAt: serverTimestamp(),
+                                unread: true
+                            });
+
+                            await deleteDoc(doc(db, "contracts", contract.id));
+
+                        }
+                        else {
+                            await addDoc(collection(db, "notifications"), {
+                                user_id: applications[0]?.supplier_id,
+                                avatar: event_name.charAt(0).toUpperCase(),
                                 title: 'Application Rejected',
+                                referenced_id: event_id,
+                                referenced_type: 'event',
                                 message: `We're sorry, your application for the event "${event_name}" has been rejected.`,
                                 feedback: reviewText,
-                                timestamp: serverTimestamp(),
+                                createdAt: serverTimestamp(),
                                 unread: true
                             });
                         }
 
-                        console.log("ni gana")
-
-
+                        await deleteDoc(doc(db, "applications", applications[0].id));
 
 
                     }
 
                     Swal.fire('Rejected', 'The review has been rejected.', 'success');
                     close()
+
                     if (!supplier) {
                         navigate('/admin/dashboard', { replace: true })
                     }
@@ -333,6 +368,7 @@ export const RejectReview = ({ id, event_id, supplier_id, event_name, supplier, 
                             transition
                             className="w-full max-w-3xl rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
                         >
+                            <LoadingOverlay isLoading={isSubmitting} message='Processing..' />
                             <div className='relative'>
                                 <button
                                     onClick={close}
@@ -345,9 +381,6 @@ export const RejectReview = ({ id, event_id, supplier_id, event_name, supplier, 
                             <div className='p-8'>
                                 {/* Header */}
                                 <div className="text-center mb-8">
-                                    <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
-                                        <MessageSquare size={32} className="text-blue-600" />
-                                    </div>
                                     <h2 className="text-3xl font-bold text-gray-900 mb-2">Reject Submission</h2>
                                     <p className="text-gray-600">(Optional) Please provide a reason for rejecting this request.</p>
                                 </div>

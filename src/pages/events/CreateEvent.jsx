@@ -2,30 +2,30 @@ import Select from "react-select";
 import { useEffect, useState } from "react";
 import PrimaryButton from "../../components/PrimaryButton";
 import { Link, Navigate } from "react-router-dom";
-import { X } from "lucide-react";
-import { auth } from "../../firebase/firebase";
+import { X, Calendar, Tag, Send } from "lucide-react";
 import Loading from "../../components/Loading";
 import AddressAutoComplete from "../../components/AddressAutoComplete";
-import useEvents from "../../hooks/useEvents";
+import { useAddEvent } from "../../hooks/useEvents";
+import { createStatusOptions, SupplierOptions } from "../../constants/categories";
+import LoadingOverlay from "../../components/LoadingOverlay";
 
-export default function CreateEvent() {
+export default function CreateEvent({ userData }) {
 
-    const [loading, setLoading] = useState(false)
     const [tags, setTags] = useState([]);
     const [categories, setCategories] = useState('');
     const [event_status, setEvent_status] = useState('');
-    const [type, setType] = useState('');
+    const [eventType, setEventType] = useState([]);
     const [event_name, setEvent_name] = useState('');
     const [event_location, setEvent_location] = useState('');
-    const [event_date, setEvent_date] = useState([]);
+    const [event_date, setEvent_date] = useState({ date_value: '', date_preview: [] });
     const [event_budget, setEvent_budget] = useState('');
     const [event_description, setEvent_description] = useState('');
     const [event_time, setEvent_time] = useState([])
     const [startTime, setStartTime] = useState('');
     const [endTime, setEndTime] = useState('');
-    const [submitted, setSubmitted] = useState(false);
+    const [tagError, setTagError] = useState('');
 
-    console.log(event_budget)
+    const { addEvent, isLoading } = useAddEvent()
 
     useEffect(() => {
 
@@ -40,42 +40,17 @@ export default function CreateEvent() {
 
     }, [startTime, endTime])
 
-    const { addEvent } = useEvents()
-
-    const categoriesOptions = [
-        { label: 'Floral', value: 'floral' },
-        { label: 'Wedding', value: 'wedding' },
-        { label: 'Events', value: 'events' },
-        { label: 'Corporate', value: 'corporate' },
-        { label: 'Funeral', value: 'funeral' },
-    ]
-
-    const statusOptions = [
-        { label: 'Planning', value: 'planning' },
-        { label: 'Upcoming', value: 'upcoming' },
-        { label: 'In Progress', value: 'in-progress' },
-    ];
-
-    const typeOptions = [
-        { label: 'Corporate', value: 'corporate' },
-        { label: 'Wedding', value: 'wedding' },
-        { label: 'Birthday Party', value: 'birthday' },
-        { label: 'Conference', value: 'conference' },
-        { label: 'Workshop', value: 'workshop' },
-        { label: 'Social Event', value: 'social' },
-        { label: 'Other', value: 'other' },
-    ];
-
-
     const handleDate = (e) => {
         const dateString = e.target.value
         const date = new Date(dateString)
 
         const years = date.getFullYear();
         const months = date.toLocaleDateString([], { month: "long" })
-        const days = date.toLocaleDateString([], { weekday: "long" })
+        const days = date.getDate()
 
         const previewDate = [years, months, days]
+
+        console.log("preview:", previewDate)
 
         setEvent_date({
             date_value: dateString,
@@ -87,212 +62,313 @@ export default function CreateEvent() {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        const user = auth.currentUser;
-        if (user) {
-            setLoading(true)
-
-            await addEvent(user,
-                event_name,
-                event_location,
-                event_date,
-                event_time,
-                event_status,
-                type,
-                event_budget,
-                event_description,
-                tags)
-            setSubmitted(true)
-
+        // Validate if tags are empty
+        if (tags.length === 0) {
+            setTagError('Please add at least one supplier category.');
+            return;
+        } else {
+            setTagError(''); // clear if previously set
         }
-        setLoading(false)
-    }
 
+        const data = {
+            event_name: event_name,
+            event_location: event_location,
+            event_date: event_date,
+            event_time: event_time,
+            event_status: event_status,
+            event_type: eventType,
+            event_budget: event_budget,
+            event_description: event_description,
+            event_categories: tags,
+        };
 
-    if (submitted) {
-        return <Navigate to={'/events'} replace />
+        try {
+            if (userData) {
+                addEvent(userData?.id, data);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    if (userData.verification_status !== "verified") {
+        return <Navigate to={'/dashboard'} replace />
     }
 
     const removeTag = (index) => {
-        setTags(tags.filter((tag  ,i) => i !== index));
+        setTags(tags.filter((tag, i) => i !== index));
     }
 
     const addTag = () => {
-        if (categories.value.trim() && !tags.includes(categories.value.trim())) {
-            setTags([...tags, categories.value])
-            setCategories(null)
+        if (categories?.value.trim() && !tags.some(tag => tag.value === categories.value)) {
+            setTagError('');
+            setTags([...tags, categories]);
+            setCategories(null);
         }
-    }
-
-
-    if (loading) {
-        return <Loading />
-    }
+    };
 
     return (
         <>
-            <div className="flex flex-col">
-                <span className="text-3xl font-bold">Create New Event</span>
+            <div className="flex flex-col mb-3">
+                <h1 className="text-3xl font-bold text-blue-600">Create Events</h1>
                 <span className="mt-2 text-gray-600">Add the details for your new event</span>
             </div>
-            <form onSubmit={handleSubmit} className="w-full h-full mt-5 space-y-5">
 
-                {/* event name and location */}
-                <div className="justify-between gap-5 grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2">
-                    {/* event name */}
-                    <div className="flex flex-col w-full">
-                        <label htmlFor="event_name">Event Name</label>
-                        <input type="text" name="event_name" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black"
-                            required
-                            placeholder="Event name"
-                            onChange={(e) => setEvent_name(e.target.value)}
-                            value={event_name} />
-                    </div>
+            <div className="bg-white rounded-xl p-10 border border-gray-100 shadow-lg">
 
-                    {/* location */}
-                    <div className="flex flex-col w-full">
-                        <label htmlFor="location">Location</label>
-                        <AddressAutoComplete setLocation={setEvent_location} className={'mt-2 py-1 rounded-sm'}/>
-                    </div>
-                </div>
-
-                {/* date, time and status */}
-                <div className="gap-3 items-center grid grid-cols-1 sm:grid-cols-3">
-
-                    {/* date */}
-                    <div className="flex flex-col w-full">
-                        <label htmlFor="date">Date</label>
-                        <input type="date" name="event_date" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black"
-                            required
-                            onChange={handleDate}
-                            value={event_date.date_value}
-                        />
-                    </div>
-
-                    {/* time */}
-                    <div className="flex flex-col w-full">
-                        <div className="gap-2 grid grid-cols-1 sm:grid-cols-2">
-                            <div>
-                                <label htmlFor="time">Time Start</label>
-                                <input type="time" name="event_time" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black"
-                                    required
-                                    onChange={(e) => setStartTime(e.target.value)}
-                                    value={startTime}
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor="time">Time End</label>
-                                <input type="time" name="event_time" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black"
-                                    required
-                                    onChange={(e) => setEndTime(e.target.value)}
-                                    value={endTime}
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* status */}
-                    <div className="flex flex-col w-full">
-                        <label htmlFor="time">Status</label>
-                        <Select
-                            name="event_status"
-                            value={event_status}
-                            onChange={setEvent_status}
-                            options={statusOptions}
-                            placeholder="Upcoming"
-                            isClearable
-                            className="mt-2"
-                        />
-                    </div>
-                </div>
-
-                {/* type */}
-                <div className="flex flex-col w-full">
-                    <label htmlFor="type" className="mb-2">Type</label>
-                    <Select
-                        name="event_type"
-                        options={typeOptions}
-                        value={type}
-                        onChange={setType}
-                        placeholder="Corporate"
-                        isClearable
-                    />
-                </div>
-
-                {/* Budget */}
-                <div className="flex flex-col w-full">
-                    <label htmlFor="type">Budget</label>
-                    <input placeholder="₱ 25,500" type="text" name="event_budget" className="mt-2 focus:ring-2 focus:outline-none px-5 focus:ring-blue-500 ring-1 rounded-sm w-full h-8 ring-black"
-                        required
-                        onChange={(e) => setEvent_budget(e.target.value)}
-                        value={event_budget}
-                    />
-                </div>
-
-                {/* description */}
-                <div className="flex flex-col w-full">
-                    <label htmlFor="description">Description</label>
-                    <textarea name="event_description" id="desctipion" className="mt-2 focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 ring-1 rounded-sm w-full h-38 py-2 ring-black"
-                        required
-                        onChange={(e) => setEvent_description(e.target.value)}
-                        value={event_description}
-                    ></textarea>
-                </div>
-
-                {/* specify supplier */}
-                <div className="flex flex-col space-y-4">
-                    <span className="block font-medium">Specify the supplier you are looking for:</span>
-
-                    {/* Tags Display */}
-                    {tags.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                            {tags.map((tag, index) => (
-                                <span
-                                    key={index}
-                                    className="inline-flex items-center gap-2 py-2 px-3 bg-blue-50 border border-blue-200 rounded-lg text-sm"
-                                >
-                                    {tag}
-                                    <button
-                                        type="button"
-                                        onClick={() => removeTag(index)}
-                                        className="hover:bg-blue-100 rounded-full p-1 transition-colors"
-                                    >
-                                        <X width={14} height={14} strokeWidth={2} />
-                                    </button>
-                                </span>
-                            ))}
-                        </div>
-                    )}
-
-                    {/* Add Supplier Controls */}
-                    <div className="flex md:grid md:grid-cols-3 gap-3 items-end">
-                        <div className="md:col-span-2">
-                            <Select
-                                options={categoriesOptions}
-                                value={categories}
-                                onChange={setCategories}
-                                placeholder="Select supplier category"
-                                isClearable
-                                className="w-full"
+                <form onSubmit={handleSubmit} className="w-full h-full space-y-6">
+                    {/* event name and location */}
+                    <div className="justify-between gap-6 grid grid-cols-1 md:grid-cols-2">
+                        {/* event name */}
+                        <div className="flex flex-col w-full">
+                            <label htmlFor="event_name" className="text-sm font-medium text-gray-700 mb-2">Event Name</label>
+                            <input
+                                type="text"
+                                name="event_name"
+                                className="px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                                required
+                                placeholder="Enter event name"
+                                onChange={(e) => setEvent_name(e.target.value)}
+                                value={event_name || ""}
                             />
                         </div>
-                        <button
-                            type="button"
-                            className="py-2 px-4 bg-blue-500 text-white rounded-sm hover:bg-blue-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
-                            onClick={addTag}
-                            disabled={!categories || !categories.value.trim()}
-                        >
-                            Add Supplier
-                        </button>
-                    </div>
-                </div>
 
-                <div className="w-full sm:w-full md:w-full lg:w-[40rem] grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <PrimaryButton>Create Event</PrimaryButton>
-                    <Link to={'/events'} className="flex items-center py-2 w-full text-center justify-center border-1 hover:boder-1 hover:border-blue-500 rounded-sm">
-                        <span className="block">Cancel</span>
-                    </Link>
-                </div>
-            </form>
+                        {/* location */}
+                        <div className="flex flex-col w-full">
+                            <label htmlFor="location" className="text-sm font-medium text-gray-700 mb-2">Location</label>
+                            <AddressAutoComplete
+                                setLocation={setEvent_location}
+                                default_location={event_location || ""}
+                                className={'py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'}
+                            />
+                        </div>
+                    </div>
+
+                    {/* date, time and status */}
+                    <div className="gap-6 items-center grid grid-cols-1 md:grid-cols-3">
+
+                        {/* date */}
+                        <div className="flex flex-col w-full">
+                            <label htmlFor="date" className="text-sm font-medium text-gray-700 mb-2">Date</label>
+                            <div className="relative">
+                                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                                <input
+                                    type="date"
+                                    name="event_date"
+                                    className="pl-10 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                                    required
+                                    onChange={handleDate}
+                                    value={event_date.date_value || ""}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Time Section */}
+                        <div className="flex flex-col w-full">
+                            <label htmlFor="start_time" className="text-sm font-medium text-gray-700 mb-2">
+                                Event Time
+                            </label>
+                            <div className="gap-3 grid grid-cols-2">
+                                {/* Start Time */}
+                                <div className="relative">
+                                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm">
+                                        Start
+                                    </span>
+                                    <input
+                                        type="time"
+                                        id="start_time"
+                                        name="start_time"
+                                        className="pl-12 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                                        required
+                                        onChange={(e) => setStartTime(e.target.value)}
+                                        value={startTime || ""}
+                                    />
+                                </div>
+
+                                {/* End Time */}
+                                <div className="relative">
+                                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm">
+                                        End
+                                    </span>
+                                    <input
+                                        type="time"
+                                        id="end_time"
+                                        name="end_time"
+                                        className="pl-10 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                                        required
+                                        onChange={(e) => setEndTime(e.target.value)}
+                                        value={endTime || ""}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+
+                        {/* status */}
+                        <div className="flex flex-col w-full">
+                            <label htmlFor="status" className="text-sm font-medium text-gray-700 mb-2">Status</label>
+                            <Select
+                                name="event_status"
+                                value={event_status}
+                                onChange={setEvent_status}
+                                options={createStatusOptions}
+                                placeholder="Select status"
+                                className="mt-1"
+                                styles={{
+                                    control: (base) => ({
+                                        ...base,
+                                        padding: '4px 0',
+                                        borderRadius: '8px',
+                                        borderColor: '#d1d5db',
+                                        '&:hover': {
+                                            borderColor: '#d1d5db'
+                                        }
+                                    })
+                                }}
+                            />
+                        </div>
+                    </div>
+
+                    {/* type and budget */}
+                    <div className="gap-6 grid grid-cols-1 md:grid-cols-2">
+                        {/* type */}
+                        <div className="flex flex-col w-full">
+                            <label htmlFor="type" className="text-sm font-medium text-gray-700 mb-2">Event Type</label>
+                            <Select
+                                name="event_type"
+                                options={SupplierOptions}
+                                value={eventType || ""}
+                                onChange={setEventType}
+                                placeholder="Select event type"
+                                styles={{
+                                    control: (base) => ({
+                                        ...base,
+                                        padding: '4px 0',
+                                        borderRadius: '8px',
+                                        borderColor: '#d1d5db',
+                                        '&:hover': {
+                                            borderColor: '#d1d5db'
+                                        }
+                                    })
+                                }}
+                            />
+                        </div>
+
+                        {/* Budget */}
+                        <div className="flex flex-col w-full">
+                            <label htmlFor="type" className="text-sm font-medium text-gray-700 mb-2">Budget</label>
+                            <div className="relative">
+                                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₱</span>
+                                <input
+                                    placeholder="25,500"
+                                    type="number"
+                                    name="event_budget"
+                                    className="pl-10 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                                    required
+                                    onChange={(e) => setEvent_budget(e.target.value)}
+                                    value={event_budget || ""}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* description */}
+                    <div className="flex flex-col w-full">
+                        <label htmlFor="description" className="text-sm font-medium text-gray-700 mb-2">Description</label>
+                        <textarea
+                            name="event_description"
+                            id="description"
+                            rows="4"
+                            className="px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                            required
+                            onChange={(e) => setEvent_description(e.target.value)}
+                            value={event_description || ""}
+                            placeholder="Describe your event..."
+                        ></textarea>
+                    </div>
+
+                    {/* specify supplier */}
+                    <div className="flex flex-col space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-100">
+                        <div className="flex items-center">
+                            <Tag className="mr-2 text-blue-600" size={20} />
+                            <span className="font-medium text-gray-800">Specify the supplier you are looking for:</span>
+                        </div>
+
+                        {/* Tags Display */}
+                        {tags.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                                {tags.map((tag, index) => (
+                                    <span
+                                        key={index}
+                                        className="inline-flex items-center gap-2 py-2 px-3 bg-blue-100 border border-blue-300 rounded-lg text-sm text-blue-800 font-medium"
+                                    >
+                                        {tag.label}
+                                        <button
+                                            type="button"
+                                            onClick={() => removeTag(index)}
+                                            className="hover:bg-blue-200 rounded-full p-1 transition-colors"
+                                        >
+                                            <X width={14} height={14} strokeWidth={2} />
+                                        </button>
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+                        {tagError && <p className="text-red-500 text-sm font-medium">{tagError}</p>}
+
+                        {/* Add Supplier Controls */}
+                        <div className="flex flex-col md:flex-row gap-3 items-end">
+                            <div className="flex-grow">
+                                <Select
+                                    options={SupplierOptions}
+                                    value={categories}
+                                    onChange={setCategories}
+                                    placeholder="Select supplier category"
+                                    isClearable
+                                    className="w-full"
+                                    styles={{
+                                        control: (base) => ({
+                                            ...base,
+                                            borderRadius: '8px',
+                                            borderColor: '#d1d5db',
+                                            '&:hover': {
+                                                borderColor: '#d1d5db'
+                                            }
+                                        })
+                                    }}
+                                />
+                            </div>
+                            <button
+                                type="button"
+                                className="flex items-center justify-center py-2 px-6 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
+                                onClick={addTag}
+                                disabled={!categories || !categories.value.trim()}
+                            >
+                                <Tag size={18} className="mr-2" />
+                                Add Category
+                            </button>
+                        </div>
+                    </div>
+
+                    {isLoading && (
+                        <LoadingOverlay isLoading={isLoading} message="Processing.." />
+                    )}
+
+                    <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+                        <Link
+                            to={'/events'}
+                            className="flex items-center justify-center py-3 w-full text-center border border-gray-300 rounded-lg hover:border-blue-500 hover:text-blue-600 transition-colors font-medium"
+                        >
+                            Cancel
+                        </Link>
+
+                        <PrimaryButton className="w-full flex items-center justify-center">
+                            <Send size={18} className="mr-2" />
+                            Create Event
+                        </PrimaryButton>
+                    </div>
+                </form>
+            </div >
         </>
     )
 }

@@ -26,16 +26,32 @@ ChartJS.register(
     Title
 );
 
-export const LineChart = () => {
+ChartJS.defaults.animation = false;
+
+export const LineChart = ({
+    className,
+    dataPoints = [],       // array of numbers
+    labels = [],           // array of strings
+    label = "Data",        // dataset label
+    lineColor = "rgb(143, 67, 210)",
+    fillColor = "rgba(143, 67, 210, 0.2)",
+    options: customOptions = {}
+}) => {
+    // Safe fallback
+    const safeLabels = labels.length > 0 ? labels : ["No Data"];
+    const safeDataPoints = dataPoints.length > 0 ? dataPoints : [0];
+
     const data = {
-        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'],
+        labels: safeLabels,
         datasets: [
             {
-                label: 'Avg. Rating',
-                data: [5, 4, 2, 3, 5],
-                fill: false,
-                borderColor: 'rgb(143, 67, 210)',
+                label,
+                data: safeDataPoints,
+                borderColor: lineColor,
+                backgroundColor: fillColor,
                 tension: 0.4,
+                fill: true,
+                pointBackgroundColor: lineColor,
             },
         ],
     };
@@ -43,26 +59,46 @@ export const LineChart = () => {
     const options = {
         responsive: true,
         plugins: {
-            legend: { position: 'bottom' },
+            legend: { position: "bottom" },
+            title: { display: !!label, text: label },
         },
+        scales: {
+            y: { beginAtZero: true },
+        },
+        ...customOptions,
     };
 
     return (
-        <div className="w-full h-full justify-center items-center flex">
+        <div className={className}>
             <Line data={data} options={options} />
         </div>
     );
 };
 
-export const PieChart = ({ className }) => {
+
+
+export const PieChart = ({
+    className,
+    labels = [],
+    dataValues = [],
+    backgroundColors = [],
+    borderColors = [],
+    title = "",
+    options: customOptions = {}
+}) => {
+    const safeLabels = labels.length > 0 ? labels : ["No Data"];
+    const safeDataValues = dataValues.length > 0 ? dataValues : [1];
+    const safeBackgroundColors = backgroundColors.length > 0 ? backgroundColors : ["#d1d5db"];
+    const safeBorderColors = borderColors.length > 0 ? borderColors : ["#9ca3af"];
+
     const data = {
-        labels: ["Approved", "Pending", "Rejected"],
+        labels: safeLabels,
         datasets: [
             {
-                label: "Shops Status",
-                data: [10, 5, 3],
-                backgroundColor: ["#4ade80", "#facc15", "#f87171"],
-                borderColor: ["#22c55e", "#eab308", "#ef4444"],
+                label: title || "",
+                data: safeDataValues,
+                backgroundColor: safeBackgroundColors,
+                borderColor: safeBorderColors,
                 borderWidth: 2,
             },
         ],
@@ -72,69 +108,48 @@ export const PieChart = ({ className }) => {
         responsive: true,
         plugins: {
             legend: { position: "bottom" },
-            title: { display: true, text: "Shop Approval Status" },
+            title: { display: !!title, text: title },
         },
+        ...customOptions,
     };
 
     return (
-        <div className={`${className}`}>
+        <div className={className}>
             <Pie data={data} options={options} />
         </div>
     );
 };
 
-export const BarChart = ({ className }) => {
+
+export const BarChart = ({ className, labels = [], datasets = [], title = "", xLabel = "", yLabel = "", options: customOptions = {} }) => {
+
     const data = {
-        labels: ["Mon", "Tue", "Wed", "Thu", "Fri"],
-        datasets: [
-            {
-                label: "Approved Shops",
-                data: [3, 6, 4, 5, 2,],
-                backgroundColor: "#60a5fa",
-                borderRadius: 5,
-            },
-            {
-                label: "Rejected Shops",
-                data: [1, 2, 3, 2, 1],
-                backgroundColor: "#f87171", // Red-400
-                borderRadius: 5,
-            },
-            {
-                label: "Rejected Shops",
-                data: [1, 2, 3, 4, 5],
-                backgroundColor: "#61289b", // Red-400
-                borderRadius: 5,
-            },
-        ],
+        labels,
+        datasets,
     };
 
     const options = {
         responsive: true,
         plugins: {
             legend: { position: "top" },
-            title: { display: true, text: "Approved Shops This Week" },
-            font: { size: 18, weight: 'bold' },
+            title: { display: !!title, text: title },
         },
         scales: {
             y: {
                 beginAtZero: true,
-                title: {
-                    display: true,
-                    text: 'Number of Shops',
-                }
+                title: { display: !!yLabel, text: yLabel },
             },
             x: {
-                title: {
-                    display: true,
-                    text: 'Day of the Week',
-                }
-            }
-        }
+                title: { display: !!xLabel, text: xLabel },
+            },
+        },
+        ...customOptions,
     };
 
     return (
-        <div className={`${className}`}>
+        <div className={className}>
             <Bar data={data} options={options} />
         </div>
     );
 };
+

@@ -1,41 +1,28 @@
-import { collection, getDocs, onSnapshot } from "firebase/firestore"
+import { collection, getDocs, onSnapshot, query, where } from "firebase/firestore"
 import { useEffect, useState } from "react"
 import { db } from "../firebase/firebase"
-import { useFetchSuppliers } from "./useSupplier"
 
 export const useFetchReviews = () => {
     const [reviews, setReviews] = useState([])
     const [isLoading, setIsLoading] = useState(true)
-    const { suppliers } = useFetchSuppliers()
 
     useEffect(() => {
+        setIsLoading(true)
         try {
-            const reviewData = {}
-            const fetchAllReviews = async () => {
-                await Promise.all(suppliers.map(async (suppliers) => {
-                    const reviewSnapShot = await getDocs(collection(db, "shops", suppliers.id, "reviews"))
 
-                    reviewData[suppliers.id] = reviewSnapShot.docs.map(review => ({ id: review.id, ...review.data() }))
+            const unsubscribe = onSnapshot(collection(db, "reviews"), (onsnapshot) => {
+                setReviews(onsnapshot.docs.map(rev => ({ id: rev.id, ...rev.data() })))
+                setIsLoading(false)
+            })
 
-                }))
-
-
-                setReviews(reviewData)
-            }
-
-            fetchAllReviews()
-
+            return () => unsubscribe()
         }
-
         catch (e) {
             console.error(e)
             setIsLoading(false)
         }
 
-        finally {
-            setIsLoading(false)
-        }
-    }, [suppliers])
+    }, [])
 
     return { reviews, isLoading }
 }
@@ -44,12 +31,17 @@ export const useFetchReviewsById = (id) => {
     const [reviews, setReviews] = useState([])
     const [isLoading, setIsLoading] = useState(false)
 
+    const q = query(collection(db, "reviews"),
+        where('user_id', '===', id))
+
     useEffect(() => {
+        if (!id) return
         try {
-            const unsubscribe = onSnapshot(collection(db, "shops", id, "reviews"), (onsnapshot) => {
+            const unsubscribe = onSnapshot(q, (onsnapshot) => {
                 setReviews(onsnapshot.docs.map(review => ({ id: review.id, ...review.data() })))
             })
 
+            setIsLoading(false)
             return () => unsubscribe()
         }
 
@@ -58,10 +50,7 @@ export const useFetchReviewsById = (id) => {
             setIsLoading(false)
         }
 
-        finally {
-            setIsLoading(false)
-        }
-    }, [id])
+    }, [id, q])
 
-    return {reviews, isLoading}
+    return { reviews, isLoading }
 }

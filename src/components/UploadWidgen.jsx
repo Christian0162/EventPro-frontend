@@ -1,11 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import 'filepond/dist/filepond.min.css';
-import { FilePond, registerPlugin } from 'react-filepond';
-import FilePondPluginImagePreview from 'filepond-plugin-image-preview';
+import { FilePond } from 'react-filepond';
 import 'filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css';
 import { X } from "lucide-react";
 
-export default function UploadWidget({ type, setId, setDoc, className, setError }) {
+export default function UploadWidget({ type, setPicture, setId, setDoc, className, setError }) {
 
     const [files, setFiles] = useState([])
 
@@ -16,6 +15,10 @@ export default function UploadWidget({ type, setId, setDoc, className, setError 
 
         else if (type === 'doc') {
             setDoc(prev => [...prev, url])
+        }
+
+        else {
+            setPicture(url)
         }
     }
 

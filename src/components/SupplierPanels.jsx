@@ -1,16 +1,23 @@
 import { useEffect, useState } from 'react'
 import ShopCards from '../components/ShopCards'
 import { TabList, Tab, TabPanel, TabPanels, TabGroup } from '@headlessui/react'
-import { Edit3, Mail, Phone, DollarSign, Clock7, CircleCheck, Star, Container } from 'lucide-react'
+import { Edit3, Mail, Phone, DollarSign, Clock7, CircleCheck, Star, Check, Trash2 } from 'lucide-react'
 import { AboutOurBusiessEdit } from './UpdateModal'
 import Select from 'react-select'
-import { doc, updateDoc } from 'firebase/firestore'
+import { deleteDoc, doc, updateDoc } from 'firebase/firestore'
 import { db, auth } from '../firebase/firebase'
 import { responseTimeOptions } from '../constants/categories'
 import ServiceModal from './ServiceModal'
 import { ServiceEdit } from './UpdateModal'
+import { formatDistanceToNow } from 'date-fns'
+import Swal from 'sweetalert2'
+import LoadingOverlay from './LoadingOverlay'
+import { useFetchUserProfiles } from '../hooks/useProfile'
+import { useFetchUsers } from '../hooks/useUsers'
+import ProfileHover from './ProfileHover'
+import AvailabilityPicker from './AvailabilityPicker'
 
-export default function SupplierPanels({ shop, reviews, services, averageRating, userData }) {
+export default function SupplierPanels({ userData, shop, reviews, services, averageRating }) {
 
     const [contactEditing, setContactEditing] = useState(false)
     const [bookingEdting, setBookingEditing] = useState(false)
@@ -18,20 +25,19 @@ export default function SupplierPanels({ shop, reviews, services, averageRating,
     const [contactLoading, setContactLoading] = useState(false)
     const [bookingLoading, setBookingLoading] = useState(false)
     const [contact_number, setContact_number] = useState('')
-    const [email_address, setEmail_address] = useState('')
     const [availability, setAvailability] = useState('')
-    const [supplier_price, setSupplier_price] = useState('')
+    const [timeError, setTimeError] = useState('')
+    const [isDeleting, setIsDeleting] = useState(false)
+    const [hoveredReviewerId, setHoveredReviewerId] = useState(null)
+    const { userProfiles } = useFetchUserProfiles()
+    const { users } = useFetchUsers()
 
     useEffect(() => {
-        setSupplier_price(shop?.supplier_price)
         setAvailability(shop?.supplier_availability)
         setResponse_time(shop?.supplier_response_time)
-        setEmail_address(shop?.supplier_email)
         setContact_number(shop?.supplier_number)
 
     }, [shop])
-
-
 
     const handleContactSubmit = async (e) => {
         e.preventDefault()
@@ -40,7 +46,6 @@ export default function SupplierPanels({ shop, reviews, services, averageRating,
 
         try {
             await updateDoc(doc(db, "shops", auth.currentUser.uid), {
-                supplier_email: email_address,
                 supplier_number: contact_number,
             })
         }
@@ -53,26 +58,77 @@ export default function SupplierPanels({ shop, reviews, services, averageRating,
         }
     }
 
-    const handleBookingSubmit = async () => {
-        setBookingLoading(true)
+    const handleDelete = async (service) => {
+
+        console.log(service)
+        setIsDeleting(true)
         try {
-            await updateDoc(doc(db, "shops", auth.currentUser.uid), {
-                supplier_price: supplier_price,
-                supplier_availability: availability,
-                supplier_response_time: response_time
+            const result = await Swal.fire({
+                title: 'Are you sure?',
+                text: "You won't be able to revert this!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Yes, delete it!',
+                cancelButtonText: 'Cancel'
             })
+
+            if (result.isConfirmed) {
+                try {
+                    await deleteDoc(doc(db, "services", service?.id));
+                    Swal.fire(
+                        'Deleted!',
+                        'Service has been deleted successfully.',
+                        'success'
+                    );
+                } catch (e) {
+                    console.error(e);
+                    Swal.fire('Error', 'Failed to delete service.', 'error');
+                }
+            }
+
         }
 
         catch (e) {
             console.error(e)
         }
+
         finally {
+            setIsDeleting(false)
+        }
+
+    }
+
+    const handleBookingSubmit = async () => {
+        setBookingLoading(true)
+
+        if (timeError.length > 0) {
+            setBookingLoading(false)
+            Swal.fire({
+                icon: 'error',
+                title: 'Invalid Availability',
+                text: timeError,
+            })
+            return; // ⛔ stop before doing anything
+        }
+        
+        try {
+            await updateDoc(doc(db, "shops", auth.currentUser.uid), {
+                supplier_availability: availability,
+                supplier_response_time: response_time
+            })
             setBookingEditing(false)
+        }
+        catch (e) {
+            console.error(e)
+        }
+        finally {
             setBookingLoading(false)
         }
     }
 
-    console.log(services)
+    console.log(timeError)
 
     return (
         <>
@@ -116,10 +172,7 @@ export default function SupplierPanels({ shop, reviews, services, averageRating,
                                         {shop?.supplier_expertise?.map((skill, index) => (
                                             <span
                                                 key={index}
-                                                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${index === 0
-                                                    ? 'bg-blue-500 text-white shadow-sm'
-                                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                                    }`}
+                                                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 bg-gray-100 text-gray-700 hover:bg-gray-200`}
                                             >
                                                 {skill}
                                             </span>
@@ -158,25 +211,6 @@ export default function SupplierPanels({ shop, reviews, services, averageRating,
                                 {!contactLoading && (
                                     <div className="space-y-6">
                                         <form onSubmit={handleContactSubmit} className='relative'>
-                                            <div className="flex items-center gap-4 mt-6">
-                                                <div className="p-2 bg-blue-100 rounded-lg">
-                                                    <Mail size={24} className="text-blue-600" />
-                                                </div>
-                                                <div>
-                                                    <h4 className="font-bold text-gray-900 mb-1">Email Address</h4>
-                                                    {!contactEditing
-                                                        ? (
-                                                            <p className="text-gray-600">{shop?.supplier_email}</p>
-
-                                                        )
-
-                                                        : (
-                                                            <input type="email" value={email_address} onChange={(e) => setEmail_address(e.target.value)} placeholder='e.g test@gmail.com' className='border border-gray-300 focus:outline-none px-4 py-2 rounded-md text-sm' />
-                                                        )}
-
-                                                </div>
-                                            </div>
-
                                             <div className="flex items-center gap-4 mt-6">
                                                 <div className="p-2 bg-green-100 rounded-lg">
                                                     <Phone size={24} className="text-green-600" />
@@ -240,33 +274,24 @@ export default function SupplierPanels({ shop, reviews, services, averageRating,
                                 )}
 
                                 {!bookingLoading && (
-                                    <form onSubmit={handleBookingSubmit}>
+                                    <div>
                                         <div className="space-y-6">
-                                            <div className="flex items-center gap-4">
-                                                <div className="p-2 bg-green-100 rounded-lg">
-                                                    <DollarSign size={24} className="text-green-600" />
-                                                </div>
-                                                <div>
-                                                    <h4 className="font-bold text-gray-900 mb-1">Starting Price</h4>
-                                                    {!bookingEdting ? (
-                                                        <p className="text-xl font-bold text-green-600">₱{shop?.supplier_price}</p>
-                                                    ) : (
-                                                        <input type="number" value={supplier_price} onChange={(e) => setSupplier_price(e.target.value)} placeholder='e.g ₱5000' className='border border-gray-300 focus:outline-none px-4 py-2 rounded-md text-sm' />
-                                                    )}
-
-                                                </div>
-                                            </div>
-
                                             <div className="flex items-center gap-4">
                                                 <div className="p-2 bg-purple-100 rounded-lg">
                                                     <Clock7 size={24} className="text-purple-600" />
                                                 </div>
                                                 <div>
-                                                    <h4 className="font-bold text-gray-900 mb-1">Availability</h4>
+                                                    <h4 className="font-bold text-gray-900 mb-1">{bookingEdting ? '' : "Availability"}</h4>
                                                     {!bookingEdting ? (
                                                         <p className="text-gray-600">{shop?.supplier_availability}</p>
                                                     ) : (
-                                                        <input type="text" placeholder="e.g., Monday to Saturday, 8AM-6PM" value={availability} onChange={(e) => setAvailability(e.target.value)} className='border border-gray-300 focus:outline-none px-4 py-2 rounded-md text-sm' />
+                                                        <AvailabilityPicker
+                                                            onChange={(val) => setAvailability(val)}
+                                                            existingValue={shop?.supplier_availability}
+                                                            setTimeError={setTimeError}
+                                                        />)}
+                                                    {timeError && (
+                                                        <span className="text-red-500 text-sm mt-1">{timeError}</span>
                                                     )}
 
                                                 </div>
@@ -289,12 +314,12 @@ export default function SupplierPanels({ shop, reviews, services, averageRating,
                                                 </div>
                                             </div>
                                             {bookingEdting && (
-                                                <button className='flex ml-auto px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md'>
+                                                <button onClick={() => handleBookingSubmit()} className='flex ml-auto px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md'>
                                                     Save
                                                 </button>
                                             )}
                                         </div>
-                                    </form>
+                                    </div>
                                 )}
                             </ShopCards>
                         </div>
@@ -309,7 +334,7 @@ export default function SupplierPanels({ shop, reviews, services, averageRating,
                                         <h2 className='text-2xl font-bold text-gray-800 '>Services</h2>
                                         <p className='text-md text-gray-600'>Services Built Around Your Needs</p>
                                     </div>
-                                    <ServiceModal supplierData={shop}/>
+                                    <ServiceModal userData={userData} supplierData={shop} />
                                 </div>
                                 {!services?.length > 0 && (
                                     <span className='text-lg text-gray-400 my-10 mt-15 block text-center'>No Service</span>
@@ -317,30 +342,52 @@ export default function SupplierPanels({ shop, reviews, services, averageRating,
                                 {services && (
                                     <div className="grid md:grid-cols-2 gap-6 mt-5">
                                         {services?.map((services, index) => (
-                                            <div key={index} className={`bg-gradient-to-br rounded-xl flex flex-col justify-between  h-full min-h-[420px]  ${services.service_plan.label === 'Premium Plan' ? 'from-blue-50 to-indigo-50 border border-blue-100' : 'from-green-50 to-emerald-50 border border-green-100'} `}>
-                                                <h4 className={`font-bold text-white py-7 rounded-t-md text-center ${services.service_plan.label === 'Premium Plan' ? 'bg-blue-600' : 'bg-green-600'}`}>{services.service_plan.label}</h4>
-                                                <div className='p-6 flex flex-col flex-1'>
-                                                    <div className="mb-4">
-                                                        <span className='font-bold text-gray-600'>Price</span>
-                                                        <span className="text-2xl font-bold text-blue-600 block">₱{services.service_price}</span>
+                                            <div
+                                                key={index}
+                                                className={`h-100 relative flex flex-col bg-gray-50 border border-gray-200 rounded-lg transition-all duration-200 shadow-lg`}
+                                            >
+                                                <LoadingOverlay isLoading={isDeleting} message='Processing..' />
+
+                                                <button
+                                                    onClick={() => handleDelete(services)}
+                                                    className="block absolute right-[-10px] top-[-15px] px-4 py-2 bg-gray-500 hover:bg-red-600 text-white rounded-lg font-medium text-sm transition-all duration-200"
+                                                >
+                                                    <Trash2 size={20} />
+                                                </button>
+                                                <div>
+                                                    <div className="rounded-t-md bg-blue-600 text-white">
+                                                        <h3 className="font-bold text-2xl text-center py-5">{services.service_plan.label}</h3>
                                                     </div>
 
-                                                    <hr className='border-t border-gray-300 my-3' />
-
-                                                    <div className='flex flex-col gap-2 my-4'>
-                                                        <ul className='list-disc pl-5 flex text-gray-800 flex-col gap-2'>
-                                                            {services?.service_inclusions?.map((inclusion, index) => (
-                                                                <li key={index} >{inclusion}</li>
-                                                            ))}
-                                                        </ul>
+                                                    <div className="flex items-center justify-center">
+                                                        <p className="text-gray-900 text-2xl font-bold leading-relaxed mt-3">
+                                                            ₱{services.service_price}.0/service
+                                                        </p>
                                                     </div>
-                                                    <hr className='border-t border-gray-300 my-3' />
+                                                </div>
 
-                                                    <p className='text-gray-500 mt-3'>Note: {services.service_payment_notice.label}</p>
+                                                <div className="flex flex-col justify-between gap-3 h-full space-x-4">
 
-                                                    <div className="mt-auto pt-6">
-                                                        <ServiceEdit supplierData={shop} service_id={services.id} services={services}/>
+                                                    <div className="text-left px-6 mt-3">
+                                                        {services?.service_inclusions?.map((inclusion, index) => (
+                                                            <div className="flex gap-3 space-y-3" key={index}>
+                                                                <Check className="text-green-400" />
+                                                                <span className="flex text-sm text-gray-600" >{inclusion}</span>
+                                                            </div>
+                                                        ))}
                                                     </div>
+
+                                                    <div>
+                                                        <div className="px-6 text-left">
+                                                            <hr className="border-b-0 border-gray-400 mb-1" />
+                                                            <span className="text-left text-sm text-gray-600">Note: {services.service_payment_notice.label}</span>
+                                                        </div>
+
+                                                    </div>
+                                                </div>
+
+                                                <div className="pt-6 pl-2 py-2 mr-2">
+                                                    <ServiceEdit supplierData={shop} service_id={services.id} services={services} />
                                                 </div>
                                             </div>
                                         ))}
@@ -372,31 +419,62 @@ export default function SupplierPanels({ shop, reviews, services, averageRating,
 
                                 {reviews.length > 0 ? (
                                     <div className="space-y-6">
-                                        {reviews.map((review, index) => (
-                                            <div key={index} className="border-b border-gray-100 pb-6 last:border-b-0">
-                                                <div className="flex items-start gap-4">
-                                                    <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold">
-                                                        {review.reviewer_name?.charAt(0).toUpperCase() || 'A'}
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <div className="flex items-center gap-3 mb-2">
-                                                            <h4 className="font-semibold text-gray-900">{review.reviewer_name || 'Anonymous'}</h4>
-                                                            <div className="flex items-center gap-1">
-                                                                {[...Array(5)].map((_, i) => (
-                                                                    <Star
-                                                                        key={i}
-                                                                        size={16}
-                                                                        className={`${i < review.rating ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'}`}
-                                                                    />
-                                                                ))}
+                                        {reviews.map((review, index) => {
+                                            const reviewerProfile = userProfiles.find(
+                                                profile => profile.id === review.user_id
+                                            )
+                                            const reviewerDetail = users.find(user => user.id === review.user_id)
+
+                                            return (
+                                                <div key={index} className="border-b border-gray-100 pb-6 last:border-b-0">
+                                                    <div className="flex items-start gap-4">
+
+                                                        {reviewerProfile?.profile_pic ? (
+                                                            <img src={reviewerProfile?.profile_pic} alt="" className='h-10 w-10 rounded-full object-cover' />
+                                                        ) : (
+                                                            <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold">
+                                                                {review.reviewer_name?.charAt(0).toUpperCase() || 'A'}
+                                                            </div>)}
+
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center gap-3 mb-2">
+                                                                <div
+                                                                    className="relative inline-block"
+                                                                    onMouseEnter={() => setHoveredReviewerId(review.id)}
+                                                                    onMouseLeave={() => setHoveredReviewerId(null)}
+                                                                >
+                                                                    <div className='flex flex-col'>
+                                                                        <div className='flex items-baseline gap-3 mb-1'>
+                                                                            <h2 className="font-medium text-gray-900 cursor-pointer">
+                                                                                {reviewerDetail?.first_name} {reviewerDetail?.last_name}
+                                                                            </h2>
+                                                                            <p className="text-xs text-gray-500">{review?.createdAt ? formatDistanceToNow(new Date(review.createdAt.seconds * 1000), { addSuffix: true }) : 'Recent'}</p>
+                                                                        </div>
+                                                                        <h2 className="font-medium text-xs text-gray-600 cursor-pointer">
+                                                                            {reviewerDetail?.role === "Event Planner" ? 'Event' : 'Shop'}: {review.reviewer_name}
+                                                                        </h2>
+                                                                    </div>
+                                                                    {hoveredReviewerId === review.id && (
+                                                                        <ProfileHover hoveredReviewer={reviewerProfile} user={reviewerDetail} review={review} />
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex items-center gap-1">
+                                                                    {[...Array(5)].map((_, i) => (
+                                                                        <Star
+                                                                            key={i}
+                                                                            size={16}
+                                                                            className={`${i < review.rating ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'}`}
+                                                                        />
+                                                                    ))}
+                                                                </div>
+                                                                <span className="text-sm text-gray-500">{review?.createdAt ? formatDistanceToNow(new Date(review.createdAt.seconds * 1000), { addSuffix: true }) : 'Recent'}</span>
                                                             </div>
-                                                            <span className="text-sm text-gray-500">{review.date || 'Recent'}</span>
+                                                            <p className="text-gray-700">{review.comment || 'Great service!'}</p>
                                                         </div>
-                                                        <p className="text-gray-700">{review.comment || 'Great service!'}</p>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            )
+                                        })}
                                     </div>
                                 ) : (
                                     <div className="text-center py-12">

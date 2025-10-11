@@ -596,7 +596,7 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
                                             )}
 
                                             {/* Submit Button for Supplier */}
-                                            {showSubmitButton && contract?.status !== "Completed" && (
+                                            {showSubmitButton && (contract?.status === "Pending" || contract?.status !== "Completed") && (
                                                 <div className="flex justify-end mt-6">
                                                     <SubmissionModal
                                                         contract={contract}
@@ -606,7 +606,6 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
                                                 </div>
                                             )}
                                         </div>
-
 
                                         <div
                                             className={`w-full flex flex-col rounded-lg transition-all duration-200 shadow-md border border-gray-300

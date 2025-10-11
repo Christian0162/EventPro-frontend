@@ -158,7 +158,7 @@ export default function EventContract({ userData }) {
                                         return (
                                             <button
                                                 key={index}
-                                                className={`w-full h-100 flex flex-col bg-gray-50 border-2 rounded-lg transition-all duration-200 hover:shadow-md ${selected
+                                                className={`w-full flex flex-col bg-gray-50 border-2 rounded-lg transition-all duration-200 hover:shadow-md ${selected
                                                     ? 'border-blue-600 bg-blue-50'
                                                     : error
                                                         ? 'border-red-300'

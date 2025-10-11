@@ -316,38 +316,28 @@ export const ServiceEdit = ({ supplierData, service_id, services }) => {
     const [price, setPrice] = useState('')
     const [payment_notice, setPayment_notice] = useState(null)
     const [errors, setErrors] = useState({
+        service_plan: '',
         price: '',
         inclusions: '',
     });
     const { services: service } = useFetchSupplierServices()
-
-    useEffect(() => {
-        setService_plan(services.service_plan)
-        setPrice(services.service_price)
-        setPayment_notice(services.service_payment_notice)
-        setAllInclusions(services.service_inclusions)
-    }, [services, supplierData])
 
     function open() {
         setIsOpen(true)
     }
     function close() {
         setIsOpen(false)
-        setService_plan("")
     }
 
-    const supplierService = service.filter(s => s.supplier_id === supplierData.id)
+    useEffect(() => {
+        const supplierService = service.find(s => s.id === service_id)
 
-    // Filter out options that already exist
-    const existingPlans = supplierService
-        ? Object.values(supplierService).map(service => service.service_plan.value.toLowerCase())
-        : []
+        setService_plan(supplierService?.service_plan)
+        setPrice(supplierService?.service_price)
+        setPayment_notice(supplierService?.service_payment_notice)
+        setAllInclusions(supplierService?.service_inclusions)
+    }, [services, supplierData, service_id, service])
 
-        console.log(supplierService)
-
-    const filteredPlanOptions = planTypeOptions.filter(
-        option => !existingPlans.includes(option.value.toLowerCase())
-    )
 
     const handleInclusions = (inclusions) => {
         const trimmed = inclusions.trim();
@@ -363,6 +353,7 @@ export const ServiceEdit = ({ supplierData, service_id, services }) => {
             }
         });
     };
+
 
 
     const removeInclusion = (inclusion) => {
@@ -389,6 +380,7 @@ export const ServiceEdit = ({ supplierData, service_id, services }) => {
 
         // Reset all errors first
         setErrors({
+            service_plan: '',
             price: '',
             inclusions: '',
         });
@@ -396,6 +388,22 @@ export const ServiceEdit = ({ supplierData, service_id, services }) => {
         try {
             let valid = true;
             const newErrors = {};
+
+            // Find the service being edited
+            const currentService = service.find(s => s.id === service_id);
+
+            // Check if the selected service plan already exists for another service (not the one being edited)
+            if (
+                service.some(
+                    s =>
+                        s.supplier_id === supplierData.id &&
+                        s.id !== service_id && // ignore current service
+                        s.service_plan?.value === service_plan?.value // compare by value
+                )
+            ) {
+                newErrors.service_plan = 'The selected service plan already exists for another service.';
+                valid = false;
+            }
 
             // Inclusion validation
             if (allInclusions.length === 0) {
@@ -478,7 +486,9 @@ export const ServiceEdit = ({ supplierData, service_id, services }) => {
                                                 <SquarePen size={20} className='text-blue-600' />
                                                 <label htmlFor="" className='text-gray-700 font-bold'>Service Plan Type</label>
                                             </div>
-                                            <Select onChange={setService_plan} value={service_plan} options={filteredPlanOptions} placeholder="e.g Basic Plan" required />
+                                            <Select onChange={setService_plan} value={service_plan} options={planTypeOptions} placeholder="e.g Basic Plan" required />
+
+                                            {errors.service_plan && <span className="text-sm text-red-500">{errors.service_plan}</span>}
                                         </div>
 
                                         <div className='flex flex-col gap-2'>

@@ -33,6 +33,8 @@ export default function ServiceModal({ userData, supplierData }) {
 
     const supplierService = services.filter(serv => serv.supplier_id === userData.id)
 
+    const hasReachedLimit = supplierService.length >= 2;
+
     // Filter out options that already exist
     const existingPlans = supplierService
         ? Object.values(supplierService).map(service => service.service_plan.value.toLowerCase())
@@ -119,10 +121,17 @@ export default function ServiceModal({ userData, supplierData }) {
             {userData?.id === supplierData?.id && (
                 <Button
                     onClick={open}
-                    className="flex items-center ml-auto gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md"
+                    disabled={hasReachedLimit}
+                    className={`flex items-center ml-auto gap-2 px-4 py-2 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md
+                         ${hasReachedLimit
+                            ? 'bg-gray-400 cursor-not-allowed text-white'
+                            : 'bg-blue-500 hover:bg-blue-600 text-white'
+                        }`}
                 >
                     <Container size={16} />
-                    <span className="hidden sm:block md:block lg:block">Make a Service</span>
+                    <span className="hidden sm:block md:block lg:block">
+                        {hasReachedLimit ? 'Service Limit Reached' : 'Make a Service'}
+                    </span>
                 </Button>
             )}
 

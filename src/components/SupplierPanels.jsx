@@ -25,6 +25,7 @@ export default function SupplierPanels({ userData, shop, reviews, services, aver
     const [contactLoading, setContactLoading] = useState(false)
     const [bookingLoading, setBookingLoading] = useState(false)
     const [contact_number, setContact_number] = useState('')
+    const [email_address, setEmail_address] = useState('')
     const [availability, setAvailability] = useState('')
     const [timeError, setTimeError] = useState('')
     const [isDeleting, setIsDeleting] = useState(false)
@@ -36,8 +37,8 @@ export default function SupplierPanels({ userData, shop, reviews, services, aver
         setAvailability(shop?.supplier_availability)
         setResponse_time(shop?.supplier_response_time)
         setContact_number(shop?.supplier_number)
-
-    }, [shop])
+        setEmail_address(shop?.supplier_email)
+    }, [shop, userData])
 
     const handleContactSubmit = async (e) => {
         e.preventDefault()
@@ -47,6 +48,7 @@ export default function SupplierPanels({ userData, shop, reviews, services, aver
         try {
             await updateDoc(doc(db, "shops", auth.currentUser.uid), {
                 supplier_number: contact_number,
+                supplier_email: email_address
             })
         }
         catch (e) {
@@ -112,7 +114,7 @@ export default function SupplierPanels({ userData, shop, reviews, services, aver
             })
             return; // ⛔ stop before doing anything
         }
-        
+
         try {
             await updateDoc(doc(db, "shops", auth.currentUser.uid), {
                 supplier_availability: availability,
@@ -211,6 +213,28 @@ export default function SupplierPanels({ userData, shop, reviews, services, aver
                                 {!contactLoading && (
                                     <div className="space-y-6">
                                         <form onSubmit={handleContactSubmit} className='relative'>
+                                            {/* email */}
+                                            <div className="flex items-center gap-4 mt-6">
+                                                <div className="p-2 bg-blue-100 rounded-lg">
+                                                    <Mail size={24} className="text-blue-600" />
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-bold text-gray-900 mb-1">Email Address</h4>
+                                                    {!contactEditing
+                                                        ? (
+                                                            <p className="text-gray-600">{shop?.supplier_email || 'Information not provided'}</p>
+                                                        ) : (
+                                                            <input
+                                                                type="email"
+                                                                className='px-3 py-2 border border-gray-300 focus:outline-none rounded-md text-sm'
+                                                                value={email_address}
+                                                                onChange={(e) => setEmail_address(e.target.value)}
+                                                                placeholder='Enter information here'
+                                                            />
+                                                        )}
+                                                </div>
+                                            </div>
+
                                             <div className="flex items-center gap-4 mt-6">
                                                 <div className="p-2 bg-green-100 rounded-lg">
                                                     <Phone size={24} className="text-green-600" />
@@ -219,7 +243,7 @@ export default function SupplierPanels({ userData, shop, reviews, services, aver
                                                     <h4 className="font-bold text-gray-900 mb-1">Phone Number</h4>
                                                     {!contactEditing
                                                         ? (
-                                                            <p className="text-gray-600">{shop?.supplier_number}</p>
+                                                            <p className="text-gray-600">{shop?.supplier_number || 'Not provided'}</p>
                                                         ) : (
                                                             <input
                                                                 type="text"

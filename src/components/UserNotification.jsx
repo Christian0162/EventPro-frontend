@@ -11,6 +11,8 @@ import { useFetchContract } from "../hooks/useContract";
 import EventModal from "./EventModal";
 import ContractModal from "./ContractModal";
 import { useFetchSuppliers } from "../hooks/useSupplier";
+import { useFetchAllReports } from "../hooks/useReports";
+import { ReportReview } from "./ReviewModal";
 
 export default function UserNotifications({ userData }) {
     const [isOpen, setIsOpen] = useState(false)
@@ -23,8 +25,11 @@ export default function UserNotifications({ userData }) {
     const { contracts } = useFetchContract()
     const { suppliers } = useFetchSuppliers()
     const [selectedItem, setSelectedItem] = useState(null);
+    const { reports } = useFetchAllReports()
 
     const unreadCount = notifications.filter(notification => notification.unread).length
+
+    console.log(notifications)
 
     const markAsRead = async (id) => {
         await updateDoc(doc(db, "notifications", id), {
@@ -67,6 +72,9 @@ export default function UserNotifications({ userData }) {
             const eventData = events.find(event => event.id === matchedContract.event_id)
             const supplierData = suppliers.find(sup => sup.id === matchedContract.supplier_id)
             setSelectedItem({ type: "contract", contract: matchedContract, supplier: supplierData, event: eventData });
+        } else if (notification.referenced_type === "report") {
+            const userReport = reports.find(r => r.id === notification.referenced_id)
+            setSelectedItem({ type: "report", report: userReport, userData: userData })
         } else {
             setSelectedItem(null);
         }
@@ -170,7 +178,7 @@ export default function UserNotifications({ userData }) {
                                                             </p>
                                                             <div className="flex items-center justify-between mt-2">
                                                                 <span className="text-xs text-gray-400">
-                                                                    {notification.createdAt.toDate().toLocaleTimeString([], {
+                                                                    {notification?.createdAt?.toDate()?.toLocaleTimeString([], {
                                                                         hour: '2-digit',
                                                                         minute: '2-digit',
                                                                     })}
@@ -212,7 +220,7 @@ export default function UserNotifications({ userData }) {
                 <div className="fixed inset-0 flex items-center justify-center p-4">
                     <DialogPanel
                         transition
-                        className="w-full max-w-lg rounded-2xl bg-white shadow-2xl p-6 relative transition-all duration-300 ease-out data-closed:scale-95 data-closed:opacity-0"
+                        className="w-full max-w-lg rounded-2xl bg-white shadow-2xl p-6 mt-15 relative transition-all duration-300 ease-out data-closed:scale-95 data-closed:opacity-0"
                     >
                         {/* Close button */}
                         <button
@@ -263,6 +271,8 @@ export default function UserNotifications({ userData }) {
                                         <>
                                             {selectedItem.type === "event" ? (
                                                 <EventModal eventData={selectedItem.data} event_purpose={`dashboard`} />
+                                            ) : selectedItem.type === "report" ? (
+                                                <ReportReview report={selectedItem?.report} userData={selectedItem.userData} />
                                             ) : (
                                                 <ContractModal event_id={selectedItem.event.id} supplier_id={selectedItem.supplier.id} user_id={userData.id} userData={userData} supplierData={selectedItem.supplier} eventData={selectedItem.event} />
                                             )}

@@ -2,7 +2,6 @@ import { useState } from "react";
 import 'filepond/dist/filepond.min.css';
 import { FilePond } from 'react-filepond';
 import 'filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css';
-import { X } from "lucide-react";
 
 export default function UploadWidget({ type, setPicture, setId, setDoc, className, setError }) {
 
@@ -17,6 +16,9 @@ export default function UploadWidget({ type, setPicture, setId, setDoc, classNam
             setDoc(prev => [...prev, url])
         }
 
+        else if (type === 'proof') {
+            setPicture(prev => [...prev, url])
+        }
         else {
             setPicture(url)
         }

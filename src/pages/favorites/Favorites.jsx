@@ -92,11 +92,12 @@ export default function Favorites({ userData }) {
                         avatar: userData.id.charAt(0).toUpperCase(),
                         message: `The supplier "${supplier.supplier_name}" applied to your event.`,
                         createdAt: serverTimestamp(),
+                        sender_id: supplier.id,
                         referenced_type: 'event',
                         referenced_id: event_id,
                         title: 'You have a new application for your event.',
                         unread: true,
-                        user_id: user_id
+                        receiver_id: user_id
                     })
 
                     Swal.fire('Applied!', 'Your application has been submitted.', 'success');
@@ -452,7 +453,7 @@ export default function Favorites({ userData }) {
                                                         <div className="flex flex-wrap gap-2">
                                                             {event.event_categories?.map((category, index) => (
                                                                 <span key={index} className="px-3 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full border border-blue-100">
-                                                                    {category}
+                                                                    {category.label}
                                                                 </span>
                                                             ))}
                                                         </div>

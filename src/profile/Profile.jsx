@@ -127,7 +127,7 @@ export default function Profile({ userData }) {
                                             rows="3"
                                             disabled={!descriptionEditing}
                                             onChange={(e) => setDescription(e.target.value)}
-                                            placeholder="e.g Kian is an event planner for almost a decade."
+                                            placeholder="Write a brief description of what you do."
                                             value={description}
                                         />
                                         {descriptionEditing && (

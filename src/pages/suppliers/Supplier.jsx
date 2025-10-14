@@ -49,9 +49,7 @@ export default function Supplier({ userData }) {
                 )
             );
             setFilteredShops(filtered)
-
         }
-
         if (category) {
             filtered = filtered.filter(shopItem =>
                 shopItem.supplier_expertise?.some(exp =>

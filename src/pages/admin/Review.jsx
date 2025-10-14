@@ -82,7 +82,7 @@ export default function Review({ userData }) {
                     })
 
                     await addDoc(collection(db, "notifications"), {
-                        user_id: id,
+                        reciever_id: id,
                         avatar: 'A',
                         title: 'Your Verification Has Been approved!',
                         referenced_type: 'application',

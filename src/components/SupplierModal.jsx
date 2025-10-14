@@ -381,7 +381,7 @@ export default function SupplierModal({ supplierData, applications, userData, re
                                                                         <h4 className="font-bold text-gray-900 mb-1">Email Address</h4>
                                                                         {!contactEditing
                                                                             ? (
-                                                                                <p className="text-gray-600">{supplierData.supplier_email}</p>
+                                                                                <p className="text-gray-600">{supplierData.supplier_email || 'Information not provided'}</p>
 
                                                                             )
 
@@ -400,7 +400,7 @@ export default function SupplierModal({ supplierData, applications, userData, re
                                                                         <h4 className="font-bold text-gray-900 mb-1">Phone Number</h4>
                                                                         {!contactEditing
                                                                             ? (
-                                                                                <p className="text-gray-600">{supplierData.supplier_number}</p>
+                                                                                <p className="text-gray-600">{supplierData.supplier_number || 'Not provided'}</p>
                                                                             ) : (
                                                                                 <input
                                                                                     type="text"

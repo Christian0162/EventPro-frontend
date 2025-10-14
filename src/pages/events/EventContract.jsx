@@ -21,18 +21,25 @@ export default function EventContract({ userData }) {
     const { supplier, isLoading: isSupplierLoading } = useFetchSupplierById(supplierId)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [currentStep, setCurrentStep] = useState(1)
-    const [selectedService, setSelectedService] = useState(null)
     const [error, setError] = useState(false)
     const [additional_information, setAdditional_Information] = useState("")
     const { services: shopServices, isLoading: isServiceLoading } = useFetchSupplierServices()
     const { events, isLoading: isEventsLoading } = useFetchEvents()
     const { applications: userApplication } = useFetchAllApplication()
+    const [selectedService, setSelectedService] = useState()
 
     const currentEvent = events.find(event => event.id === eventId)
 
     const services = shopServices.filter(serv => serv.supplier_id === supplierId)
 
     const isAllLoading = isEventsLoading || isServiceLoading || isSupplierLoading
+
+    useEffect(() => {
+        if (services.length === 1 && !selectedService) {
+            setSelectedService(services[0]);
+            setError(false);
+        }
+    }, [shopServices]);
 
     const application = userApplication.find(app => app.event_id === eventId && app.supplier_id === supplierId)
 
@@ -51,81 +58,82 @@ export default function EventContract({ userData }) {
     }
 
     const handleSubmit = async () => {
-        Swal.fire({
-            title: 'Send Contract Offer?',
-            text: "You're about to send a contract offer to the selected supplier. This action confirms your proposed terms and initiates the agreement process.",
-            showConfirmButton: true,
-            confirmButtonText: 'Send Offer',
-            showCancelButton: true,
-        }).then(async (result) => {
-            if (!result.isConfirmed) return; // ✅ prevents double creation
+        // Swal.fire({
+        //     title: 'Send Contract Offer?',
+        //     text: "You're about to send a contract offer to the selected supplier. This action confirms your proposed terms and initiates the agreement process.",
+        //     showConfirmButton: true,
+        //     confirmButtonText: 'Send Offer',
+        //     showCancelButton: true,
+        // }).then(async (result) => {
+        //     if (!result.isConfirmed) return; // ✅ prevents double creation
 
-            if (result.isConfirmed) {
-                try {
-                    setIsSubmitting(true)
-                    const applicationRef = application?.id
+        //     if (result.isConfirmed) {
+        try {
+            setIsSubmitting(true)
+            const applicationRef = application?.id
 
-                    const newContractRef = await addDoc(collection(db, "contracts"), {
-                        supplier_id: supplierId,
-                        event_id: eventId,
-                        planner_id: userData?.id,
-                        service_plan: selectedService,
-                        penalty_clauses: termsOfCondition,
-                        additional_information: additional_information,
-                        created_at: serverTimestamp(),
-                        status: 'Pending'
-                    })
+            const newContractRef = await addDoc(collection(db, "contracts"), {
+                supplier_id: supplierId,
+                event_id: eventId,
+                planner_id: userData?.id,
+                service_plan: selectedService,
+                penalty_clauses: termsOfCondition,
+                additional_information: additional_information,
+                created_at: serverTimestamp(),
+                status: 'Pending'
+            })
 
-                    if (!applicationRef) {
-                        await addDoc(collection(db, "applications"), {
-                            supplier_id: supplierId,
-                            event_id: eventId,
-                            AppliedAt: serverTimestamp(),
-                            status: 'Pending'
-                        })
-                    }
-
-                    if (applicationRef) {
-                        updateDoc(doc(db, "applications", applicationRef), {
-                            status: "Approved",
-                            ApproveAt: serverTimestamp()
-                        })
-                    }
-
-                    await addDoc(collection(db, "notifications"), {
-                        avatar: currentEvent.event_name.charAt(0).toUpperCase(),
-                        message: `The event planner for "${currentEvent.event_name}" applied for your service.`,
-                        createdAt: serverTimestamp(),
-                        referenced_type: 'contract',
-                        referenced_id: newContractRef?.id,
-                        title: 'New service application received.',
-                        unread: true,
-                        user_id: supplierId
-                    })
-
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Offer Sent Successfully',
-                        text: 'Your offer has been sent to the supplier. You will be notified once it is approved.',
-                        confirmButtonText: 'OK',
-                        timer: 2000,
-                    });
-
-                    setIsSubmitting(false)
-
-                    return navigate(`/events/edit/${eventId}`)
-
-                }
-                catch (e) {
-                    console.error(e)
-                    setIsSubmitting(false)
-
-                }
-                finally {
-                    setIsSubmitting(false)
-                }
+            if (!applicationRef) {
+                await addDoc(collection(db, "applications"), {
+                    supplier_id: supplierId,
+                    event_id: eventId,
+                    AppliedAt: serverTimestamp(),
+                    status: 'Pending'
+                })
             }
-        })
+
+            if (applicationRef) {
+                updateDoc(doc(db, "applications", applicationRef), {
+                    status: "Approved",
+                    ApproveAt: serverTimestamp()
+                })
+            }
+
+            await addDoc(collection(db, "notifications"), {
+                avatar: currentEvent.event_name.charAt(0).toUpperCase(),
+                message: `The event planner for "${currentEvent.event_name}" applied for your service.`,
+                createdAt: serverTimestamp(),
+                sender_id: currentEvent.user_id,
+                referenced_type: 'contract',
+                referenced_id: newContractRef?.id,
+                title: 'New service application received.',
+                unread: true,
+                receiver_id: supplierId
+            })
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Offer Sent Successfully',
+                text: 'Your offer has been sent to the supplier. You will be notified once it is approved.',
+                confirmButtonText: 'OK',
+                timer: 2000,
+            });
+
+            setIsSubmitting(false)
+
+            return navigate(`/events/edit/${eventId}`)
+
+        }
+        catch (e) {
+            console.error(e)
+            setIsSubmitting(false)
+
+        }
+        finally {
+            setIsSubmitting(false)
+        }
+        // }
+        // })
     }
 
     return (
@@ -158,7 +166,7 @@ export default function EventContract({ userData }) {
                                         return (
                                             <button
                                                 key={index}
-                                                className={`w-full h-100 flex flex-col bg-gray-50 border-2 rounded-lg transition-all duration-200 hover:shadow-md ${selected
+                                                className={`w-full flex flex-col bg-gray-50 border-2 rounded-lg transition-all duration-200 hover:shadow-md ${selected
                                                     ? 'border-blue-600 bg-blue-50'
                                                     : error
                                                         ? 'border-red-300'
@@ -244,7 +252,7 @@ export default function EventContract({ userData }) {
                                     <div className="w-full flex justify-between bg-gray-50 py-6 border border-gray-300 rounded-lg px-7">
                                         <div className="flex flex-col">
                                             <span className="block text-lg font-bold text-gray-800">
-                                                Selected Plan: {selectedService?.service_plan.label}
+                                                Selected Plan: {selectedService?.service_plan?.label}
                                             </span>
                                             <span className="block text-gray-600">
                                                 ₱ {selectedService?.service_price}.0

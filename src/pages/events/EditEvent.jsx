@@ -9,12 +9,12 @@ import Swal from "sweetalert2";
 import { useFetchEvents, useUpdateEvent } from "../../hooks/useEvents";
 import SupplierModal from "../../components/SupplierModal";
 import { Review } from '../../components/ReviewModal'
-import { useNavigate, useParams, Link } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { useFetchReviews } from "../../hooks/useReviews";
 import { useFetchSupplierServices, useFetchSuppliers } from "../../hooks/useSupplier";
 import ContractModal from "../../components/ContractModal";
 import { useFetchContract } from "../../hooks/useContract";
-import { headerBackgrounds, statusOptions, SupplierOptions } from "../../constants/categories";
+import { eventStatusStyles, headerBackgrounds, SupplierOptions } from "../../constants/categories";
 import { RejectReview } from "../../components/ReviewModal";
 import LoadingOverlay from "../../components/LoadingOverlay";
 import { useFetchUserProfiles } from "../../hooks/useProfile";
@@ -22,10 +22,9 @@ import { useFetchUsers } from "../../hooks/useUsers";
 import ProfileHover from "../../components/ProfileHover";
 import PageLoading from "../../components/PageLoading";
 import { UpdateEventBackground } from "../../components/UpdateModal";
+import { useFetchAllTransaction } from "../../hooks/useTransaction";
 
 export default function EditEvent({ userData }) {
-
-    const navigate = useNavigate()
 
     const { id } = useParams();
     const [event_name, setEvent_name] = useState('')
@@ -34,7 +33,6 @@ export default function EditEvent({ userData }) {
     const [eventBackground, setEventBackround] = useState('')
     const [startTime, setStartTime] = useState('')
     const [endTime, setEndTime] = useState('')
-    const [event_status, setEvent_status] = useState(null)
     const [event_type, setEvent_type] = useState(null)
     const [event_description, setEvent_description] = useState('')
     const [categories, setCategories] = useState(null)
@@ -42,11 +40,12 @@ export default function EditEvent({ userData }) {
     const [tags, setTags] = useState([])
     const [applications, setApplications] = useState([])
     const [eventData, setEventData] = useState([])
-    const { contracts } = useFetchContract()
-    const { reviews } = useFetchReviews()
-    const { services } = useFetchSupplierServices()
-    const { suppliers } = useFetchSuppliers()
-    const { events, isLoading } = useFetchEvents(userData.id)
+    const { contracts, isLoading: isContractsLoading } = useFetchContract()
+    const { reviews, isLoading: isReviewsLoading } = useFetchReviews()
+    const { services, isLoading: isServiceLoading } = useFetchSupplierServices()
+    const { suppliers, isLoading: isSupplierLoading } = useFetchSuppliers()
+    const { events, isLoading: isEventLoading } = useFetchEvents(userData.id)
+    const { transactions } = useFetchAllTransaction()
     const [suggestedEvents, setSuggestedEvents] = useState([])
     const { updateEvent, isLoading: isUpdating } = useUpdateEvent()
     const [hoverState, setHoverState] = useState({ id: null, section: null });
@@ -55,7 +54,7 @@ export default function EditEvent({ userData }) {
 
     const data = events.find(event => event.id === id)
 
-    console.log(tags)
+    const isAllLoading = isEventLoading || isUpdating || isSupplierLoading || isServiceLoading || isReviewsLoading
 
     useEffect(() => {
         if (!suppliers?.length || !tags?.length) return;
@@ -68,10 +67,6 @@ export default function EditEvent({ userData }) {
 
         setSuggestedEvents(suggestedEvents);
     }, [suppliers, tags]);
-
-
-    console.log(tags)
-    console.log(suppliers)
 
     const addTag = () => {
         if (categories?.value.trim() && !tags.some(tag => tag.value === categories.value)) {
@@ -103,7 +98,6 @@ export default function EditEvent({ userData }) {
             setEvent_name(data.event_name)
             setEvent_location(data.event_location)
             setEvent_date(data.event_date)
-            setEvent_status(data.event_status)
             setEvent_type(data.event_type)
             setEvent_budget(data.event_budget)
             setEvent_description(data.event_description)
@@ -159,7 +153,6 @@ export default function EditEvent({ userData }) {
                 event_location: event_location,
                 event_date: event_date,
                 event_time: newTime,
-                event_status: event_status,
                 event_type: event_type,
                 event_budget: event_budget,
                 event_description: event_description,
@@ -202,14 +195,57 @@ export default function EditEvent({ userData }) {
 
     const headerBackground = headerBackgrounds[Math.floor(Math.random() * headerBackgrounds.length)];
 
+    const now = new Date();
+    const eventDate = new Date(data?.event_date?.date_value);
+
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const eventDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate())
+
+    const eventContracts = contracts.filter(cont => cont.event_id === id && cont.status === "Approved")
+
+    const isAllContractPaid = eventContracts.some(cont => {
+        const contractTransaction = transactions?.filter(t => t.contract_id === cont.id)
+        const eventTransactions = contractTransaction?.reduce((sum, trans) => sum + (trans.amount - trans.process_fee), 0)
+
+        return cont.service_plan.service_price === eventTransactions
+    })
+
+    let status = {
+        label: '',
+        value: ''
+    };
+
+    if (tags.length === 0) {
+        status = { label: 'Planning', value: 'planning' };
+    } else if (tags.length > 0 && eventContracts.length === 0 && now.getDate() <= eventDay.getDate()) {
+        status = { label: 'Open', value: 'open' };
+    } else if (eventContracts.length > 0 && now.getDate() <= eventDay.getDate()) {
+        status = { label: 'In Progress', value: 'in_progress' };
+    } else if (!isAllContractPaid && eventContracts.length > 0) {
+        status = { label: 'Payment Pending', value: 'payment_pending' };
+    } else {
+        status = { label: 'Completed', value: 'completed' };
+    }
+
     return (
         <>
-            {isLoading && (
+            {isAllLoading && (
                 <PageLoading />
             )}
 
-            {!isLoading && (
+            {!isAllLoading && (
                 <>
+                    {eventDay < today && (
+                        <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg shadow-sm">
+                            ⚠️ This event is <b>no longer visible to the public</b> because its date has already passed.
+                        </div>
+                    )}
+
+                    {tags.length === 0 && (
+                        <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg shadow-sm">
+                            ⚠️ This event is currently in <b>Planning</b> because no supplier has been specified. It will not be visible to the public until at least one supplier is added.
+                        </div>
+                    )}
                     {/* Header with Background Image */}
                     <div
                         className="relative h-64 rounded-xl mb-8 overflow-hidden bg-cover bg-center"
@@ -218,6 +254,7 @@ export default function EditEvent({ userData }) {
 
                         <div className="absolute inset-0 bg-blue-900/30"></div>
                         <div className="relative z-10 h-full flex flex-col justify-center px-8">
+
                             <h1 className="text-4xl font-bold text-white mb-2">Manage Events</h1>
                             <p className="text-blue-100 text-lg">Edit and manage your event details</p>
                             <div className="flex items-center mt-4 space-x-4 text-white">
@@ -237,12 +274,18 @@ export default function EditEvent({ userData }) {
 
 
                     <div className="bg-white rounded-xl p-8 border border-gray-100 shadow-lg mb-8">
-                        <div className="mb-6">
-                            <h2 className="text-2xl font-bold text-gray-800 flex items-center">
-                                <FileText className="mr-2 text-blue-600" size={24} />
-                                Event Details
-                            </h2>
-                            <p className="text-gray-600 mt-1">Update your event information</p>
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h2 className="text-2xl font-bold text-gray-800 flex items-center">
+                                    <FileText className="mr-2 text-blue-600" size={24} />
+                                    Event Details
+                                </h2>
+                                <p className="text-gray-600 mt-1">Update your event information</p>
+                            </div>
+
+                            <span className={`relative px-4 py-1 text-sm font-semibold rounded-full ${eventStatusStyles[status.value]}`}>
+                                {status?.label}
+                            </span>
                         </div>
 
                         <form onSubmit={handleSubmit} className="w-full h-full space-y-6">
@@ -274,7 +317,7 @@ export default function EditEvent({ userData }) {
                             </div>
 
                             {/* date, time and status */}
-                            <div className="gap-6 items-center grid grid-cols-1 md:grid-cols-3">
+                            <div className="gap-6 items-center grid grid-cols-1 md:grid-cols-2">
 
                                 {/* date */}
                                 <div className="flex flex-col w-full">
@@ -332,30 +375,6 @@ export default function EditEvent({ userData }) {
                                     </div>
                                 </div>
 
-
-                                {/* status */}
-                                <div className="flex flex-col w-full">
-                                    <label htmlFor="status" className="text-sm font-medium text-gray-700 mb-2">Status</label>
-                                    <Select
-                                        name="event_status"
-                                        value={event_status}
-                                        onChange={setEvent_status}
-                                        options={statusOptions}
-                                        placeholder="Select status"
-                                        className="mt-1"
-                                        styles={{
-                                            control: (base) => ({
-                                                ...base,
-                                                padding: '4px 0',
-                                                borderRadius: '8px',
-                                                borderColor: '#d1d5db',
-                                                '&:hover': {
-                                                    borderColor: '#d1d5db'
-                                                }
-                                            })
-                                        }}
-                                    />
-                                </div>
                             </div>
 
                             {/* type and budget */}
@@ -479,7 +498,7 @@ export default function EditEvent({ userData }) {
                             </div>
 
                             {isUpdating && (
-                                <LoadingOverlay isLoading={isUpdating} message="Processing.." />
+                                <LoadingOverlay isAllLoading={isUpdating} message="Processing.." />
                             )}
 
                             <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
@@ -655,7 +674,7 @@ export default function EditEvent({ userData }) {
                                 </div>
                             }
 
-                            {!isLoading && suppliers.filter(supplier => applications.some(app => app.supplier_id === supplier.id && app.status === "Approved") &&
+                            {!isAllLoading && suppliers.filter(supplier => applications.some(app => app.supplier_id === supplier.id && app.status === "Approved") &&
                                 contracts.some(c => c.supplier_id === supplier.id && c.status === "Completed" && c.event_id === id)
                             ).length === 0 && (
                                     <div className="text-center py-8 bg-gray-50 rounded-lg">
@@ -740,7 +759,7 @@ export default function EditEvent({ userData }) {
                                 </div>
                             }
 
-                            {!isLoading && suppliers.filter(supplier => applications.filter(app => app.supplier_id === supplier.id).every(app => app.status === "Approved") &&
+                            {!isAllLoading && suppliers.filter(supplier => applications.filter(app => app.supplier_id === supplier.id).every(app => app.status === "Approved") &&
                                 contracts.some(c => c.supplier_id === supplier.id && c.status === "Approved" && c.event_id === id)
                             ).length === 0 && (
                                     <div className="text-center py-8 bg-gray-50 rounded-lg">
@@ -827,6 +846,7 @@ export default function EditEvent({ userData }) {
                                                             event_name={event_name}
                                                             supplier_id={supplier.id}
                                                             supplier={supplier}
+                                                            event={eventData}
                                                         />
                                                     </div>
                                                 </div>
@@ -836,7 +856,7 @@ export default function EditEvent({ userData }) {
                                 </div>
                             )}
 
-                            {!isLoading && suppliers.filter(supplier => applications.some(app => app.supplier_id === supplier.id && app.status === "Pending")).length === 0 && (
+                            {!isAllLoading && suppliers.filter(supplier => applications.some(app => app.supplier_id === supplier.id && app.status === "Pending")).length === 0 && (
                                 <div className="text-center py-8 bg-gray-50 rounded-lg">
                                     <Users className="mx-auto text-gray-400 mb-2" size={32} />
                                     <p className="text-gray-500">No pending supplier applications for this event.</p>
@@ -925,7 +945,7 @@ export default function EditEvent({ userData }) {
                                 </div>
                             )}
 
-                            {!isLoading && suppliers.filter(supplier => applications.some(app => app.supplier_id === supplier.id && app.status === "Approved") &&
+                            {!isAllLoading && suppliers.filter(supplier => applications.some(app => app.supplier_id === supplier.id && app.status === "Approved") &&
                                 contracts.some(contracts => contracts.status === "Pending" && supplier.id === contracts.supplier_id)).length === 0 && (
                                     <div className="text-center py-8 bg-gray-50 rounded-lg">
                                         <FileText className="mx-auto text-gray-400 mb-2" size={32} />

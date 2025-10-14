@@ -13,6 +13,9 @@ import EventModal from "../../components/EventModal";
 import LoadingOverlay from "../../components/LoadingOverlay";
 import { useFetchAllApplication } from "../../hooks/useApplication";
 import PageLoading from "../../components/PageLoading";
+import { eventStatusStyles } from "../../constants/categories";
+import { useFetchContract } from "../../hooks/useContract";
+import { useFetchAllTransaction } from "../../hooks/useTransaction";
 
 export default function Event({ userData }) {
     const [supplierData, setSupplierData] = useState({})
@@ -23,9 +26,13 @@ export default function Event({ userData }) {
     const [allEvents, setAllEvents] = useState([])
     const [isApplying, setIsApplying] = useState(false)
     const [applyingEventId, setApplyingEventId] = useState(null)
+    const [filteredEvents, setFilteredEvents] = useState([])
     const { deleteEvent } = useDeleteEvent()
+    const [searchTerm, setSearchTerm] = useState("") // 🔹 search state
     const { events, isLoading: isEventLoading } = useFetchEvents()
     const { applications: supplierApplications, isLoading: isApplicationLoading } = useFetchAllApplication()
+    const { contracts } = useFetchContract()
+    const { transactions } = useFetchAllTransaction()
     const navigate = useNavigate()
 
     const applications = supplierApplications.filter(app => app.supplier_id === userData.id)
@@ -49,50 +56,66 @@ export default function Event({ userData }) {
 
     useEffect(() => {
         if (userData?.role === "Event Planner") {
-            const createdEvents = events.filter(event => event.user_id === userData.id)
+            const createdEvents = events.filter(events => events.user_id === userData.id)
             setAllEvents(createdEvents)
         } else {
             const today = new Date().toISOString().split("T")[0];
 
-            const activeEvents = events.filter(event =>
-                event.status === "active" &&
-                event.event_date?.date_value >= today &&
-                event.event_status?.value?.toLowerCase() !== "completed"
+            const activeEvents = events.filter(events =>
+                events.status === "active" &&
+                events.event_date?.date_value >= today &&
+                events.event_status?.value?.toLowerCase() !== "completed"
             ); setAllEvents(activeEvents)
         }
     }, [events, userData])
+
+
+    useEffect(() => {
+        let filtered = allEvents;
+
+        if (searchTerm) {
+            filtered = filtered.filter(events =>
+                events.event_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                events.event_location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                events.event_categories?.map(c => c.label.toLowerCase()).join(" ").includes(searchTerm.toLowerCase()) || ""
+            );
+            setFilteredEvents(filtered)
+        }
+
+        setFilteredEvents(filtered);
+    }, [searchTerm, allEvents]);
 
     const handleDelete = async (id) => {
         deleteEvent(id)
     }
 
-    const handleFavorites = async (e, event) => {
+    const handleFavorites = async (e, events) => {
         e.preventDefault();
         setIsCreatingFavorites(true);
 
         try {
-            const eventLiked = likedEvents[event.id] || false;
+            const eventLiked = likedEvents[events.id] || false;
 
             if (eventLiked) {
                 const q = query(collection(db, "favorites"),
                     where("user_id", "==", userData.id),
-                    where("event_id", "==", event.id)
+                    where("event_id", "==", events.id)
                 );
                 const querySnapshot = await getDocs(q);
                 querySnapshot.forEach(async docSnapshot => {
                     await deleteDoc(doc(db, "favorites", docSnapshot.id));
                 });
 
-                setLikedEvents(prev => ({ ...prev, [event.id]: false }));
+                setLikedEvents(prev => ({ ...prev, [events.id]: false }));
             } else {
                 await addDoc(collection(db, "favorites"), {
                     user_id: userData.id,
-                    event_id: event.id,
+                    event_id: events.id,
                     isActive: true,
                     createdAt: serverTimestamp(),
                 });
 
-                setLikedEvents(prev => ({ ...prev, [event.id]: true }));
+                setLikedEvents(prev => ({ ...prev, [events.id]: true }));
             }
         } catch (e) {
             console.error(e);
@@ -104,11 +127,11 @@ export default function Event({ userData }) {
 
     const handleApply = async (event_id, user_id) => {
         setIsApplying(true)
-        setApplyingEventId(event_id) // Set the event ID that's being applied to
+        setApplyingEventId(event_id) // Set the events ID that's being applied to
 
         Swal.fire({
             title: 'Confirm Application',
-            text: "Are you sure you want to apply for this event?",
+            text: "Are you sure you want to apply for this events?",
             icon: 'question',
             showCancelButton: true,
             confirmButtonText: 'Yes, Apply',
@@ -126,13 +149,14 @@ export default function Event({ userData }) {
 
                     await addDoc(collection(db, "notifications"), {
                         avatar: userData.id.charAt(0).toUpperCase(),
-                        message: `The supplier "${supplierData.supplier_name}" applied to your event.`,
+                        message: `The supplier "${supplierData.supplier_name}" applied to your events.`,
+                        sender_id: supplierData.id,
                         referenced_type: 'event',
                         referenced_id: event_id,
                         createdAt: serverTimestamp(),
-                        title: 'You have a new application for your event.',
+                        title: 'You have a new application for your events.',
                         unread: true,
-                        user_id: user_id
+                        receiver_id: user_id
                     })
 
                     Swal.fire('Applied!', 'Your application has been submitted.', 'success');
@@ -217,15 +241,23 @@ export default function Event({ userData }) {
                     <div className="flex justify-between md:items-center lg:items-center flex-col lg:flex-row md:flex-row">
                         <div className="flex flex-col">
                             <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Events</h1>
-
                             <span className="mt-2 text-gray-600">
                                 {userData.verification_status === "verified" ?
                                     'Create and manage your events in one place' :
                                     'Verify account to create and manage your events in one place'}
                             </span>
-
                         </div>
 
+
+                        <div className="mt-6">
+                            <input
+                                type="text"
+                                placeholder="Search events by name, location, or category..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value.toLowerCase())}
+                                className="w-100 border border-gray-300  bg-white rounded-lg px-4 py-2 shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            />
+                        </div>
                         {userData.role === "Event Planner" && userData.verification_status === "verified" && (
                             <Link to={'/events/create'}>
                                 <button className="bg-blue-600 text-white rounded-md px-5 lg:px-10 md:px-8 sm:px-7 py-2 lg:py-3 font-semibold mt-3">Create New Event</button>
@@ -234,168 +266,164 @@ export default function Event({ userData }) {
 
                     </div>
 
+
                     {events?.length > 0 && (
-                        <div className="grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 grid gap-5">
-                            {allEvents.map((events, index) => (
-                                <div key={index}>
-                                    {/* event cards */}
-                                    <div className="group flex justify-between transition-all duration-200 h-full w-full border-1 bg-white border-gray-200 hover:shadow-2xl hover:-translate-y-3 p-6 rounded-lg mt-6 ">
-                                        <div className="flex flex-col justify-between">
-                                            <div>
-                                                <div className="flex justify-between">
-                                                    {events.user_id !== userData.id && (
-                                                        <div className="relative flex items-center gap-2">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-5">
+                            {filteredEvents.map((events, index) => {
+
+                                const now = new Date();
+                                const eventDate = new Date(events?.event_date?.date_value);
+                                const eventContracts = contracts.filter(cont => cont.event_id === events.id && cont.status === "Approved")
+
+                                const isAllContractPaid = eventContracts.some(cont => {
+                                    const contractTransaction = transactions?.filter(t => t.contract_id === cont.id)
+                                    const eventTransactions = contractTransaction?.reduce((sum, trans) => sum + (trans.amount - trans.process_fee), 0)
+
+                                    return cont.service_plan.service_price === eventTransactions
+                                })
+
+                                let status = {
+                                    label: '',
+                                    value: ''
+                                };
+
+                                if (events.event_categories.length === 0) {
+                                    status = { label: 'Planning', value: 'planning' };
+                                } else if (events.event_categories.length > 0 && eventContracts.length === 0) {
+                                    status = { label: 'Open', value: 'open' };
+                                } else if (eventContracts.length > 0 && now.getDate() <= eventDate.getDate()) {
+                                    status = { label: 'In Progress', value: 'in_progress' };
+                                } else if (!isAllContractPaid) {
+                                    status = { label: 'Payment Pending', value: 'payment_pending' };
+                                } else {
+                                    status = { label: 'Completed', value: 'completed' };
+                                }
+
+                                return (
+                                    <div key={index} className="group bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col h-full overflow-hidden">
+                                        <div className="p-6 flex-grow">
+                                            <div className="flex justify-between items-start mb-4">
+                                                <span className={`inline-block px-3 py-1 text-sm rounded-full ${eventStatusStyles[status.value]}`}>
+                                                    {status.label}
+                                                </span>
+                                                <div className="flex items-center gap-2 -mr-2">
+                                                    {userData.role === "Supplier" && (
+                                                        <>
                                                             <EventModal eventData={events} />
-
-                                                            <button onClick={(e) => handleChat(e, events.user_id, events.event_name)} className='group'>
-                                                                <MessageCircleMore className="trasition-all duration-200 text-gray-400 group-hover:text-blue-600" size={21} />
+                                                            <button onClick={(e) => handleChat(e, events.user_id, events.event_name)} className='p-2 rounded-full hover:bg-slate-100 text-slate-500 hover:text-blue-600 transition-colors'>
+                                                                <MessageCircleMore size={20} />
                                                             </button>
-
-                                                            <button onClick={(e) => handleFavorites(e, events)} className='group transparent'>
+                                                            <button onClick={(e) => handleFavorites(e, events)} className='p-2 rounded-full hover:bg-slate-100 transition-colors'>
                                                                 <Heart
-                                                                    className={`transition-all duration-200 ${likedEvents[events.id]
-                                                                        ? 'fill-red-600 opacity-100 text-red-600'
-                                                                        : 'opacity-50 text-gray-800 group-hover:text-red-600 group-hover:opacity-60'
-                                                                        }`}
-                                                                    size={21}
+                                                                    className={`transition-all duration-200 ${likedEvents[events.id] ? 'fill-red-500 text-red-500' : 'text-slate-500 group-hover:text-red-500'}`}
+                                                                    size={20}
                                                                 />
                                                             </button>
-                                                        </div>
+                                                        </>
                                                     )}
-
-                                                    <div className={`${userData.role === "Supplier" ? 'hidden' : 'ml-auto'}`}>
-                                                        <button onClick={() => handleDelete(events.id)} className="self-end transition-all duration-200 opacity-0 group-hover:opacity-100 active:text-violet-600"><Trash width={24} height={24} strokeWidth={2} /></button>
-                                                    </div>
-                                                </div>
-
-                                                {/* event name */}
-                                                <div className="flex flex-col sm:flex-row md:flex-row lg:flex-row justify-between items-center gap-3 mb-7 mt-3">
-                                                    <span className="block text-3xl font-bold text-gray-900">{events.event_name.length > 10 ? events.event_name.slice(0, 10) + ".." : events.event_name}</span>
-                                                    <span className={`${events.event_status.value === "upcoming" ? "bg-purple-600" : events.event_status.value === "planning" ? "bg-sky-500" : "bg-green-500"} rounded-full shadow-lg py-1 px-5 text-white`}>{events.event_status.label}</span>
-                                                </div>
-
-                                                {/* event date and time */}
-                                                <div className="flex flex-col justify-between">
-                                                    <div className="flex flex-col gap-4">
-                                                        <div className="flex space-x-2 items-center gap-2">
-                                                            <span className="rounded-xl bg-blue-200 h-10 w-10 flex items-center justify-center text-blue-600"><CalendarDays /></span>
-                                                            <span className="text-gray-900 font-bold">{events?.event_date?.date_preview?.join(", ")}
-                                                                <br></br> {events?.event_time?.previewStartAndEnd}</span>
-                                                        </div>
-
-                                                        {/* event location */}
-                                                        <div className="flex space-x-2 items-center gap-2">
-                                                            <span className="rounded-xl bg-green-200 h-10 w-10 flex items-center justify-center shrink-0 text-green-600"><MapPin /></span>
-                                                            <span className="text-gray-700 f">{events.event_location}</span>
-                                                        </div>
-
-                                                        {/* event budget */}
-                                                        <div className="flex space-x-2 items-center gap-2">
-                                                            <span className="rounded-xl bg-yellow-200 h-10 w-10 flex items-center justify-center text-yellow-600"><CircleDollarSign /></span>
-                                                            <span className="font-bold text-gray-900">₱ {events.event_budget}</span>
-                                                        </div>
-
-                                                        {/* event suppliers */}
-                                                        <div>
-                                                            <div className="flex gap-2 items-center mb-5">
-                                                                <Users className="text-gray-600 h-5 w-5" />
-                                                                <span className="text-md text-gray-800">Looking for supplier:</span>
-                                                            </div>
-
-                                                            {/* categories */}
-                                                            <div className="flex flex-wrap gap-3 mt-2">
-                                                                {events.event_categories?.filter(category => category?.label).length > 0 ? (
-                                                                    events.event_categories
-                                                                        .filter(category => category?.label)
-                                                                        .map((category, index) => (
-                                                                            <span
-                                                                                key={index}
-                                                                                className="px-3 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full border border-blue-100"
-                                                                            >
-                                                                                {category.label}
-                                                                            </span>
-                                                                        ))
-                                                                ) : (
-                                                                    <span className="text-gray-500 text-sm italic">No categories selected for this event</span>
-                                                                )}
-                                                            </div>
-                                                        </div>
-
-                                                    </div>
+                                                    {userData.role === "Event Planner" && (
+                                                        <button onClick={() => handleDelete(events.id)} className="p-2 rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all duration-200 opacity-0 group-hover:opacity-100">
+                                                            <Trash size={18} />
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
 
-                                            <div className="flex flex-col">
-                                                <span className="block px-2 mb-1 text-gray-600 font-bold">Description:</span>
-                                                <p className="text-gray-600 break-wordsrounded-lg px-2 mb-5">{events.event_description.length > 1 ? events.event_description : "No description provided"}</p>
+                                            <h3 className="text-2xl font-bold text-slate-800 truncate mb-4" title={events.event_name}>{events.event_name}</h3>
 
-                                                {userData.role === "Event Planner" && (
-                                                    <Link to={`/events/edit/${events.id}`} className="block text-center py-3 w-full bg-blue-600 text-white font-bold rounded-lg">Manage Event</Link>
-                                                )}
+                                            <div className="space-y-4 mb-5 text-sm">
+                                                <div className="flex items-center gap-3">
+                                                    <span className="flex-shrink-0 bg-blue-100 text-blue-600 h-8 w-8 rounded-lg flex items-center justify-center"><CalendarDays size={18} /></span>
+                                                    <span className="text-slate-700 font-medium">{events?.event_date?.date_preview?.join(", ")} at {events?.event_time?.previewStartAndEnd}</span>
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    <span className="flex-shrink-0 bg-green-100 text-green-600 h-8 w-8 rounded-lg flex items-center justify-center"><MapPin size={18} /></span>
+                                                    <span className="text-slate-600">{events.event_location}</span>
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    <span className="flex-shrink-0 bg-yellow-100 text-yellow-600 h-8 w-8 rounded-lg flex items-center justify-center"><CircleDollarSign size={18} /></span>
+                                                    <span className="text-slate-800 font-bold">₱ {Number(events.event_budget).toLocaleString()}</span>
+                                                </div>
+                                            </div>
 
-                                                {userData.role === "Supplier" && (
-                                                    <>
-                                                        {!gettingShop ? (
-                                                            supplierData?.supplier_name?.length > 0 ? (
-                                                                <button
-                                                                    onClick={() => handleApply(events.id, events.user_id)}
-                                                                    disabled={
-                                                                        applications.find(app => app.event_id === events.id)?.status === "Pending" ||
-                                                                        applications.find(app => app.event_id === events.id)?.status === "Approved" ||
-                                                                        (isApplying && applyingEventId === events.id) ||
-                                                                        !supplierData.is_verified
-                                                                    }
-                                                                    className={`flex items-center justify-center gap-2 text-center py-2 w-full ${applications.find(app => app.event_id === events.id)?.status === "Pending" ||
-                                                                        applications.find(app => app.event_id === events.id)?.status === "Approved"
-                                                                        ? 'bg-blue-300 cursor-not-allowed'
-                                                                        : (isApplying && applyingEventId === events.id)
-                                                                            ? 'bg-blue-400 cursor-not-allowed'
-                                                                            : !supplierData.is_verified
-                                                                                ? 'bg-blue-400 cursor-not-allowed'
-                                                                                : 'bg-blue-600 hover:bg-blue-700'
-                                                                        } text-white font-bold rounded-lg`}
-                                                                >
-                                                                    {isApplying && applyingEventId === events.id ? (
-                                                                        <>
-                                                                            <ClipLoader size={16} color="#ffffff" />
-                                                                            Applying...
-                                                                        </>
-                                                                    ) : applications.find(app => app.event_id === events.id)?.status === "Pending" ? (
-                                                                        'Pending'
-                                                                    ) : applications.find(app => app.event_id === events.id)?.status === "Approved" ? (
-                                                                        'Approved'
-                                                                    ) : !supplierData.is_verified ? (
-                                                                        'Account not verified'
-                                                                    ) : (
-                                                                        'Apply'
-                                                                    )}
-                                                                </button>
-                                                            ) : (
-                                                                <Link
-                                                                    to={'/shop'}
-                                                                    className="block text-center bg-gray-200 py-2 rounded-md transition-all text-gray-600 hover:bg-blue-600 hover:text-white"
-                                                                >
-                                                                    Need shop to apply
-                                                                </Link>
-                                                            )
-                                                        ) : (
-                                                            <div className="py-2 bg-blue-400 rounded-lg flex justify-center items-center">
-                                                                <div className="h-6 w-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                                                <span className="ml-3 text-white font-medium">Processing...</span>
-                                                            </div>
-                                                        )}
+                                            <p className="text-slate-600 text-sm break-words line-clamp-3 mb-5">{events.event_description || "No description provided."}</p>
 
-                                                    </>
-                                                )}
+                                            <div>
+                                                <div className="flex gap-2 items-center mb-3">
+                                                    <Users className="text-slate-500 h-4 w-4" />
+                                                    <span className="text-sm font-semibold text-slate-700">Looking for suppliers:</span>
+                                                </div>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {events.event_categories?.filter(c => c?.label).length > 0 ? (
+                                                        events.event_categories.map((category, index) => (
+                                                            <span key={index} className="px-2.5 py-1 bg-slate-100 text-slate-700 text-xs font-medium rounded-full">
+                                                                {category.label}
+                                                            </span>
+                                                        ))
+                                                    ) : (
+                                                        <span className="text-slate-500 text-xs italic">No specific supplier categories listed.</span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
+
+                                        <div className="p-4 bg-slate-50 border-t border-slate-200 mt-auto">
+                                            {userData.role === "Event Planner" && (
+                                                <a href={`/events/edit/${events.id}`} className="block text-center w-full bg-blue-600 text-white font-semibold rounded-lg py-2.5 hover:bg-blue-700 transition-colors">
+                                                    Manage Event
+                                                </a>
+                                            )}
+                                            {userData.role === "Supplier" && (
+                                                !gettingShop ? (
+                                                    supplierData?.supplier_name ? (
+                                                        <button
+                                                            onClick={() => handleApply(events.id, events.user_id)}
+                                                            disabled={
+                                                                applications.find(app => app.event_id === events.id)?.status === "Pending" ||
+                                                                applications.find(app => app.event_id === events.id)?.status === "Approved" ||
+                                                                (isApplying && applyingEventId === events.id) ||
+                                                                !supplierData.is_verified || !events.event_categories.some(cat => cat.label === supplierData.supplier_type.label)
+                                                            }
+                                                            className={`flex items-center justify-center gap-2 text-center py-2 w-full ${applications.find(app => app.event_id === events.id)?.status === "Pending" ||
+                                                                applications.find(app => app.event_id === events.id)?.status === "Approved"
+                                                                ? 'bg-blue-300 cursor-not-allowed'
+                                                                : (isApplying && applyingEventId === events.id)
+                                                                    ? 'bg-blue-400 cursor-not-allowed'
+                                                                    : !supplierData.is_verified
+                                                                        ? 'bg-blue-400 cursor-not-allowed'
+                                                                        : 'bg-blue-600 hover:bg-blue-700'
+                                                                } text-white font-bold rounded-lg`}
+                                                        >
+                                                            {isApplying && applyingEventId === events.id ?
+                                                                <>
+                                                                    <ClipLoader size={16} color="#ffffff" />
+                                                                    Applying...
+                                                                </> :
+                                                                applications.find(app => app.event_id === events.id)?.status === "Pending" ? 'Pending' :
+                                                                    applications.find(app => app.event_id === events.id)?.status === "Approved" ? 'Approved' :
+                                                                        !supplierData.is_verified ? 'Account not verified' : !events.event_categories.some(cat => cat.label === supplierData.supplier_type.label) ? 'Your shop isn’t eligible for this event.' : 'Apply'}
+                                                        </button>
+                                                    ) : (
+                                                        <Link to="/shop" className="w-full py-2 mt-2 text-center bg-gray-200 hover:bg-blue-600 hover:text-white rounded-lg transition">Need shop to apply</Link>
+                                                    )
+                                                ) : (
+                                                    <div className="flex items-center justify-center w-full py-2 mt-2 bg-blue-400 rounded-lg">
+                                                        <div className="h-6 w-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                        <span className="ml-2 text-white font-medium">Processing...</span>
+                                                    </div>
+                                                )
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                )
+
+                            })
+                            }
                         </div>
+
                     )}
 
-                    {!isAllLoading && allEvents?.length === 0 && (
+                    {!isAllLoading && filteredEvents?.length === 0 && (
                         <div className="flex flex-col items-center justify-center py-[12rem] text-gray-500">
                             <span className="text-2xl mb-4">No events found.</span>
                             {userData.verification_status === "unverified" && userData.role !== "Supplier" && (

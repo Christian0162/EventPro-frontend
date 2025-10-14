@@ -3,20 +3,29 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useFetchTransactionById } from "../hooks/useTransaction";
 import { useEffect } from "react";
 import Loading from "./Loading";
+import ContractModal from "./ContractModal";
+import { useFetchContract } from "../hooks/useContract";
+import { useFetchEvents } from "../hooks/useEvents";
+import { useFetchSuppliers } from "../hooks/useSupplier";
 
 export default function PaymentSuccess({ userData }) {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const id = searchParams.get("id");
-
     const { transactions, isLoading } = useFetchTransactionById(userData.id);
+    const { contracts } = useFetchContract()
+    const { events } = useFetchEvents()
+    const { suppliers } = useFetchSuppliers()
+
 
     const transaction_exist = transactions.filter(
         (trans) => trans.external_id === id
     );
+    const selectedContracts = contracts.find(c => c.id === transactions[0].contract_id)
+    const contractEvents = events.find(e => e.id === selectedContracts.event_id)
+    const contractSupplier = suppliers.find(s => s.id === selectedContracts.supplier_id)
 
-    console.log(transaction_exist.length === 0)
-    console.log(isLoading)
+    console.log(contractSupplier)
 
     useEffect(() => {
         if (!isLoading) {
@@ -44,19 +53,16 @@ export default function PaymentSuccess({ userData }) {
                     Your payment for the contract has been successfully processed.
                 </p>
 
-                <div className="mt-6 space-y-3">
-                    <button
-                        onClick={() => navigate("/orders")}
-                        className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition"
-                    >
-                        View My Contract
-                    </button>
+                <div className="mt-10 flex gap-2 items-center justify-center">
+                    {/* userData, event_id, supplier_id, eventData, supplierData, user_id */}
                     <a
                         href="/"
-                        className="block w-full border border-gray-300 hover:bg-gray-100 text-gray-700 font-semibold py-2 px-4 rounded-lg transition"
+                        className="block border border-gray-300 text-sm hover:bg-gray-100 text-gray-700 font-semibold py-2 px-4 rounded-lg transition"
                     >
                         Back to Home
                     </a>
+                    <ContractModal userData={userData} event_id={contractEvents.id} eventData={contractEvents} supplierData={contractSupplier} supplier_id={contractSupplier.id} user_id={userData.id} />
+
                 </div>
             </div>
         </div>

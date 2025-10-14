@@ -54,6 +54,7 @@ export default function Settings({ userData, user }) {
     const [credentials, setCredentials] = useState({
         user_id: userData?.id,
         amount: '',
+        balance: userData.balance,
         account_holder_name: '',
         account_number: '',
         channel_code: '',
@@ -69,12 +70,6 @@ export default function Settings({ userData, user }) {
     const isAllLoading = isTransactionLoading || isUserProfileLoading
 
     const earnings = transactions.filter(transaction => transaction.type === "CREDIT")
-    const totalEarinngs = earnings.reduce((sum, earning) => sum + Number(earning.amount), 0)
-
-    const withdrawn = transactions.filter(transaction => transaction.type === "WITHDRAWN")
-    const totalWithdrawn = withdrawn.reduce((sum, withdrawn) => sum + Number(withdrawn.amount), 0)
-
-    const total = totalEarinngs - totalWithdrawn
 
     console.log(contactNumber)
 
@@ -233,7 +228,7 @@ export default function Settings({ userData, user }) {
 
         try {
             // 🧾 Check balance before withdrawal
-            if (total <= 0) {
+            if (userData?.balance <= 0) {
                 balanceSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
                 setBalanceError("You have no available balance to withdraw.");
                 return;
@@ -246,7 +241,7 @@ export default function Settings({ userData, user }) {
             }
 
             // 🧾 Check if withdrawal exceeds balance
-            if (credentials.amount > total) {
+            if (credentials.amount > userData?.balance) {
                 setBalanceError("Withdrawal amount cannot exceed your available balance.");
                 return;
             }
@@ -633,7 +628,7 @@ export default function Settings({ userData, user }) {
                                     <div className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-2xl p-6 mb-6">
                                         <div className="text-center">
                                             <p className="text-black/70 mb-2">Available Balance</p>
-                                            <p className="text-4xl font-bold text-gray-800">₱{total}</p>
+                                            <p className="text-4xl font-bold text-gray-800">₱{userData.balance}</p>
                                             <p className="text-gray-700 text-sm mt-2">+₱{totalEarningsThisMonth} this month</p>
                                         </div>
                                     </div>

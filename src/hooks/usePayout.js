@@ -1,4 +1,4 @@
-import { doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { doc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import Swal from "sweetalert2";
 import { db } from "../firebase/firebase";
 import { useState } from "react";
@@ -57,6 +57,10 @@ export const useCreatePayout = () => {
                                 created_at: serverTimestamp()
                             })
 
+                            await updateDoc(doc(db, 'users', credentials.user_id), {
+                                balance: credentials.balance - credentials.amount
+                            })
+
                             Swal.fire({
                                 icon: 'success',
                                 title: 'Success!',
@@ -72,10 +76,7 @@ export const useCreatePayout = () => {
                         clearInterval(checkStatus)
                         setIsLoading(false)
                     }
-
                 }, 3000)
-
-
 
             }
         });

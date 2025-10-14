@@ -151,6 +151,9 @@ export const useAuthRegister = () => {
                     verification_status: 'unverified',
                     deactivated_at: null,
                     deactivation_reason: null,
+                    reported_total: null,
+                    reported_history: null,
+                    balance: userData?.role === "Supplier" ? 0 : null,
                     deactivation_history: [],
                     createdAt: serverTimestamp()
                 })

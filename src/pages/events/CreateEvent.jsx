@@ -6,14 +6,13 @@ import { X, Calendar, Tag, Send } from "lucide-react";
 import Loading from "../../components/Loading";
 import AddressAutoComplete from "../../components/AddressAutoComplete";
 import { useAddEvent } from "../../hooks/useEvents";
-import { createStatusOptions, SupplierOptions } from "../../constants/categories";
+import { SupplierOptions } from "../../constants/categories";
 import LoadingOverlay from "../../components/LoadingOverlay";
 
 export default function CreateEvent({ userData }) {
 
     const [tags, setTags] = useState([]);
     const [categories, setCategories] = useState('');
-    const [event_status, setEvent_status] = useState('');
     const [eventType, setEventType] = useState([]);
     const [event_name, setEvent_name] = useState('');
     const [event_location, setEvent_location] = useState('');
@@ -23,8 +22,6 @@ export default function CreateEvent({ userData }) {
     const [event_time, setEvent_time] = useState([])
     const [startTime, setStartTime] = useState('');
     const [endTime, setEndTime] = useState('');
-    const [tagError, setTagError] = useState('');
-
     const { addEvent, isLoading } = useAddEvent()
 
     useEffect(() => {
@@ -58,24 +55,14 @@ export default function CreateEvent({ userData }) {
         })
     }
 
-
     const handleSubmit = async (e) => {
         e.preventDefault();
-
-        // Validate if tags are empty
-        if (tags.length === 0) {
-            setTagError('Please add at least one supplier category.');
-            return;
-        } else {
-            setTagError(''); // clear if previously set
-        }
 
         const data = {
             event_name: event_name,
             event_location: event_location,
             event_date: event_date,
             event_time: event_time,
-            event_status: event_status,
             event_type: eventType,
             event_budget: event_budget,
             event_description: event_description,
@@ -101,7 +88,7 @@ export default function CreateEvent({ userData }) {
 
     const addTag = () => {
         if (categories?.value.trim() && !tags.some(tag => tag.value === categories.value)) {
-            setTagError('');
+            // setTagError('');
             setTags([...tags, categories]);
             setCategories(null);
         }
@@ -145,7 +132,7 @@ export default function CreateEvent({ userData }) {
                     </div>
 
                     {/* date, time and status */}
-                    <div className="gap-6 items-center grid grid-cols-1 md:grid-cols-3">
+                    <div className="gap-6 items-center grid grid-cols-1 md:grid-cols-2">
 
                         {/* date */}
                         <div className="flex flex-col w-full">
@@ -203,30 +190,6 @@ export default function CreateEvent({ userData }) {
                             </div>
                         </div>
 
-
-                        {/* status */}
-                        <div className="flex flex-col w-full">
-                            <label htmlFor="status" className="text-sm font-medium text-gray-700 mb-2">Status</label>
-                            <Select
-                                name="event_status"
-                                value={event_status}
-                                onChange={setEvent_status}
-                                options={createStatusOptions}
-                                placeholder="Select status"
-                                className="mt-1"
-                                styles={{
-                                    control: (base) => ({
-                                        ...base,
-                                        padding: '4px 0',
-                                        borderRadius: '8px',
-                                        borderColor: '#d1d5db',
-                                        '&:hover': {
-                                            borderColor: '#d1d5db'
-                                        }
-                                    })
-                                }}
-                            />
-                        </div>
                     </div>
 
                     {/* type and budget */}
@@ -314,7 +277,6 @@ export default function CreateEvent({ userData }) {
                                 ))}
                             </div>
                         )}
-                        {tagError && <p className="text-red-500 text-sm font-medium">{tagError}</p>}
 
                         {/* Add Supplier Controls */}
                         <div className="flex flex-col md:flex-row gap-3 items-end">

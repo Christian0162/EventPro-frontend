@@ -47,6 +47,33 @@ export default function EventDashboard({ userData }) {
         { label: "Average Supplier Rating".toUpperCase(), value: avgRating },
     ];
 
+    let status = {
+        label: '',
+        value: ''
+    };
+
+    const reviewedSuppliers = reviews.filter(rev => rev.user_id === userData.id)
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const totalUpcomingsEvents = events.filter(event => {
+        const eventDate = new Date(event.event_date?.date_value);
+        const eventDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+
+        if (now < eventDate) {
+            status.label = 'Upcoming';
+            status.value = 'upcoming';
+        } else if (now.getDate() === eventDate.getDate()) {
+            status.label = 'In Progress';
+            status.value = 'in_progress';
+        } else {
+            status.label = 'Completed';
+            status.value = 'completed';
+        }
+        return eventDay >= today;
+    }).length;
+
     const sections = useMemo(() => [
         {
             title: "Event Summary",
@@ -55,14 +82,10 @@ export default function EventDashboard({ userData }) {
                 e.event_name.toUpperCase(),
                 e.event_type?.value.toUpperCase() || "N/A",
                 `PHP ${(Number(e.event_budget) || 0).toLocaleString()}`,
-                e.event_status?.value.toUpperCase() || "N/A",
+                status?.label.toUpperCase() || "N/A",
             ]),
         },
     ], [events]);
-
-    const reviewedSuppliers = reviews.filter(rev => rev.user_id === userData.id)
-
-    const totalUpcomingsEvents = events.filter(event => event.event_status.value === "upcoming").length
 
     useEffect(() => {
         if (events.length) {
@@ -323,7 +346,7 @@ export default function EventDashboard({ userData }) {
                         <TabPanels className={'rounded-xl border border-gray-300 bg-white shadow-xl'}>
                             <TabPanel>
                                 {events.length ? (
-                                    <div className="space-y-3 p-3 h-[250px] overflow-y-auto">
+                                    <div className={`space-y-3 p-3 ${events.length > 2 && 'h-[250px]'} overflow-y-auto`}>
                                         {events.map((event) => (
                                             <div key={event.id} className="p-4 flex justify-between items-center rounded-xl border border-gray-200 bg-gray-50 hover:bg-gray-100 transition-all shadow-lg">
                                                 <div>

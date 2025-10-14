@@ -4,22 +4,30 @@ import { useState } from "react";
 import { doc, updateDoc, serverTimestamp, addDoc, collection } from "firebase/firestore";
 import { db } from "../firebase/firebase";
 import Swal from "sweetalert2";
+import { termsOfCondition } from "../constants/categories";
+import UploadWidget from "./UploadWidgen";
+import { useFetchUsers } from "../hooks/useUsers";
 
-export default function ReportModal({ onSuccess, eventData }) {
+export default function ReportModal({ contractData, userData, eventData, supplierData }) {
     const [isOpen, setIsOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [penalties, setPenalties] = useState({
         others: false,
         nonDelivery: false,
+        nonPayment: false
     });
     const [error, setError] = useState("");
     const [reason, setReason] = useState("");
-    const [proofFiles, setProofFiles] = useState([]); // ✅ proof upload state
+    const [feedback, setFeedback] = useState(""); // ✅ NEW feedback field
+    const [proofFiles, setProofFiles] = useState([]);
+    const { users } = useFetchUsers()
+    const adminUser = users.find(u => u.email_address === "admin@admin.com")
 
     const open = () => {
         setIsOpen(true);
         setError("");
         setReason("");
+        setFeedback(""); // reset feedback
         setProofFiles([]);
     };
 
@@ -28,10 +36,12 @@ export default function ReportModal({ onSuccess, eventData }) {
         setIsOpen(false);
         setError("");
         setPenalties({
-            lateDelivery: false,
+            others: false,
             nonDelivery: false,
+            nonPayment: false,
         });
         setReason("");
+        setFeedback("");
         setProofFiles([]);
     };
 
@@ -43,21 +53,11 @@ export default function ReportModal({ onSuccess, eventData }) {
         }));
     };
 
-    const handleProofUpload = (e) => {
-        const files = Array.from(e.target.files);
-        setProofFiles(files);
-    };
-
     const handleSubmit = async () => {
-        const { others, nonDelivery } = penalties;
+        const { others, nonDelivery, nonPayment } = penalties;
 
-        if (!others && !nonDelivery) {
+        if (!others && !nonDelivery && !nonPayment) {
             setError("Please select at least one issue.");
-            return;
-        }
-
-        if (!reason.trim()) {
-            setError("Please provide a brief review or reason for issuing the report.");
             return;
         }
 
@@ -75,6 +75,15 @@ export default function ReportModal({ onSuccess, eventData }) {
                 - Direct Client Cost Recovery: Any additional costs directly resulting from the non-delivery must be reimbursed by the supplier.`
             );
 
+        if (nonPayment)
+            penaltyDetails.push(
+                `Non-Payment by Planner:
+                - Planners are required to complete all agreed payments as stated in the contract.
+                - Failure to pay the supplier without valid justification will result in account suspension or permanent termination.
+                - Repeated payment violations may also lead to platform-wide banning of the planner’s account.`
+            );
+
+
         Swal.fire({
             title: "Confirm Issue Report",
             html: `
@@ -83,7 +92,8 @@ export default function ReportModal({ onSuccess, eventData }) {
                     <ul style="margin-left: 20px; text-align:left;">
                         ${penaltyDetails.map((d) => `<li>${d}</li>`).join("")}
                     </ul>
-                    <p style="margin-top:10px;"><strong>Review/Reason:</strong> ${reason}</p>
+                    <p style="margin-top:10px;"><strong>Review/Reason:</strong> ${reason || "No reason provided"}</p>
+                    <p style="margin-top:10px;"><strong>Feedback:</strong> ${feedback || "No feedback provided"}</p>
                     <p style="margin-top:10px;"><strong>Proofs Attached:</strong> ${proofFiles.length} file(s)</p>
                 </div>
                 <p class="mt-3 text-gray-600">Are you sure you want to apply these issue details?</p>
@@ -99,28 +109,45 @@ export default function ReportModal({ onSuccess, eventData }) {
             preConfirm: async () => {
                 try {
                     setLoading(true);
-                    // const deliveryRef = doc(db, "deliveries", deliveryId);
-                    // await updateDoc(deliveryRef, {
-                    //     status: "Damaged",
-                    //     penalty_applied: penaltyDetails,
-                    //     issue_reason: reason,
-                    //     updated_at: serverTimestamp(),
-                    // });
+                    await addDoc(collection(db, "reports"), {
+                        user_id: userData.id,
+                        contract_id: contractData.id,
+                        reporter_role: userData?.role,
+                        penalty_applied: penaltyDetails,
+                        status: 'pending',
+                        reason: reason,
+                        issue: feedback, // ✅
+                        proof: proofFiles,
+                        created_at: serverTimestamp(),
+                    });
 
-                    // await addDoc(collection(db, "notifications"), {
-                    //     avatar: eventData?.event_name.charAt(0).toUpperCase(),
-                    //     message: `The planner has reported issues with your delivery for the event "${eventData?.event_name}". Reason: "${reason}" Please review the penalties applied.`,
-                    //     createdAt: serverTimestamp(),
-                    //     referenced_type: "contract",
-                    //     referenced_id: delivery?.contract_id,
-                    //     title: "Delivery Issue Reported",
-                    //     unread: true,
-                    //     feedback: reason,
-                    //     user_id: delivery?.supplier_id,
-                    // });
-
-                    // ✅ Optional: upload proofs to Firebase Storage (not yet implemented)
-                    // You can add upload logic here if needed.
+                    if (userData?.role === "Event Planner") {
+                        await addDoc(collection(db, "notifications"), {
+                            avatar: userData?.first_name.charAt(0).toUpperCase(),
+                            title: "Delivery Issue Reported",
+                            message: `A planner has reported issues with a delivery for the event "${eventData?.event_name}". Please review the report and the penalties applied.`,
+                            feedback: feedback || reason,
+                            sender_id: eventData.user_id,
+                            createdAt: serverTimestamp(),
+                            referenced_type: "report",
+                            referenced_id: contractData?.id,
+                            unread: true,
+                            receiver_id: adminUser.id,
+                        });
+                    } else {
+                        await addDoc(collection(db, "notifications"), {
+                            avatar: userData?.first_name.charAt(0).toUpperCase(),
+                            title: "Contract Payment Issue",
+                            message: `The Supplier has reported that event not completed payment for the contract associated with the event "${eventData?.event_name}". Please review and take appropriate action.`,
+                            feedback: feedback || reason || "",
+                            createdAt: serverTimestamp(),
+                            sender_id: contractData.supplier_id,
+                            referenced_type: "report",
+                            referenced_id: contractData?.id,
+                            unread: true,
+                            receiver_id: adminUser.id,
+                        });
+                    }
 
                     return true;
                 } catch (error) {
@@ -138,7 +165,6 @@ export default function ReportModal({ onSuccess, eventData }) {
                     icon: "success",
                     confirmButtonColor: "#2563eb",
                 });
-                if (onSuccess) onSuccess();
                 close();
             }
         });
@@ -178,36 +204,54 @@ export default function ReportModal({ onSuccess, eventData }) {
                             <div className="p-6 space-y-4">
                                 <p className="text-gray-700 font-medium">Please select applicable issues:</p>
 
-
-
-
-                                {/* Non-Delivery / No Service */}
-                                <div className="p-3 border rounded-md">
-                                    <label className="flex items-center mb-2">
-                                        <input
-                                            type="checkbox"
-                                            id="nonDelivery"
-                                            checked={penalties.nonDelivery}
-                                            onChange={handleCheckboxChange}
-                                            disabled={loading}
-                                            className="mr-2 accent-blue-600"
-                                        />
-                                        <span className="font-medium text-gray-800">Non-Delivery / No Service</span>
-                                    </label>
-                                    <div className="text-sm text-gray-600 ml-6 space-y-1">
-                                        <p>• Full Refund of payment made.</p>
-                                        <p>• Replacement Cost Coverage: Supplier shall shoulder any costs incurred by the client to secure an alternative service.</p>
-                                        <p>• Direct Client Cost Recovery: Any additional costs directly resulting from the non-delivery must be reimbursed by the supplier.</p>
+                                {/* Issue Checkboxes */}
+                                {userData?.role === "Event Planner" ? (
+                                    <div className="p-3 border rounded-md">
+                                        <label className="flex items-center mb-2">
+                                            <input
+                                                type="checkbox"
+                                                id="nonDelivery"
+                                                checked={penalties.nonDelivery}
+                                                onChange={handleCheckboxChange}
+                                                disabled={loading}
+                                                className="mr-2 accent-blue-600"
+                                            />
+                                            <span className="font-medium text-gray-800">{termsOfCondition.clauses[1].title}</span>
+                                        </label>
+                                        <div className="text-sm text-gray-600 ml-6 space-y-1">
+                                            {termsOfCondition.clauses[1].details.map((details, index) => (
+                                                <p key={index}>• {details}</p>
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
+                                ) : (
+                                    <div className="p-3 border rounded-md">
+                                        <label className="flex items-center mb-2">
+                                            <input
+                                                type="checkbox"
+                                                id="nonPayment"
+                                                checked={penalties.nonPayment}
+                                                onChange={handleCheckboxChange}
+                                                disabled={loading}
+                                                className="mr-2 accent-blue-600"
+                                            />
+                                            <span className="font-medium text-gray-800">{termsOfCondition.clauses[3].title}</span>
+                                        </label>
+                                        <div className="text-sm text-gray-600 ml-6 space-y-1">
+                                            {termsOfCondition.clauses[3].details.map((details, index) => (
+                                                <p key={index}>• {details}</p>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
 
                                 {/* Others (custom issue) */}
                                 <div className="p-3 border rounded-md">
                                     <label className="flex items-center mb-2">
                                         <input
                                             type="checkbox"
-                                            id="lateDelivery"
-                                            checked={penalties.lateDelivery}
+                                            id="others"
+                                            checked={penalties.others}
                                             onChange={handleCheckboxChange}
                                             disabled={loading}
                                             className="mr-2 accent-blue-600"
@@ -218,8 +262,7 @@ export default function ReportModal({ onSuccess, eventData }) {
                                         Please describe the issue or situation.
                                     </p>
 
-                                    {/* When "Others" is checked, show input for description */}
-                                    {penalties.lateDelivery && (
+                                    {penalties.others && (
                                         <textarea
                                             value={reason}
                                             onChange={(e) => setReason(e.target.value)}
@@ -231,21 +274,26 @@ export default function ReportModal({ onSuccess, eventData }) {
                                     )}
                                 </div>
 
+
+                                {/* ✅ Feedback Section */}
+                                <div className="p-3 border rounded-md">
+                                    <label className="font-medium text-gray-800 mb-1 block">Issue / Remarks</label>
+                                    <textarea
+                                        value={feedback}
+                                        onChange={(e) => setFeedback(e.target.value)}
+                                        placeholder="Describe the issue or provide additional details..."
+                                        rows={3}
+                                        disabled={loading}
+                                        className="w-full border border-gray-300 rounded-md p-2 text-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                    />
+                                </div>
+
                                 {/* ✅ Proof Upload */}
                                 <div className="p-3 border rounded-md">
                                     <label className="font-medium text-gray-800 mb-1 block">Upload Proofs (images or documents)</label>
-                                    <input
-                                        type="file"
-                                        multiple
-                                        accept="image/*,.pdf,.doc,.docx"
-                                        onChange={handleProofUpload}
-                                        disabled={loading}
-                                        className="w-full border border-gray-300 rounded-md p-2 text-gray-700 cursor-pointer focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                    />
-                                    {proofFiles.length > 0 && (
-                                        <p className="text-sm text-gray-600 mt-2">{proofFiles.length} file(s) selected.</p>
-                                    )}
+                                    <UploadWidget type={`proof`} setPicture={setProofFiles} />
                                 </div>
+
 
                                 {error && <p className="text-red-600 font-medium text-sm">{error}</p>}
                             </div>

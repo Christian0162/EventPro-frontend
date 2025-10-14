@@ -38,7 +38,8 @@ export default function SupplierDashboard({ userData }) {
     const { transactions, isLoading: isTransactionLoading } = useFetchTransactionById(userData.id)
     const { applications: userApplications, isLoading: isApplicationLoading } = useFetchAllApplication()
 
-    const applications = userApplications.filter(app => app.supplier_id === userData.id)
+    const applications = userApplications.filter(app => app.supplier_id === userData.id &&
+        contracts.some(cont => cont.supplier_id === app.supplier_id && cont.event_id === app.event_id && cont.status !== 'Completed'))
 
     const isAllLoading = isSupplierLoading || isEventLoading || isDeliveriesLoading || isSuppliersLoading || isTransactionLoading || isApplicationLoading
 
@@ -58,7 +59,9 @@ export default function SupplierDashboard({ userData }) {
         ? ((avgPrice - price) / avgPrice) * 100
         : 0;
 
-    const totalEarning = transactions.reduce((sum, transaction) => sum + transaction.amount || 0, 0)
+    const earningTransactions = transactions.filter(trans => trans.type === "CREDIT")
+
+    const totalEarning = earningTransactions.reduce((sum, transaction) => sum + transaction.amount || 0, 0)
 
     // ontime deliveries
     const onTimeDeliveries = userDeliveries.filter(
@@ -189,9 +192,6 @@ export default function SupplierDashboard({ userData }) {
                             contract_id: contract.id,
                             type: "delivery_day",
                         });
-
-
-
 
                         console.log("Notification created for delivery day:", contract.id);
                     } else {
@@ -435,7 +435,7 @@ export default function SupplierDashboard({ userData }) {
 
                             {/* Offers Tab */}
                             < TabPanel >
-                                <div className="p-3 flex flex-col gap-3">
+                                <div className="">
                                     {pendingContracts.map((offers, index) => (
                                         <div key={index}>
                                             <div className={`flex flex-col sm:flex-row gap- sm:gap-2 justify-between ${AppliedColor(offers.status)} shadow-gray-200 shadow-lg items-start sm:items-center p-3 sm:py-4 rounded-lg sm:px-5`}>
@@ -505,7 +505,7 @@ export default function SupplierDashboard({ userData }) {
                     {/* Recent Contracts Sidebar */}
                     < div className="lg:col-span-1 mt-5" >
                         <div className="bg-white border border-gray-300 shadow-xl rounded-xl p-6 flex flex-col h-full">
-                            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2"><div className="p-2 bg-gradient-to-r from-blue-500 to-blue-700 text-white rounded-full"><ReceiptText size={20} /></div> Recent Done Contracts</h3>
+                            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2"><div className="p-2 bg-gradient-to-r from-blue-500 to-blue-700 text-white rounded-full"><ReceiptText size={20} /></div> Recent Ended Contracts</h3>
 
                             <div className="space-y-3 overflow-y-auto max-h-[400px] pr-2">
                                 {completeContracts.slice(0, 5).map((contract, index) => (
@@ -542,7 +542,7 @@ export default function SupplierDashboard({ userData }) {
                                 ))}
 
                                 {completeContracts.length === 0 && (
-                                    <p className="text-center text-gray-500 text-sm">No recent contracts</p>
+                                    <p className="text-center text-gray-500 text-md pb-5 pt-3">No recent ended contracts</p>
                                 )}
                             </div>
                         </div>

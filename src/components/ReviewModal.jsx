@@ -1,12 +1,19 @@
 import { Button, Dialog, DialogPanel, } from '@headlessui/react'
 import { useEffect, useState } from 'react'
 import { X, Star, ThumbsUp, MessageSquare } from 'lucide-react'
-import { addDoc, updateDoc, collection, serverTimestamp, doc, query, where, deleteDoc, getDocs } from 'firebase/firestore'
+import { addDoc, updateDoc, collection, serverTimestamp, doc, query, where, deleteDoc, getDocs, arrayUnion } from 'firebase/firestore'
 import { useNavigate } from 'react-router-dom'
 import { auth, db } from '../firebase/firebase'
 import Swal from 'sweetalert2'
 import LoadingOverlay from './LoadingOverlay'
-
+import { statusStyles } from '../constants/categories'
+import { useFetchAllReports } from '../hooks/useReports'
+import { useFetchAllTransaction } from '../hooks/useTransaction'
+import { useCreateRefund } from '../hooks/useRefund'
+import { useFetchContract } from '../hooks/useContract'
+import { useFetchUsers } from '../hooks/useUsers'
+import { useFetchEvents } from '../hooks/useEvents'
+import { useFetchSuppliers } from '../hooks/useSupplier'
 export const Review = ({ reviewed_id, reviewer_name, eventData }) => {
     const [isOpen, setIsOpen] = useState(false)
     const [rating, setRating] = useState(0)
@@ -73,11 +80,12 @@ export const Review = ({ reviewed_id, reviewer_name, eventData }) => {
                         avatar: reviewer_name.charAt(0).toUpperCase(),
                         title: "New Review Received",
                         message: `"${reviewer_name}" left a review for you — "${reviewText}"`,
+                        sender_id: reviewed_id,
                         feedback: reviewText,
                         createdAt: serverTimestamp(),
                         referenced_id: reviewed_id,
                         unread: true,
-                        user_id: reviewed_id
+                        receiver_id: reviewed_id
                     });
 
                     Swal.fire('Success', 'Review has been submitted', 'success')
@@ -246,7 +254,7 @@ export const Review = ({ reviewed_id, reviewer_name, eventData }) => {
     )
 }
 
-export const RejectReview = ({ id, event_id, supplier_id, userData, event_name, supplier, contract, className }) => {
+export const RejectReview = ({ id, event_id, supplier_id, userData, event_name, supplier, event, contract, className }) => {
     const [isOpen, setIsOpen] = useState(false)
     const [reviewText, setReviewText] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -287,7 +295,7 @@ export const RejectReview = ({ id, event_id, supplier_id, userData, event_name, 
                         })
 
                         await addDoc(collection(db, "notifications"), {
-                            user_id: id,
+                            receiver_id: id,
                             avatar: 'A',
                             title: 'Verification Rejected',
                             message: "Unfortunately, your submission did not meet the required criteria. Please review the feedback and re-submit your application for verification.",
@@ -306,11 +314,12 @@ export const RejectReview = ({ id, event_id, supplier_id, userData, event_name, 
 
                         if (contract) {
                             await addDoc(collection(db, "notifications"), {
-                                user_id: contract.planner_id,
+                                receiver_id: contract.planner_id,
                                 avatar: supplier.supplier_name.charAt(0).toUpperCase(),
                                 title: "Offer Rejected",
                                 referenced_id: event_id,
                                 referenced_type: 'event',
+                                sender_id: supplier.id,
                                 message: `Unfortunately, ${supplier.supplier_name} has rejected your offer for their event.`,
                                 feedback: reviewText,
                                 createdAt: serverTimestamp(),
@@ -322,11 +331,12 @@ export const RejectReview = ({ id, event_id, supplier_id, userData, event_name, 
                         }
                         else {
                             await addDoc(collection(db, "notifications"), {
-                                user_id: applications[0]?.supplier_id,
+                                receiver_id: applications[0]?.supplier_id,
                                 avatar: event_name.charAt(0).toUpperCase(),
                                 title: 'Application Rejected',
                                 referenced_id: event_id,
                                 referenced_type: 'event',
+                                sender_id: event.user_id,
                                 message: `We're sorry, your application for the event "${event_name}" has been rejected.`,
                                 feedback: reviewText,
                                 createdAt: serverTimestamp(),
@@ -445,3 +455,377 @@ export const RejectReview = ({ id, event_id, supplier_id, userData, event_name, 
         </>
     )
 }
+
+export const ReportReview = ({ report, userData }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [isRejectOpen, setIsRejectOpen] = useState(false);
+    const [isApprovedSubmitting, setIsApproveSubmitting] = useState(false);
+    const [isRejectSubmitting, setIsRejectSubmitting] = useState(false);
+    const [rejectReason, setRejectReason] = useState("");
+    const { transactions: allTransaction } = useFetchAllTransaction()
+    const { contracts } = useFetchContract()
+    const { createRefund, isLoading } = useCreateRefund()
+    const { events } = useFetchEvents()
+    const { users } = useFetchUsers()
+
+    const userTransactionContract = allTransaction.filter(t => t.user_id === report?.user_id && t.contract_id === report.contract_id && t.type === "ESCROW" && t.status === "HOLD")
+
+    const userContract = contracts.find(c => c.id === report?.contract_id)
+
+    const id = report?.reporter_role === 'Event Planner' ? userContract?.supplier_id : userContract?.planner_id
+
+    const selectedUser = users.find(u => u.id === id)
+
+    const userEvents = events.filter(event => event.user_id === id)
+
+    const data = userTransactionContract.map(t => ({
+        reference_id: t.external_id,
+        amount: Math.floor(Number(t.amount) - Number(t.process_fee)),
+        invoice_id: t.id
+    }))
+
+    function open() {
+        setIsOpen(true);
+    }
+
+    function close() {
+        setIsOpen(false);
+        setIsApproveSubmitting(false);
+    }
+
+    const handleReject = async () => {
+        setIsRejectSubmitting(true);
+        try {
+
+            await addDoc(collection(db, "notifications"), {
+                avatar: 'A',
+                title: "Issue Reported",
+                message: `Your report has been reviewed and unfortunately, it has been rejected by the admin. Please check the details and, if necessary, submit a revised report.`,
+                feedback: rejectReason,
+                createdAt: serverTimestamp(),
+                referenced_type: "report",
+                referenced_id: report?.id,
+                unread: true,
+                receiver_id: report?.user_id,
+            });
+
+            // await updateDoc(doc(db, "contracts", report.contract_id), {
+            //     status
+            // })
+
+            await updateDoc(doc(db, 'reports', report.id), {
+                status: 'rejected',
+                admin_feedback: rejectReason
+            })
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Action Completed',
+                text: 'The action has been successfully completed.',
+                confirmButtonText: 'OK'
+            });
+
+        } catch (err) {
+            console.error(err);
+            setIsRejectSubmitting(false);
+        }
+        finally {
+            setIsRejectSubmitting(false);
+            setIsRejectOpen(false);
+            setIsOpen(isLoading);
+        }
+    };
+
+    const handleApprove = async () => {
+        const result = await Swal.fire({
+            icon: 'warning',
+            title: 'Approve Report?',
+            html: `
+            Approving this report will have the following consequences:
+            <ul class="mb-5 mt-5" style="text-center: left;">
+                <li>The reported account may be banned or terminated.</li>
+                <li>If the planner has escrow for the contract, it will be refunded within 2-3 days.</li>
+            </ul>
+            Are you sure you want to proceed?
+        `,
+            showCancelButton: true,
+            confirmButtonText: 'Yes, approve',
+            cancelButtonText: 'Cancel',
+        });
+
+        if (result.isConfirmed) {
+            setIsApproveSubmitting(true);
+            try {
+
+
+                if (data && report.reporter_role === "Event Planner") {
+                    await createRefund(data, report.contract_id)
+                }
+
+                await addDoc(collection(db, "notifications"), {
+                    avatar: 'A',
+                    title: "Report Approved",
+                    message: `The reported ${report?.reporter_role === "Event Planner" ? 'supplier' : 'event planner'} account will be terminated or banned. Any escrow or contracts affected will be refunded within 2-3 days.`,
+                    createdAt: serverTimestamp(),
+                    referenced_type: "report",
+                    referenced_id: report?.id,
+                    unread: true,
+                    receiver_id: report?.user_id,
+                });
+
+                await updateDoc(doc(db, 'reports', report?.id), {
+                    status: 'approved',
+                });
+
+                await updateDoc(doc(db, 'users', id), {
+                    reported_history: arrayUnion({
+                        reason: report.penalty_applied,
+                        date: new Date()
+                    }),
+                    reportedAttempts: selectedUser?.reportedAttempts + 1,
+                })
+
+                if (selectedUser.reportedAttempts === 3) {
+                    await updateDoc(doc(db, 'users', id), {
+                        status: 'banned'
+                    })
+
+                    if (selectedUser.role === 'Event Planner') {
+                        for (const e of userEvents) {
+                            await updateDoc(doc(db, 'events', e.id), {
+                                status: "banned"
+                            })
+                        }
+                    }
+
+                    if (selectedUser.role === 'Supplier') {
+                        await updateDoc(doc(db, 'shops', id), {
+                            status: "banned"
+                        })
+                    }
+                }
+
+                if (report.reporter_role === "Supplier") {
+                    Swal.fire({
+                        icon: "success",
+                        title: "Report Processed",
+                        text: "The report has been processed successfully.",
+                        confirmButtonText: "OK",
+                    });
+                }
+            } catch (err) {
+                console.error(err);
+                setIsApproveSubmitting(false);
+            } finally {
+                setIsApproveSubmitting(isLoading);
+            }
+        }
+    };
+
+
+
+    return (
+        <>
+            <Button
+                onClick={open}
+                className="py-1 rounded-lg px-6 text-white transition-all hover:bg-blue-700 bg-blue-600"
+            >
+                Review
+            </Button>
+
+            {/* First Dialog */}
+            <Dialog open={isOpen} as="div" className="relative z-[999]" onClose={close}>
+                <div className="fixed inset-0 bg-black/25" />
+                <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
+                    <div className="flex min-h-full items-center justify-center p-4">
+                        <DialogPanel transition className="w-full max-w-2xl z-10 rounded-2xl bg-white shadow-2xl p-8 duration-200 relative ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0">
+                            {/* Close Button */}
+                            <button
+                                onClick={close}
+                                className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition"
+                            >
+                                <X size={20} className="text-gray-600" />
+                            </button>
+
+                            {/* Header */}
+                            <div className="text-center mb-8">
+                                <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                                    Report Details
+                                </h2>
+                                <p className="text-gray-600">
+                                    Review the issue and provide your decision below.
+                                </p>
+                            </div>
+
+                            <LoadingOverlay isLoading={isLoading || isApprovedSubmitting} message='Do not refresh until it’s done...' />
+
+                            {/* Penalty */}
+                            <div className="mb-6">
+                                <div className='flex justify-between'>
+                                    <h3 className="text-md font-semibold text-gray-800 mb-2">
+                                        Penalty Applied
+                                    </h3>
+
+                                    <div className="text-md font-semibold text-gray-800 flex items-center mb-2 gap-1">
+                                        Status: <span className={`rounded-full py-1 px-4 ${statusStyles[report?.status]}`}>{report?.status.charAt(0).toUpperCase() + report?.status.slice(1)}</span>
+                                    </div>
+                                </div>
+                                {report?.penalty_applied ? (
+                                    <div className="w-full p-5 bg-gray-100 border border-gray-200 shadow rounded-lg">
+                                        {report.penalty_applied}
+                                    </div>
+                                ) : (
+                                    <p className="text-gray-500 italic">No issue listed.</p>
+                                )}
+                            </div>
+
+                            {/* Issue */}
+                            <div className="mb-6">
+                                <h3 className="text-md font-semibold text-gray-800 mb-2">
+                                    Issue
+                                </h3>
+                                {report?.issue ? (
+                                    <div className="w-full p-5 bg-gray-100 border border-gray-200 shadow rounded-lg">
+                                        {report.issue}
+                                    </div>
+                                ) : (
+                                    <p className="text-gray-500 italic">No issue listed.</p>
+                                )}
+                            </div>
+
+                            {/* Proof Section */}
+                            <div className="mt-8">
+                                <h3 className="text-md font-semibold text-gray-800 mb-3">
+                                    Attachments
+                                </h3>
+
+                                {report?.proof && report.proof.length > 0 ? (
+                                    <div className="flex flex-wrap gap-4">
+                                        {report.proof.map((fileUrl, index) => (
+                                            <div
+                                                key={index}
+                                                className="w-48 h-32 border border-gray-200 rounded-xl bg-gray-50 overflow-hidden shadow-sm hover:shadow-md transition relative group"
+                                            >
+                                                <img
+                                                    src={fileUrl}
+                                                    alt={`Proof ${index + 1}`}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                                <a
+                                                    href={fileUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="absolute inset-0 flex items-end justify-center bg-black/0 hover:bg-black/30 transition group-hover:opacity-100"
+                                                >
+                                                    <span className="text-white text-xs mb-2 bg-black/60 px-2 py-1 rounded">
+                                                        View
+                                                    </span>
+                                                </a>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-gray-500 italic">No attachments provided.</p>
+                                )}
+
+                                <div className="mt-8 mb-3">
+                                    <h3 className="text-md font-semibold text-gray-800 mb-2">
+                                        Admin Feedback
+                                    </h3>
+                                    {report?.admin_feedback ? (
+                                        <div className="w-full p-5 bg-gray-100 border border-gray-200 shadow rounded-lg">
+                                            {report.admin_feedback}
+                                        </div>
+                                    ) : (
+                                        <p className="text-gray-500 italic">No admin feedback listed.</p>
+                                    )}
+                                </div>
+
+                            </div>
+
+                            {userData.role === "Admin" && (report?.status !== "rejected" && report?.status !== "approved") && (
+                                < div className="flex space-x-4 pt-8">
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsRejectOpen(true)}
+                                        className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 hover:text-white rounded-lg hover:bg-red-600 transition-colors duration-200 font-medium"
+                                    >
+                                        Reject
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleApprove()}
+                                        disabled={isApprovedSubmitting}
+                                        className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
+                                    >
+                                        {isApprovedSubmitting ? (
+                                            <div className='flex justify-center items-center gap-2'>
+                                                <div className="w-5 h-5 border-2 border-white border-t-transparent self-center rounded-full animate-spin"></div> Processing..
+                                            </div>
+                                        ) : (
+                                            "Approve"
+                                        )}
+                                    </button>
+                                </div>
+                            )}
+                        </DialogPanel>
+                    </div>
+                </div >
+            </Dialog >
+
+            <Dialog
+                open={isRejectOpen}
+                as="div"
+                className="relative z-[1000]"
+                onClose={() => setIsRejectOpen(false)}
+            >
+                <div className="fixed inset-0 bg-black/30" />
+                <div className="fixed inset-0 flex items-center justify-center p-4">
+                    <div className="flex min-h-full items-center justify-center p-4">
+                        <DialogPanel className="w-full max-w-md bg-white z-50 rounded-xl shadow-2xl p-6 relative">
+                            <button
+                                onClick={() => { setIsRejectOpen(false); setRejectReason('') }}
+                                className="absolute top-3 right-3 p-2 rounded-full hover:bg-gray-100"
+                            >
+                                <X size={18} />
+                            </button>
+
+                            <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                                Reject Report
+                            </h2>
+                            <p className="text-gray-600 text-sm mb-4">
+                                Please provide a reason for rejecting this report. This message
+                                may be visible to the reporting user.
+                            </p>
+
+                            <textarea
+                                value={rejectReason}
+                                onChange={(e) => setRejectReason(e.target.value)}
+                                placeholder="Enter rejection reason..."
+                                rows={4}
+                                className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-red-400 focus:outline-none text-sm"
+                            ></textarea>
+
+                            <div className="flex justify-end space-x-3 mt-6">
+                                <button
+                                    onClick={() => { setIsRejectOpen(false); setRejectReason('') }}
+                                    className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleReject}
+                                    disabled={isRejectSubmitting || !rejectReason.trim()}
+                                    className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition"
+                                >
+                                    {isRejectSubmitting ? "Processing..." : "Confirm Reject"}
+                                </button>
+                            </div>
+                        </DialogPanel>
+                    </div>
+                </div>
+            </Dialog>
+        </>
+    );
+};
+

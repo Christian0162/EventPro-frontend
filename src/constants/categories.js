@@ -17,14 +17,14 @@ export const SupplierOptions = [
 export const statusOptions = [
     { label: 'Planning', value: 'planning' },
     { label: 'Upcoming', value: 'upcoming' },
-    { label: 'In Progress', value: 'in-progress' },
+    { label: 'In Progress', value: 'in_progress' },
     { label: 'Completed', value: 'completed' },
 ];
 
 export const createStatusOptions = [
     { label: 'Planning', value: 'planning' },
     { label: 'Upcoming', value: 'upcoming' },
-    { label: 'In Progress', value: 'in-progress' },
+    { label: 'In Progress', value: 'in_progress' },
 ];
 
 export const headerBackgrounds = [
@@ -33,6 +33,24 @@ export const headerBackgrounds = [
     "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
 ];
 
+export const eventStatusStyles = {
+    planning: "bg-violet-100 text-violet-700",
+    in_progress: "bg-blue-100 text-blue-700",
+    open: "bg-blue-100 text-blue-700",
+    payment_pending: "bg-orange-100 text-orange-700",
+    completed: "bg-green-100 text-green-700",
+};
+
+export const statusStyles = {
+    approved: "bg-green-100 text-green-700",
+    pending: "bg-yellow-100 text-yellow-700",
+    reject: "bg-red-100 text-red-700",
+    completed: "bg-emerald-100 text-emerald-700",
+    failed: "bg-red-100 text-red-700",
+    hold: "bg-amber-100 text-amber-700",
+    refunded: "bg-blue-100 text-blue-700",
+    succeeded: "bg-green-100 text-green-700",
+};
 
 export const supplierTypeToExpertise = {
     floral: ['Floral', 'Seasonal Arrangements', 'Exotic Flowers', 'Local Flowers', 'Bouquets', 'Centerpieces'],

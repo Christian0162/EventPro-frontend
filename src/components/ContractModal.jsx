@@ -1,10 +1,10 @@
 import { Button, Dialog, DialogPanel, } from '@headlessui/react'
 import { useEffect, useState, useRef } from 'react'
-import { X, Check } from 'lucide-react'
+import { X, Check, ArrowLeftRight } from 'lucide-react'
 import { FileText, MapPin, Calendar, Building, User, TriangleAlert, CreditCard, PhilippinePeso, Package } from 'lucide-react'
 import { collection, doc, getDocs, query, where, addDoc, serverTimestamp, updateDoc } from 'firebase/firestore'
 import { db, auth } from '../firebase/firebase'
-import { paymentMethods } from '../constants/categories'
+import { paymentMethods, statusStyles } from '../constants/categories'
 import { nanoid } from 'nanoid'
 import { useCreatePayment } from '../hooks/usePayment'
 import { useFetchTransactionById } from '../hooks/useTransaction'
@@ -37,11 +37,6 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
     const paymentSectionRef = useRef(null);
     const navigate = useNavigate()
     const [now, setNow] = useState(new Date())
-
-    const platformFee = Number(contract?.service_plan?.service_price) > 5000 ? Number(contract?.service_plan?.service_price) * 0.10 : Number(contract?.service_plan?.service_price) * 0.05
-    const service_price = Number(contract?.service_plan?.service_price) || 0;
-    const process_fee = payment_method?.process_fee || 0;
-    const processFee = (service_price / 2) * process_fee;
 
     const contractDeliveries = deliveries.filter(del => del.contract_id === contract?.id && del.supplier_id === supplier_id)
 
@@ -85,9 +80,17 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
 
         return totalDeduction;
     };
+    const isDownPayment = contract?.service_plan?.service_payment_notice?.label === "Down Payment required atleast 50 percent."
+
+    console.log("downpayment:", isDownPayment)
+    const platformFee = Number(contract?.service_plan?.service_price) > 5000 ? Number(contract?.service_plan?.service_price) * 0.10 : Number(contract?.service_plan?.service_price) * 0.05
+    const service_price = Number(contract?.service_plan?.service_price) || 0;
+    const process_fee = payment_method?.process_fee || 0;
+    const processFee = isDownPayment ? (service_price / 2) * process_fee : service_price * process_fee;
 
     const totalDeductions = computeTotalDeductions(contractDeliveries, service_price);
 
+    const fullAmount = contract?.service_plan?.service_price + processFee
     const netAmount = Number(service_price - platformFee);
     const finalAmount = netAmount - totalDeductions;
 
@@ -138,12 +141,7 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
 
     const eventDate = new Date(eventData?.event_date?.date_value);
 
-    const isSameDay =
-        now.getFullYear() === eventDate.getFullYear() &&
-        now.getMonth() === eventDate.getMonth() &&
-        now.getDate() === eventDate.getDate();
-
-    const showSubmitButton = userData?.role === "Supplier" && isSameDay;
+    const showSubmitButton = userData?.role === "Supplier" && now.getDate() >= eventDate.getDate();
 
     function open() {
         setIsOpen(true)
@@ -214,15 +212,14 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
                         avatar: supplierData?.supplier_name.charAt(0).toUpperCase(),
                         message: `The supplier "${supplierData?.supplier_name}" has approved the contract with ID: ${contract?.id}.`,
                         createdAt: serverTimestamp(),
+                        sender_id: supplierData.id,
                         referenced_type: 'contract',
                         referenced_id: contract?.id,
                         title: "Contract approved by supplier",
                         unread: true,
-                        user_id: eventData?.user_id
+                        receiver_id: eventData?.user_id
                     });
 
-
-                    close()
                 }
                 catch (e) {
                     console.error(e)
@@ -238,6 +235,7 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
     const handlePaymentMethod = (method) => {
         if (method !== payment_method) {
             setPayment_method(method)
+            setPayment_method_error('')
         }
         else {
             setPayment_method([])
@@ -276,15 +274,20 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
                     created_at: serverTimestamp()
                 })
 
+                await updateDoc(doc(db, 'users', contract.supplier_id), {
+                    balance: finalAmount
+                })
+
                 await addDoc(collection(db, "notifications"), {
                     avatar: eventData?.event_name?.charAt(0).toUpperCase(),
                     message: `The Event ${eventData?.event_name} has been completed Contract ID: "${contract?.id}". Your balance will be updated accordingly.`,
                     createdAt: serverTimestamp(),
                     referenced_type: 'contract',
+                    sender_id: eventData.id,
                     referenced_id: contract?.id,
                     title: 'Contract Completed',
                     unread: true,
-                    user_id: supplier_id
+                    receiver_id: supplier_id
                 })
 
 
@@ -335,7 +338,7 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
             payment_method: payment_method.method,
             event_email: eventUser.email_address,
             event_contact: eventUser?.contact_number,
-            amount: contract_transaction?.length > 0 ? downpayment : nextpayment,
+            amount: isDownPayment ? contract_transaction?.length > 0 ? downpayment : nextpayment : fullAmount,
             process_fee: processingFee
         }
 
@@ -434,7 +437,7 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
                                         <div className='flex flex-col gap-2 text-sm items-center'>
                                             <div className='flex items-center gap-2  px-12'>
                                                 <span className='block text-gray-200'>Contract status:</span>
-                                                <span className={`block text-xs text-white px-3 ${contract?.status === "Pending" ? "bg-yellow-600" : "bg-green-500"} py-1 rounded-full text-sm`}>{contract?.status}</span>
+                                                <span className={`block text-xs text-white px-3 ${contract?.status === "Pending" ? "bg-yellow-600" : contract?.status === "Cancelled" ? "bg-red-500" : "bg-green-500"} py-1 rounded-full text-sm`}>{contract?.status}</span>
                                             </div>
                                         </div>
 
@@ -596,7 +599,7 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
                                             )}
 
                                             {/* Submit Button for Supplier */}
-                                            {showSubmitButton && (contract?.status === "Pending" || contract?.status !== "Completed") && (
+                                            {showSubmitButton && (contract?.status !== "Pending" && contract?.status !== "Completed") && contractDeliveries.length === 0 && (
                                                 <div className="flex justify-end mt-6">
                                                     <SubmissionModal
                                                         contract={contract}
@@ -662,10 +665,10 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
                                             ))}
                                         </div>
 
-                                        {(contract?.status === "Approved" || contract?.status === "Completed") && (
+                                        {(contract?.status === "Approved" || contract?.status === "Completed" || contract?.status === "Cancelled") && (
                                             <>
                                                 {/* payment method */}
-                                                {(total_paid - total_fees) !== service_price && userData?.role != "Supplier" && (
+                                                {(total_paid - total_fees) !== service_price && userData?.role != "Supplier" && contract.status !== "Cancelled" && (
                                                     <div ref={paymentSectionRef} className="w-full bg-blue-50 p-6 mt-8 border rounded-lg border-gray-300">
                                                         <div className='flex gap-2 items-center'>
                                                             <CreditCard className='text-blue-600' />
@@ -767,26 +770,37 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
                                                                             <span className="text-gray-600">Processing Fee ({process_fee * 100}% Xendit)</span>
                                                                             <span className="font-semibold">₱{processFee.toLocaleString()}</span>
                                                                         </div>
+                                                                        {isDownPayment ? (
+                                                                            <>
+                                                                                <div>
+                                                                                    <div className="border-t pt-2 border-gray-300 flex justify-between items-center">
+                                                                                        <span className="text-md  text-gray-800">To Pay Now (Down Payment)</span>
+                                                                                        <span className="text-lg font-semibold text-blue-600">₱{contract_transaction?.length > 0 ? 0 : downpayment.toLocaleString()}</span>
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div>
+                                                                                    <div className="flex justify-between items-center">
+                                                                                        <span className="text-md text-gray-800">Next Payment (Balance)</span>
+                                                                                        <span className="text-lg font-semibold text-orange-600">₱{contract_transaction?.length > 1 ? 0 : nextpayment.toLocaleString()}</span>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </>
+                                                                        ) : (
+                                                                            <div>
+                                                                                <div className="border-t pt-2 border-gray-300 flex justify-between items-center">
+                                                                                    <span className="text-md  text-gray-800">To Pay Now (Full Payment)</span>
+                                                                                    <span className="text-lg font-semibold text-blue-600">₱{contract_transaction?.length > 0 ? 0 : contract.service_plan.service_price.toLocaleString()}</span>
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
 
-                                                                        <div>
-                                                                            <div className="border-t pt-2 border-gray-300 flex justify-between items-center">
-                                                                                <span className="text-md  text-gray-800">To Pay Now (Down Payment)</span>
-                                                                                <span className="text-lg font-semibold text-blue-600">₱{contract_transaction?.length > 0 ? 0 : downpayment.toLocaleString()}</span>
-                                                                            </div>
-                                                                        </div>
-                                                                        <div>
-                                                                            <div className="flex justify-between items-center">
-                                                                                <span className="text-md text-gray-800">Next Payment (Balance)</span>
-                                                                                <span className="text-lg font-semibold text-orange-600">₱{contract_transaction?.length > 1 ? 0 : nextpayment.toLocaleString()}</span>
-                                                                            </div>
-                                                                        </div>
                                                                     </>
                                                                 )}
 
                                                                 <div className="border-t border-gray-300 mt-12 mb-1 pt-2">
                                                                     <div className="flex justify-between items-center">
                                                                         <div className='flex gap-2 items-baseline'>
-                                                                            <span className="text-lg font-semibold text-gray-800">Total Paid to Planner</span>
+                                                                            <span className="text-lg font-semibold text-gray-800">Total Paid by Planner</span>
                                                                             <span className="text-md text-gray-600">(Not incl. fees)</span>
                                                                         </div>
                                                                         <span className="text-2xl font-semibold text-green-600">₱{not_include_fees.toLocaleString()}</span>
@@ -799,34 +813,60 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
                                                             </p>
                                                         </div>
 
+
+
                                                         {/* <div className='relative top-8 w-full rounded-2xl p-1 border border-gray-600 h-5'>
                                                                     <div className={`transition-all bg-green-500 h-2.5 rounded-2xl`} style={{ width: `${(totalpaid / netAmount) * 100}%`}}></div>
                                                                 </div> */}
                                                     </div>
 
                                                 </div>
+
+                                                <div className={`w-full mt-5 flex flex-col px-7 py-7 rounded-lg transition-all duration-200 shadow-md border border-gray-300 `}
+                                                >
+                                                    <div className='flex gap-2 items-center'>
+                                                        <ArrowLeftRight className='text-blue-600' />
+                                                        <p className="font-bold text-lg">Recent Transactions</p>
+                                                    </div>
+
+                                                    <div className={`flex flex-col mt-5 gap-3 overflow-y-auto ${transactions.length > 2 && 'h-[200px]'}`}>
+                                                        {transactions.map((t, i) => (
+                                                            <div className='bg-gray-50 border border-gray-200 shadow-lg rounded-lg py-5 px-6 flex items-center justify-between'>
+                                                                <div className='flex flex-col space-y-2'>
+                                                                    <div className='flex items-baseline gap-2'>
+                                                                        <span className='font-semibold'>Payment Transaction</span>
+                                                                        <span className={`py-1 w-18 text-xs rounded-full ${statusStyles[t.status.toLowerCase()]} block text-center `}>{t.status}</span>
+                                                                    </div>
+                                                                    <span className='text-gray-500 text-sm'>{t?.created_at?.toDate().toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                                                </div>
+
+                                                                <span className='text-gray-800 font-semibold'>₱ {t.amount}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
                                             </>
                                         )}
                                     </div>
 
-                                    {userData?.role != "Supplier" && contract?.status !== "Completed" && (
-                                        <>
-                                            <div className='flex mb-2'>
-                                                <div className='flex left-12 relative bottom-3 right-10 gap-2'>
-                                                    <button
-                                                        onClick={handleChat}
-                                                        className=" transition-all duration-50 text-sm items-center hover:bg-gray-700 py-2 px-5 rounded-md bg-gray-600 text-white"
-                                                    >
-                                                        {userData?.role === "Supplier"
-                                                            ? `Message Planner`
-                                                            : `Message Supplier`}
-                                                    </button>
 
-                                                    <ReportModal />
-                                                </div>
+                                    <div className='flex mb-2 relative bottom-3 right-10'>
+                                        <div className='flex left-20 gap-2 relative '>
+                                            <button
+                                                onClick={handleChat}
+                                                className=" transition-all duration-50 text-sm items-center hover:bg-gray-700 py-2 px-5 rounded-md bg-gray-600 text-white"
+                                            >
+                                                {userData?.role === "Supplier"
+                                                    ? `Message Planner`
+                                                    : `Message Supplier`}
+                                            </button>
 
-                                                {(total_paid - total_fees) === service_price && (
-                                                    <div className='flex justify-end ml-auto gap-3 relative bottom-3 right-10'>
+                                            <ReportModal contractData={contract} userData={userData} eventData={eventData} supplierData={supplierData} />
+                                        </div>
+                                        {userData?.role != "Supplier" && contract?.status !== "Completed" && (
+                                            <>
+                                                {(total_paid - total_fees) === service_price && deliveries?.length > 0 && (
+                                                    <div className='flex justify-end ml-auto gap-3 '>
                                                         {/* <button className='transition-all duration-50 text-sm items-center hover:bg-gray-700 py-2 px-5 rounded-md bg-gray-600 text-white'>Contact Supplier</button> */}
 
                                                         <button
@@ -856,7 +896,7 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
                                                             : (contractDeliveries.length === 0 && contract_transaction.length > 0)
                                                                 ? 'bg-blue-300 cursor-not-allowed'
                                                                 : 'bg-blue-500 hover:bg-blue-600'
-                                                            } text-white text-sm rounded flex justify-end items-end ml-auto relative bottom-3 right-10`}
+                                                            } text-white text-sm rounded flex justify-end items-end ml-auto `}
                                                     >
                                                         {isProcessing ? (
                                                             <div className='flex items-center gap-3 '>
@@ -872,23 +912,26 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
                                                 )}
 
                                                 {event_id === user_id && contract?.status === "Pending" && (
-                                                    <button disabled={true} className='px-7 py-2 flex justify-end items-end ml-auto relative bottom-3 right-10 bg-gray-400 text-white text-sm rounded'>Awaiting Approval</button>
+                                                    <button disabled={true} className='px-7 py-2 flex justify-end items-end ml-auto bg-gray-400 text-white text-sm rounded'>Awaiting Approval</button>
                                                 )}
 
 
+                                            </>
+                                        )}
+
+                                        {supplier_id === user_id && contract?.status === "Pending" && (
+                                            <div className='flex p-2 justify-end items-end ml-auto '>
+                                                <RejectReview contract={contract} supplier={supplierData} event_id={eventData.id} supplier_id={supplierData.id} className={`transition duration-50 py-1 px-5 border rounded-md hover:bg-red-600 hover:text-white`} />
+                                                <button onClick={() => handleApprove(contract?.id)} disabled={isSubmitting} className={`transition-all duration-50 px-7 py-2 ${isSubmitting ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'} text-white text-sm rounded`}>{isSubmitting ?
+                                                    <>
+                                                        <div className='h-5 w-5 border-t-2 rounded-full animate-spin border-white'></div>
+                                                    </> : 'Approve Offer'}
+                                                </button>
                                             </div>
-                                        </>
-                                    )}
-                                    {supplier_id === user_id && contract?.status === "Pending" && (
-                                        <div className='flex p-2 justify-end items-end ml-auto relative bottom-3 right-10 gap-2'>
-                                            <RejectReview contract={contract} supplier={supplierData} event_id={eventData.id} supplier_id={supplierData.id} className={`transition duration-50 py-1 px-5 border rounded-md hover:bg-red-600 hover:text-white`} />
-                                            <button onClick={() => handleApprove(contract?.id)} disabled={isSubmitting} className={`transition-all duration-50 px-7 py-2 ${isSubmitting ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'} text-white text-sm rounded`}>{isSubmitting ?
-                                                <>
-                                                    <div className='h-5 w-5 border-t-2 rounded-full animate-spin border-white'></div>
-                                                </> : 'Approve Offer'}
-                                            </button>
-                                        </div>
-                                    )}
+                                        )}
+                                    </div>
+
+
                                 </div>
 
                             </div>

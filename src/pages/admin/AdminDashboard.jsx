@@ -11,6 +11,9 @@ import { useFetchEvents } from "../../hooks/useEvents";
 import { useFetchAllTransaction } from "../../hooks/useTransaction";
 import { useFetchContract } from "../../hooks/useContract";
 import GenerateReport from "../../components/GeneraeReport";
+import { useFetchAllReports } from "../../hooks/useReports";
+import { ReportReview } from "../../components/ReviewModal";
+import { statusStyles } from "../../constants/categories";
 
 export default function AdminDashboard({ userData }) {
     const { verifications, isLoading: isVerificationLoading } = useFetchAllVerification()
@@ -19,6 +22,9 @@ export default function AdminDashboard({ userData }) {
     const { events } = useFetchEvents()
     const { transactions } = useFetchAllTransaction()
     const { contracts } = useFetchContract()
+    const { reports: pendingReports } = useFetchAllReports()
+
+    const reports = pendingReports.filter(r => r.status === "pending")
 
     const allLoading = isUsersLoading || isVerificationLoading
 
@@ -53,20 +59,6 @@ export default function AdminDashboard({ userData }) {
         }).length
     );
 
-    const AppliedColor = (status) => ({
-        approved: 'bg-green-100',
-        pending: 'bg-yellow-100',
-        reject: 'bg-red-100',
-    }[status]);
-
-    // Example Pie chart data (you can replace with actual logic)
-    const pieChartData = useMemo(() => ({
-        labels: ["Catering", "Venue", "Photography", "Others"],
-        dataValues: [45, 30, 15, 10],
-        backgroundColors: ["#60a5fa", "#a78bfa", "#f97316", "#34d399"],
-        borderColors: ["#60a5fa", "#a78bfa", "#f97316", "#34d399"]
-    }), []);
-
     const fields = [
         { label: "Total Platform Earnings", value: `PHP ${totalEarnings.toLocaleString()}` },
         { label: "Active Events", value: activeEvents },
@@ -77,6 +69,24 @@ export default function AdminDashboard({ userData }) {
         { label: "Top Earning Supplier", value: topEarningSupplier },
         { label: "Total Users", value: totalUsers },
     ];
+
+    const supplierTypeData = useMemo(() => {
+        const typeCount = {};
+
+        suppliers.forEach(supplier => {
+            const typeLabel = supplier.supplier_type?.label || "Unknown";
+            typeCount[typeLabel] = (typeCount[typeLabel] || 0) + 1;
+        });
+
+        return {
+            labels: Object.keys(typeCount),
+            dataValues: Object.values(typeCount),
+            backgroundColors: ["#60a5fa", "#a78bfa", "#f97316", "#34d399", "#f43f5e", "#fbbf24", "#10b981"],
+            borderColors: ["#60a5fa", "#a78bfa", "#f97316", "#34d399", "#f43f5e", "#fbbf24", "#10b981"]
+        };
+    }, [suppliers]);
+
+
 
     const sections = useMemo(() => [
         {
@@ -98,6 +108,8 @@ export default function AdminDashboard({ userData }) {
             ),
         },
     ], [supplierVerification, eventVerification, suppliers, users, contracts]);
+
+    console.log(transactions)
 
     return (
         <>
@@ -167,10 +179,10 @@ export default function AdminDashboard({ userData }) {
                                 <div className="w-full max-w-[250px] mt-5">
                                     <PieChart
                                         className="w-full h-64"
-                                        labels={pieChartData.labels}
-                                        dataValues={pieChartData.dataValues}
-                                        backgroundColors={pieChartData.backgroundColors}
-                                        borderColors={pieChartData.borderColors}
+                                        labels={supplierTypeData.labels}
+                                        dataValues={supplierTypeData.dataValues}
+                                        backgroundColors={supplierTypeData.backgroundColors}
+                                        borderColors={supplierTypeData.borderColors}
                                     />
                                 </div>
                             </div>
@@ -208,7 +220,7 @@ export default function AdminDashboard({ userData }) {
                     {/* Tabs for Verification */}
                     <TabGroup className="mt-5 bg-white border border-gray-200 rounded-2xl shadow-md p-3 transition-all">
                         <TabList className="flex flex-wrap gap-2 sm:gap-3 mb-6">
-                            {["Suppliers Request", "Planners Request"].map((tab, i) => (
+                            {["Suppliers Request", "Planners Request", "Reports", "Transactions"].map((tab, i) => (
                                 <Tab
                                     key={i}
                                     className="rounded-full px-5 py-2 text-sm font-medium border border-gray-200 bg-white hover:bg-gray-100 data-[selected]:bg-gradient-to-r data-[selected]:from-blue-500 data-[selected]:to-blue-600 data-[selected]:text-white shadow-sm transition-all"
@@ -218,9 +230,9 @@ export default function AdminDashboard({ userData }) {
                             ))}
                         </TabList>
                         <TabPanels className="rounded-xl border border-gray-300 bg-white shadow-xl">
-                            <TabPanel className="p-3">
+                            <TabPanel className={`p-3 flex flex-col gap-3 ${supplierVerification.length > 2 && 'h-[250px] overflow-y-auto'}`}>
                                 {supplierVerification.length ? supplierVerification.map((v, i) => (
-                                    <div key={i} className={`flex flex-col sm:flex-row gap-2 justify-between ${AppliedColor("pending")} shadow-lg items-start sm:items-center p-3 sm:py-4 rounded-lg sm:px-5`}>
+                                    <div key={i} className={`flex flex-col sm:flex-row gap-2 justify-between ${statusStyles['pending']} shadow-lg items-start sm:items-center p-3 sm:py-4 rounded-lg sm:px-5`}>
                                         <div className="flex items-start sm:items-center space-x-3 flex-1">
                                             <Calendar size={20} className="text-blue-600 bg-gray-200 rounded-full h-8 w-8 p-2 flex-shrink-0" />
                                             <div className="flex flex-col min-w-0 flex-1">
@@ -237,9 +249,9 @@ export default function AdminDashboard({ userData }) {
                                 )}
                             </TabPanel>
 
-                            <TabPanel className="p-3">
+                            <TabPanel className={`p-3 flex flex-col gap-3 ${eventVerification.length > 2 && 'h-[250px] overflow-y-auto'}`}>
                                 {eventVerification.length ? eventVerification.map((v, i) => (
-                                    <div key={i} className={`flex flex-col sm:flex-row gap-2 justify-between ${AppliedColor("pending")} shadow-lg items-start sm:items-center p-3 sm:py-4 rounded-lg sm:px-5`}>
+                                    <div key={i} className={`flex flex-col sm:flex-row gap-2 justify-between ${statusStyles['pending']} shadow-lg items-start sm:items-center p-3 sm:py-4 rounded-lg sm:px-5`}>
                                         <div className="flex items-start sm:items-center space-x-3 flex-1">
                                             <Calendar size={20} className="text-blue-600 bg-gray-200 rounded-full h-8 w-8 p-2 flex-shrink-0" />
                                             <div className="flex flex-col min-w-0 flex-1">
@@ -253,6 +265,63 @@ export default function AdminDashboard({ userData }) {
                                     </div>
                                 )) : (
                                     <p className="text-center text-gray-500 py-10">No pending planner verification.</p>
+                                )}
+                            </TabPanel>
+
+                            <TabPanel className={`p-3 flex flex-col gap-3 ${reports.length > 2 && 'h-[250px] overflow-y-auto'}`}>
+                                {reports.length ? reports.map((r, i) => {
+                                    let supplier = []
+                                    let event = []
+                                    if (r?.reporter_role === "Supplier") {
+                                        supplier = suppliers.find(s => s.id === r.user_id)
+                                    } else {
+                                        event = events.find(e => e.user_id === r.user_id)
+                                    }
+
+                                    console.log(supplier, "asd")
+
+                                    return (
+                                        <div key={i} className={`flex flex-col sm:flex-row gap-2 justify-between ${statusStyles['reject']} shadow-lg items-start sm:items-center p-3 sm:py-4 rounded-lg sm:px-5`}>
+                                            <div className="flex items-start sm:items-center space-x-3 flex-1">
+                                                <Calendar size={20} className="text-blue-600 bg-gray-200 rounded-full h-8 w-8 p-2 flex-shrink-0" />
+                                                <div className="flex flex-col min-w-0 flex-1">
+                                                    <span className="font-medium text-gray-900">{supplier ? supplier.supplier_name : event.event_name}</span>
+                                                    <span className="text-gray-500 text-xs sm:text-sm">
+                                                        Requested: {r.created_at?.toDate().toLocaleDateString()}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <ReportReview report={r} userData={userData} />
+                                        </div>
+                                    )
+                                }) : (
+                                    <p className="text-center text-gray-500 py-10">No pending planner verification.</p>
+                                )}
+                            </TabPanel>
+
+                            {/* transaction */}
+                            <TabPanel className={`p-3 flex flex-col gap-3 ${transactions.length > 2 && 'h-[250px] overflow-y-auto'}`}>
+                                {transactions.length > 0 ? transactions.map((t, i) => {
+                                    return (
+                                        <div key={i} className={`flex flex-col sm:flex-row gap-2 justify-between ${statusStyles[t.status.toLowerCase()]} shadow-lg items-start sm:items-center p-3 sm:py-4 rounded-lg sm:px-5`}>
+                                            <div className="flex items-start sm:items-center space-x-3 flex-1">
+                                                <Calendar size={20} className="text-blue-600 bg-gray-200 rounded-full h-8 w-8 p-2 flex-shrink-0" />
+                                                <div className="flex flex-col min-w-0 flex-1">
+                                                    <span className="font-semibold text-gray-900">Transaction Id:{t.id}</span>
+                                                    <span className="text-gray-500 text-xs sm:text-sm">
+                                                        Transaction Date: {t.created_at?.toDate().toLocaleDateString()}
+                                                    </span>
+                                                    <span className="text-gray-500 text-xs sm:text-sm">
+                                                        Type: {t.type}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div className="py-2 bg-white px-4 rounded-full border border-gray-200 shadow-xl">{t.status}</div>
+                                        </div>
+                                    )
+                                }) : (
+                                    <p className="text-center text-gray-500 py-10">No transactions found.</p>
                                 )}
                             </TabPanel>
                         </TabPanels>

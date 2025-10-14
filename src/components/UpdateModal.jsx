@@ -130,12 +130,13 @@ export const AboutOurBusiessEdit = ({ supplierData }) => {
 
                                     <div className='flex flex-col gap-3'>
                                         <span className='block text-gray-800 font-bold mt-3 text-sm'>Expertise</span>
-                                        <div className='flex gap-2'>
+                                        <div className='flex flex-wrap gap-2'>
                                             {expertise?.length > 0 && (
                                                 <>
                                                     {expertise.map((supplier, index) => (
-                                                        <button type='button' onClick={() => handleExpertiseChange(supplier)} className={`group px-4 py-1 rounded-full bg-blue-500 flex items-center text-white hover:bg-red-500 transition-all duration-200 `} key={index}>
-                                                            {supplier} <span className='ml-2 transition-all duration-200 group-hover:opacity-100 opacity-0 font-bold flex'> - </span>
+                                                        <button type='button' onClick={() => handleExpertiseChange(supplier)} className="group flex items-center px-3 py-2 rounded-2xl bg-blue-100 text-blue-700 font-medium text-sm"
+                                                            key={index}>
+                                                            {supplier} <span className='ml-2 transition-all duration-200 text-blue-700 group-hover:text-red-600 flex'> - </span>
                                                         </button>
                                                     ))}
                                                 </>
@@ -151,11 +152,12 @@ export const AboutOurBusiessEdit = ({ supplierData }) => {
                                         )}
 
                                         <span className='block text-gray-800 font-bold mt-3 text-sm'>Available Expertise</span>
-                                        <div className='grid grid-cols-3 gap-2'>
+                                        <div className='flex flex-wrap gap-2'>
                                             <>
                                                 {supplierTypeToExpertise[supplierType]?.map((supplier, index) => (
-                                                    <button type='button' onClick={() => handleExpertiseChange(supplier)} className={`group px-4 py-1 rounded-full border flex items-center text-black hover:bg-blue-500 hover:text-white transition-all duration-200 `} key={index}>
-                                                        {supplier} <span className='ml-2 transition-all duration-200 group-hover:opacity-100 opacity-0 font-bold flex'> + </span>
+                                                    <button type='button' onClick={() => handleExpertiseChange(supplier)} className="group flex items-center gap-2 px-3 py-2 rounded-2xl bg-blue-100 text-blue-700 border border-blue-200 font-medium text-sm"
+                                                        key={index}>
+                                                        {supplier} <span className='ml-2 transition-all duration-200 text-blue-600 group-hover:text-red-700 font-bold flex'> + </span>
                                                     </button>
                                                 ))}
                                             </>

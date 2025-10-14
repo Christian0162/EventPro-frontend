@@ -112,9 +112,10 @@ export default function DamagePenaltiesModal({ delivery, deliveryId, onSuccess, 
                         referenced_type: 'contract',
                         referenced_id: delivery?.contract_id,
                         title: "Delivery Issue Reported",
+                        sender_id: eventData.user_id,
                         unread: true,
                         feedback: reason,
-                        user_id: delivery?.supplier_id
+                        receiver_id: delivery?.supplier_id
                     });
                     return true;
                 } catch (error) {

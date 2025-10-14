@@ -3,6 +3,10 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Search, Send } from 'lucide-react';
 import { getDocs, collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, setDoc, doc, getDoc } from "firebase/firestore";
 import { db } from "../../firebase/firebase";
+import { useFetchUsers } from "../../hooks/useUsers";
+import { useFetchUserProfiles } from "../../hooks/useProfile";
+import { useFetchSuppliers } from "../../hooks/useSupplier";
+
 
 export default function ChatWindow({ userData }) {
     const { id } = useParams();
@@ -17,6 +21,23 @@ export default function ChatWindow({ userData }) {
     const [shop, setShop] = useState([])
     const [searchTerm, setSearchTerm] = useState('');
     const messagesEndRef = useRef(null);
+    const { users } = useFetchUsers()
+    const { userProfiles } = useFetchUserProfiles()
+    const { suppliers } = useFetchSuppliers()
+
+    const selectedUser = users?.find(u => u.id === selectedContact?.contact_id)
+
+    let selecteData = []
+
+    if (selectedUser?.role === "Event Planner") {
+        const userProfile = userProfiles?.find(u => u.id === selectedUser?.id)
+        selecteData = userProfile
+    }
+    else {
+        const supplierProfile = suppliers?.find(s => s.id === selectedUser?.id)
+        selecteData = supplierProfile
+    }
+
 
     useEffect(() => {
         if (!selectedContact) return;
@@ -178,35 +199,56 @@ export default function ChatWindow({ userData }) {
                                 {contacts.length === 0 ? "No contacts" : "No matches"}
                             </div>
                         ) : (
-                            filteredContacts.map((contact) => (
-                                <div
-                                    key={contact.id}
-                                    onClick={() => navigate(`/chats/${contact.id}`)}
-                                    className={`flex items-center gap-3 p-4 cursor-pointer transition-all duration-200 
+                            filteredContacts.map((contact) => {
+
+                                const selectedUser = users?.find(u => u.id === contact.contact_id)
+
+                                let contactData = []
+
+                                if (selectedUser?.role === "Event Planner") {
+                                    const userProfile = userProfiles?.find(u => u.id === selectedUser?.id)
+                                    contactData = userProfile
+                                }
+                                else {
+                                    const supplierProfile = suppliers?.find(s => s.id === selectedUser?.id)
+                                    contactData = supplierProfile
+                                }
+
+                                return (
+                                    <div
+                                        key={contact.id}
+                                        onClick={() => navigate(`/chats/${contact.id}`)}
+                                        className={`flex items-center gap-3 p-4 cursor-pointer transition-all duration-200 
         ${selectedContact?.id === contact.id
-                                            ? 'bg-blue-50 border-l-4 border-blue-600'
-                                            : 'hover:bg-gray-100'
-                                        }`}
-                                >
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold
+                                                ? 'bg-blue-50 border-l-4 border-blue-600'
+                                                : 'hover:bg-gray-100'
+                                            }`}
+                                    >
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold
         ${selectedContact?.id === contact.id ? 'bg-blue-600' : 'bg-gray-400'}`}>
-                                        {contact.avatar?.toUpperCase() || contact.name?.[0]?.toUpperCase()}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="font-medium text-gray-900 truncate">
-                                            {contact.name}
-                                            {isContactDeactivated && (
-                                                <span className="ml-2 text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full">
-                                                    Deactivated
-                                                </span>
+
+                                            {contactData?.profile_pic || contactData?.supplier_background_image ? (
+                                                <img src={contactData?.profile_pic || contactData?.supplier_background_image} alt="" className='h-full w-full rounded-full object-cover' />
+                                            ) : (
+                                                contact.avatar?.toUpperCase() || contact.name?.[0]?.toUpperCase()
                                             )}
                                         </div>
-                                        <div className="text-sm text-gray-500 truncate">
-                                            {contact?.last_message || 'No message yet'}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-medium text-gray-900 truncate">
+                                                {contact.name}
+                                                {isContactDeactivated && (
+                                                    <span className="ml-2 text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full">
+                                                        Deactivated
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="text-sm text-gray-500 truncate">
+                                                {contact?.last_message || 'No message yet'}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            ))
+                                )
+                            })
                         )}
 
                         {contacts.length === 0 && (
@@ -223,7 +265,11 @@ export default function ChatWindow({ userData }) {
                             <div className="flex justify-between items-center gap-3">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold">
-                                        {selectedContact.name?.[0]}
+                                        {selecteData?.profile_pic || selecteData?.supplier_background_image ? (
+                                            <img src={selecteData?.profile_pic || selecteData?.supplier_background_image} alt="" className='h-full w-full rounded-full object-cover' />
+                                        ) : (
+                                            selectedContact.name?.[0]
+                                        )}
                                     </div>
                                     <div>
                                         <h2 className="font-semibold text-gray-900 text-lg">{selectedContact.name}</h2>

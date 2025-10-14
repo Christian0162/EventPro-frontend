@@ -72,13 +72,12 @@ export const useAddEvent = () => {
                 event_location: data.event_location,
                 event_date: data.event_date,
                 event_time: data.event_time,
-                event_status: data.event_status,
                 event_type: data.event_type,
                 event_budget: data.event_budget,
                 event_description: data.event_description,
                 event_categories: data.event_categories,
                 event_background: data.event_background || "",
-                status: "active",
+                status: true,
                 createdAt: serverTimestamp(),
             });
             Swal.fire({
@@ -88,13 +87,12 @@ export const useAddEvent = () => {
                 showConfirmButton: false,
                 timer: 1000,
             });
+            navigate('/events')
         } catch (e) {
             console.error(e);
             setIsLoading(false);
         } finally {
             setIsLoading(false);
-            navigate('/events')
-
         }
     };
 
@@ -114,7 +112,6 @@ export const useUpdateEvent = () => {
                 event_location: data.event_location,
                 event_date: data.event_date,
                 event_time: data.event_time,
-                event_status: data.event_status,
                 event_type: data.event_type,
                 event_budget: data.event_budget,
                 event_description: data.event_description,

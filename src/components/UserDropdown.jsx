@@ -16,8 +16,6 @@ export default function UserDropDown({ userData }) {
         setIsOpen(false)
     }
 
-
-
     return (
         <>
             <div className="relative">

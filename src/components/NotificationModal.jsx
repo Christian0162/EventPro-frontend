@@ -1,13 +1,35 @@
 import { Dialog, DialogPanel } from '@headlessui/react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { deleteDoc, updateDoc, doc } from 'firebase/firestore'
 import { X, MessageSquare, Clock } from 'lucide-react'
 import { db } from '../firebase/firebase'
 import { formatDistanceToNow } from 'date-fns'
+import { useFetchUsers } from '../hooks/useUsers'
+import { useFetchUserProfiles } from '../hooks/useProfile'
+import { useFetchSuppliers } from '../hooks/useSupplier'
 
 export default function NotificationModal({ notification }) {
     const [isOpen, setIsOpen] = useState(false)
     const [isHovered, setIsHovered] = useState(false)
+    const { users } = useFetchUsers()
+    const { userProfiles } = useFetchUserProfiles()
+    const { suppliers } = useFetchSuppliers()
+    const [senderData, setSenderData] = useState([])
+
+    const selectedUser = users?.find(u => u.id === notification.sender_id)
+
+    useEffect(() => {
+        if (selectedUser?.role === "Event Planner") {
+            const userProfile = userProfiles?.find(u => u.id === selectedUser?.id)
+            setSenderData(userProfile)
+        }
+        else {
+            const supplierProfile = suppliers?.find(s => s.id === selectedUser?.id)
+            setSenderData(supplierProfile)
+        }
+    }, [suppliers, selectedUser, userProfiles])
+
+    console.log(senderData)
 
     function open() {
         setIsOpen(true)
@@ -46,7 +68,11 @@ export default function NotificationModal({ notification }) {
                 <div className="flex items-start gap-4">
                     {/* Avatar with icon */}
                     <div className="flex items-center justify-center w-12 h-12 rounded-full text-white font-bold bg-gradient-to-tr from-blue-500 to-blue-700 shadow-md">
-                        {notification.avatar}
+                        {senderData?.profile_pic || senderData?.supplier_background_image ? (
+                            <img src={senderData?.profile_pic || senderData?.supplier_background_image} alt="" className='h-full w-full rounded-full object-cover' />
+                        ) : (
+                            notification.avatar
+                        )}
                     </div>
 
                     {/* Content */}
@@ -97,7 +123,7 @@ export default function NotificationModal({ notification }) {
                 <div className="fixed inset-0 z-10 flex items-center justify-center p-4">
                     <DialogPanel
                         transition
-                        className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl transform transition-all duration-300 ease-out data-closed:scale-95 data-closed:opacity-0"
+                        className="w-full max-w-2xl relative rounded-2xl bg-white shadow-2xl transform transition-all duration-300 ease-out data-closed:scale-95 data-closed:opacity-0"
                     >
                         {/* Close button */}
                         <button

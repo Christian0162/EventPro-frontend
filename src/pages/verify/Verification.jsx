@@ -10,6 +10,7 @@ import UploadWidget from "../../components/UploadWidgen";
 import { SupplierOptions, idOptions, documentOptions, exampleIds, exampleDocuments } from "../../constants/categories";
 import Swal from "sweetalert2";
 import LoadingOverlay from "../../components/LoadingOverlay";
+import PageLoading from "../../components/PageLoading";
 
 export default function Verification({ userData }) {
 
@@ -95,11 +96,9 @@ export default function Verification({ userData }) {
                 const q = query(doc(db, "verification", userData.id),
                     where("status", "in", ["pending", "rejected"]))
                 const onSnapShotVerification = await getDoc(q);
-
                 if (onSnapShotVerification.exists()) {
                     setRedirect(true)
                 }
-
             }
 
             fetchVerification()
@@ -107,8 +106,7 @@ export default function Verification({ userData }) {
         catch (e) {
             console.error(e)
         }
-
-    }, [])
+    }, [userData])
 
     console.log({ validId, documents })
 
@@ -197,9 +195,7 @@ export default function Verification({ userData }) {
         <>
 
             {isLoading && (
-                <div className="flex justify-center items-center mt-55  ">
-                    <div className="rounded-full h-10 w-10 animate-spin border border-t-blue-600"></div>
-                </div>
+                <PageLoading />
             )}
 
             {isSubmitting && (

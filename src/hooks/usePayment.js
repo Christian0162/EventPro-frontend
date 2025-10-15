@@ -66,7 +66,7 @@ export const useCreatePayment = () => {
 
         if (payment_terms.isConfirmed) {
             try {
-                const response = await fetch("http://127.0.0.1:8000/api/v1/create-checkout-session", {
+                const response = await fetch("https://eventpro-backend.onrender.com/api/v1/create-checkout-session", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -85,7 +85,7 @@ export const useCreatePayment = () => {
                 payment_window_ref.current = window.open(data.invoice_url, "_blank")
 
                 const checkStatus = setInterval(async () => {
-                    const res = await fetch(`http://127.0.0.1:8000/api/v1/payment/check-status?id=${invoice_id}`)
+                    const res = await fetch(`https://eventpro-backend.onrender.com/api/v1/payment/check-status?id=${invoice_id}`)
                     const status = await res.json()
 
                     await setDoc(doc(db, "transactions", invoice_id), {

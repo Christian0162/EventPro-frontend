@@ -17,6 +17,7 @@ import { useFetchSupplierById } from "../../hooks/useSupplier";
 import EventModal from "../../components/EventModal";
 import { Link } from "react-router-dom";
 import ClipLoader from "react-spinners/ClipLoader"; // Add this import
+import PageLoading from "../../components/PageLoading";
 
 export default function Favorites({ userData }) {
 
@@ -41,7 +42,7 @@ export default function Favorites({ userData }) {
     )
 
     const userFavorites = favorites.filter(favorite => favorite.user_id === userData.id)
-    const activeSuppliers = suppliers.filter(supplier => supplier.is_verified && supplier.status === "active")
+    const activeSuppliers = suppliers.filter(supplier => supplier.is_verified && supplier.status === "active" && services.some(serv => serv.supplier_id === supplier.id))
 
     const shop = activeSuppliers.filter(shop => {
         return userFavorites.some(favorite => shop.id === favorite.supplier_id)
@@ -233,13 +234,7 @@ export default function Favorites({ userData }) {
         <>
             <Title>Favorites</Title>
             {isAllLoading && (
-                <div className="flex justify-center items-center py-[15rem]">
-                    <div className="relative">
-                        <div className="absolute inset-0 h-12 w-12 bg-blue-500/10 rounded-full blur-sm animate-pulse"></div>
-                        <div className="h-12 w-12 border-2 border-blue-100 rounded-full animate-spin border-t-blue-600 border-r-blue-600"></div>
-                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/1 h-6 w-6 border border-blue-200 rounded-full"></div>
-                    </div>
-                </div>
+                <PageLoading />
             )}
 
             {(isCreatingContact || isCreatingFavorites) && (

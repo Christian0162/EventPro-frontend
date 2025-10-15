@@ -198,8 +198,14 @@ export default function EditEvent({ userData }) {
     const now = new Date();
     const eventDate = new Date(data?.event_date?.date_value);
 
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const eventEndTime = data?.event_time?.valueStartAndEnd[1] || "00:00"
+    const [eventHour, eventMinute] = eventEndTime.split(":").map(Number)
+
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes());
     const eventDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate())
+    eventDay.setHours(eventHour, eventMinute, 0, 0)
+
+    console.log(eventDay <= today)
 
     const eventContracts = contracts.filter(cont => cont.event_id === id && cont.status === "Approved")
 

@@ -184,7 +184,13 @@ export default function ServiceModal({ userData, supplierData }) {
                                                 <label htmlFor="" className='text-gray-700 font-bold'>List Inclusions</label>
                                             </div>
                                             <div className='flex gap-3'>
-                                                <input type="text" className='w-full px-4 py-2 rounded-md focus:outline-none border border-gray-400' onChange={(e) => setInclusions(e.target.value)} value={inclusions} placeholder='e.g One Free Tiramisu' />
+                                                <input
+                                                    type="text"
+                                                    className='w-full px-4 py-2 rounded-md focus:outline-none border border-gray-400'
+                                                    onChange={(e) => setInclusions(e.target.value)}
+                                                    value={inclusions}
+                                                    placeholder='Enter inclusion or offer details'
+                                                />
                                                 <button onClick={() => handleInclusions(inclusions)} className='w-1/3 bg-blue-600 hover:bg-blue-700 transition-all duration-200 rounded-md text-white' type='button'>Add</button>
                                             </div>
                                             {error && (

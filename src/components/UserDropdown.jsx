@@ -51,7 +51,7 @@ export default function UserDropDown({ userData }) {
                         <div className="absolute z-50 mt-2 right-0 w-48 rounded-lg p-1 text-sm bg-white border border-gray-100 shadow-lg">
                             <div className="py-1 flex flex-col text-left">
                                 <button onClick={() => { navigate('/profile', { replace: true }); setIsOpen(false) }} className="transition-all duration-50 w-full p-2 text-left rounded text-gray-600 hover:text-black hover:bg-gray-100">Profile</button>
-                                <button onClick={() => { navigate('/settings', { replace: true }); setIsOpen(false) }} className="transition-all duration-50 w-full p-2 text-left rounded text-gray-600 hover:text-black hover:bg-gray-100">Settings</button>
+                                <a href="/settings" className="transition-all duration-50 w-full p-2 text-left rounded text-gray-600 hover:text-black hover:bg-gray-100">Settings</a>
                                 <button onClick={() => handleLogout()} className="transition-all duration-50 w-full p-2 text-left rounded text-gray-600 hover:text-black hover:bg-gray-100">Logout</button>
                             </div>
                         </div>

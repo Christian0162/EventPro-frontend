@@ -258,13 +258,14 @@ export default function Event({ userData }) {
                                 className="w-100 border border-gray-300  bg-white rounded-lg px-4 py-2 shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                             />
                         </div>
-                        {userData.role === "Event Planner" && userData.verification_status === "verified" && (
-                            <Link to={'/events/create'}>
-                                <button className="bg-blue-600 text-white rounded-md px-5 lg:px-10 md:px-8 sm:px-7 py-2 lg:py-3 font-semibold mt-3">Create New Event</button>
-                            </Link>
-                        )}
+
 
                     </div>
+                    {userData.role === "Event Planner" && userData.verification_status === "verified" && (
+                        <Link to={'/events/create'}>
+                            <button className="bg-blue-600 text-white rounded-md px-5 lg:px-10 md:px-8 sm:px-7 py-2 lg:py-3 font-semibold mt-3">Create New Event</button>
+                        </Link>
+                    )}
 
 
                     {events?.length > 0 && (

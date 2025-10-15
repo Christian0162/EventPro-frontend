@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Search, Send } from 'lucide-react';
-import { getDocs, collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, setDoc, doc, getDoc } from "firebase/firestore";
+import { getDocs, collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, setDoc, doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "../../firebase/firebase";
 import { useFetchUsers } from "../../hooks/useUsers";
 import { useFetchUserProfiles } from "../../hooks/useProfile";
 import { useFetchSuppliers } from "../../hooks/useSupplier";
+import { useFetchAllContact } from "../../hooks/useContact";
 
 
 export default function ChatWindow({ userData }) {
@@ -24,8 +25,11 @@ export default function ChatWindow({ userData }) {
     const { users } = useFetchUsers()
     const { userProfiles } = useFetchUserProfiles()
     const { suppliers } = useFetchSuppliers()
+    const { contacts: allContacts } = useFetchAllContact()
 
     const selectedUser = users?.find(u => u.id === selectedContact?.contact_id)
+
+    const bothContacts = allContacts.find(c => c.user_id === selectedContact?.contact_id && c.contact_id === userData.id )
 
     let selecteData = []
 
@@ -153,13 +157,14 @@ export default function ChatWindow({ userData }) {
                 user_id: selectedContact.contact_id,
                 contact_id: userData.id,
                 name: userData?.role === "Event Planner" ? userData.first_name : shop.supplier_name,
-                last_message: "",
-                isActive: false,
+                last_message: message,
                 created_at: serverTimestamp()
             });
         };
 
-        setMessage('');
+        await updateDoc(doc(db, "contacts", bothContacts?.id), {
+            last_message: message,
+        });
 
         await addDoc(collection(db, "messages"), {
             sender_id: userData.id,
@@ -167,9 +172,11 @@ export default function ChatWindow({ userData }) {
             text: message,
             timestamp: serverTimestamp()
         });
+        setMessage('');
 
         setIsSending(false)
     }
+
 
     return (
         <>
@@ -224,7 +231,7 @@ export default function ChatWindow({ userData }) {
                                                 : 'hover:bg-gray-100'
                                             }`}
                                     >
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold
+                                        <div className={`w-10 h-10 rounded-full relative flex items-center justify-center text-white font-semibold
         ${selectedContact?.id === contact.id ? 'bg-blue-600' : 'bg-gray-400'}`}>
 
                                             {contactData?.profile_pic || contactData?.supplier_background_image ? (
@@ -232,20 +239,43 @@ export default function ChatWindow({ userData }) {
                                             ) : (
                                                 contact.avatar?.toUpperCase() || contact.name?.[0]?.toUpperCase()
                                             )}
+
+                                            <span
+                                                className={`absolute bottom-0 right-0 left-6 top-7 inline-block w-4 h-4 rounded-full ${selectedUser.is_online ? "bg-green-500" : "bg-gray-400"
+                                                    }`}
+                                            ></span>
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="font-medium text-gray-900 truncate">
-                                                {contact.name}
-                                                {isContactDeactivated && (
-                                                    <span className="ml-2 text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full">
-                                                        Deactivated
-                                                    </span>
-                                                )}
+                                                <div className="flex items-baseline gap-2">
+                                                    {/* Name */}
+                                                    <span className="truncate">{contact.name}</span>
+
+                                                    {/* Online/offline dot + label */}
+                                                    <div className="flex items-center gap-1">
+                                                        <span
+                                                            className={`text-xs font-medium ${selectedUser.is_online ? "text-green-600" : "text-gray-500"
+                                                                }`}
+                                                        >
+                                                            {selectedUser.is_online ? "Active now" : "Offline"}
+                                                        </span>
+                                                    </div>
+
+                                                    {/* Deactivated badge */}
+                                                    {isContactDeactivated && (
+                                                        <span className="ml-2 text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">
+                                                            Deactivated
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
+
+                                            {/* Last message */}
                                             <div className="text-sm text-gray-500 truncate">
-                                                {contact?.last_message || 'No message yet'}
+                                                {contact?.last_message || "No message yet"}
                                             </div>
                                         </div>
+
                                     </div>
                                 )
                             })
@@ -268,7 +298,7 @@ export default function ChatWindow({ userData }) {
                                         {selecteData?.profile_pic || selecteData?.supplier_background_image ? (
                                             <img src={selecteData?.profile_pic || selecteData?.supplier_background_image} alt="" className='h-full w-full rounded-full object-cover' />
                                         ) : (
-                                            selectedContact.name?.[0]
+                                            selectedContact.name?.[0].toUpperCase()
                                         )}
                                     </div>
                                     <div>

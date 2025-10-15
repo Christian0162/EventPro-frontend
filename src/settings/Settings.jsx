@@ -481,7 +481,7 @@ export default function Settings({ userData, user }) {
 
                                                     <button
                                                         onClick={() => {
-                                                            setContactNumber(userProfile.contract_number)
+                                                            setContactNumber(userProfile.contract_number || '')
                                                             setIsContactNumberEditing(false)
                                                         }}
                                                         className="text-sm px-3 py-1 rounded-lg bg-gray-300 text-gray-700 hover:bg-gray-400"
@@ -645,7 +645,6 @@ export default function Settings({ userData, user }) {
                                                     className="w-full pl-8 pr-4 py-4 bg-gray-100 border border-gray-600 rounded-2xl text-black placeholder-gray-1000 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
                                                     placeholder="0.00"
                                                     onChange={(e) => setCredentials({ ...credentials, amount: Number(e.target.value) })}
-
                                                 />
                                             </div>
                                             {balanceError && (

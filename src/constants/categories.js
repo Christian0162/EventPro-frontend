@@ -1,17 +1,154 @@
 export const SupplierOptions = [
-    { label: 'Floral (Flowers & Arrangements)', value: 'floral' },
-    { label: 'Wedding (Planners & Services)', value: 'wedding' },
-    { label: 'Events (General Event Services)', value: 'events' },
-    { label: 'Corporate (Business Functions)', value: 'corporate' },
-    { label: 'Catering (Food & Beverages)', value: 'catering' },
-    { label: 'Photography (Photo & Video)', value: 'photography' },
-    { label: 'Music & Entertainment (Bands, DJs, Performers)', value: 'entertainment' },
-    { label: 'Lighting & Sound (Audio/Visual Setup)', value: 'lighting' },
-    { label: 'Decor & Styling (Design & Decorations)', value: 'decor' },
-    { label: 'Transportation (Guest & Event Transport)', value: 'transportation' },
-    { label: 'Makeup & Styling (Hair & Beauty)', value: 'makeup' },
-    { label: 'Invitations & Printing (Cards & Materials)', value: 'printing' }
-]
+    { label: 'Catering Services (Food & Beverages)', value: 'catering' },
+    { label: 'Lighting & Sound System', value: 'lighting_sound' },
+    { label: 'Event Stylist / Decorator', value: 'stylist_decorator' },
+    { label: 'Venue Provider', value: 'venue' },
+    { label: 'Stage & Equipment Rentals', value: 'stage_equipment' },
+    { label: 'Furniture & Fixture Rentals', value: 'furniture' },
+    { label: 'Photography & Videography', value: 'photo_video' },
+    { label: 'Entertainment (Hosts, Performers, DJs)', value: 'entertainment' },
+    { label: 'Printing & Signage Services', value: 'printing' },
+    { label: 'Cake & Pastry Supplier', value: 'cake_pastry' },
+    { label: 'Souvenirs & Giveaways', value: 'souvenirs' },
+    { label: 'Transportation Services', value: 'transportation' },
+    { label: 'Security & Logistics', value: 'security_logistics' },
+    { label: 'Event Production Company', value: 'event_production' },
+    { label: 'Tent & Booth Rentals', value: 'tent_booth' },
+    { label: 'Technical Crew / Operators', value: 'technical' },
+    { label: 'Cleaning & Maintenance', value: 'cleaning' },
+    { label: 'Floral & Balloon Decorations', value: 'floral_balloon' },
+    { label: 'Costume & Props Supplier', value: 'costume_props' },
+    { label: 'Bar & Beverage Services', value: 'bar_beverage' }
+];
+
+export const supplierTypeToExpertise = {
+    catering: ['Buffet Services', 'Plated Meals', 'Beverage Service', 'Desserts & Pastries', 'On-site Cooking'],
+    lighting_sound: ['Lighting Setup', 'Sound Systems', 'Stage Effects', 'Audio/Visual Equipment', 'Power Management'],
+    stylist_decorator: ['Event Styling', 'Theme Design', 'Stage Design', 'Table Arrangements', 'Balloon & Floral Decorations'],
+    venue: ['Banquet Halls', 'Outdoor Venues', 'Hotels & Resorts', 'Conference Rooms', 'Private Function Areas'],
+    stage_equipment: ['Stage Setup', 'Backdrops', 'Trusses', 'LED Walls', 'Equipment Rentals'],
+    furniture: ['Tables & Chairs', 'Lounges', 'Bars', 'Podiums', 'Decorative Furniture'],
+    photo_video: ['Photography', 'Videography', 'Drone Shots', 'Event Coverage', 'Editing & Post Production'],
+    entertainment: ['Live Bands', 'DJs', 'Performers', 'Hosts / MCs', 'Cultural Shows'],
+    printing: ['Invitations', 'Banners & Tarpaulins', 'Menus & Programs', 'Signage', 'Souvenirs & Giveaways'],
+    cake_pastry: ['Wedding Cakes', 'Birthday Cakes', 'Cupcakes', 'Dessert Buffets', 'Pastry Styling'],
+    souvenirs: ['Giveaways', 'Customized Gifts', 'Eco Bags', 'Tokens', 'Packaging & Branding'],
+    transportation: ['Guest Transport', 'Luxury Cars', 'Bridal Cars', 'Logistics Vans', 'Shuttle Services'],
+    security_logistics: ['Security Personnel', 'Crowd Control', 'Event Safety', 'Logistics Coordination', 'Traffic Management'],
+    event_production: ['Stage Design', 'Event Planning', 'Script Management', 'Talent Coordination', 'On-site Operations'],
+    tent_booth: ['Tent Rentals', 'Booth Setup', 'Outdoor Canopies', 'Exhibit Structures', 'Pop-up Installations'],
+    technical: ['Audio Operators', 'Lighting Technicians', 'Video Operators', 'Stage Crew', 'System Setup'],
+    cleaning: ['Venue Cleaning', 'Post-Event Cleanup', 'Waste Management', 'Disinfection', 'Maintenance Services'],
+    floral_balloon: ['Floral Arrangements', 'Balloon Arches', 'Centerpieces', 'Thematic Designs', 'Bouquets'],
+    costume_props: ['Costumes', 'Props', 'Backdrop Accessories', 'Theme Outfits', 'Stage Accessories'],
+    bar_beverage: ['Cocktail Bar Setup', 'Bartending Services', 'Alcoholic Beverages', 'Mocktails', 'Mixology']
+};
+
+
+export const EventTypeOptions = [
+    // 🎉 Social Events
+    { label: 'Birthday Party', value: 'birthday' },
+    { label: 'Debut / Sweet 16 / 18th Birthday', value: 'debut' },
+    { label: 'Wedding / Engagement Party', value: 'wedding' },
+    { label: 'Anniversary Celebration', value: 'anniversary' },
+    { label: 'Christening / Baptism', value: 'christening' },
+    { label: 'Reunion (Family, School, etc.)', value: 'reunion' },
+    { label: 'Graduation Party', value: 'graduation' },
+    { label: 'Housewarming', value: 'housewarming' },
+
+    // 🏢 Corporate Events
+    { label: 'Conference / Seminar', value: 'conference' },
+    { label: 'Product Launch', value: 'product_launch' },
+    { label: 'Company Anniversary', value: 'company_anniversary' },
+    { label: 'Team Building', value: 'team_building' },
+    { label: 'Corporate Gala / Awards Night', value: 'corporate_gala' },
+    { label: 'Business Meeting / Summit', value: 'business_meeting' },
+    { label: 'Trade Show / Expo', value: 'trade_show' },
+    { label: 'Networking Event', value: 'networking' },
+
+    // 🎓 Educational Events
+    { label: 'School Fair / Foundation Day', value: 'school_fair' },
+    { label: 'Academic Conference', value: 'academic_conference' },
+    { label: 'Orientation / Induction', value: 'orientation' },
+    { label: 'Recognition or Graduation Ceremony', value: 'recognition' },
+    { label: 'Training Workshop / Seminar', value: 'training_workshop' },
+
+    // 🎭 Entertainment Events
+    { label: 'Concert / Music Festival', value: 'concert' },
+    { label: 'Talent Show', value: 'talent_show' },
+    { label: 'Fashion Show', value: 'fashion_show' },
+    { label: 'Theater Play', value: 'theater_play' },
+    { label: 'Film Premiere / Screening', value: 'film_premiere' },
+    { label: 'Cultural or Art Exhibit', value: 'art_exhibit' },
+
+    // 🕊️ Community & Public Events
+    { label: 'Charity Gala / Fundraiser', value: 'charity' },
+    { label: 'Community Festival', value: 'community_festival' },
+    { label: 'Parade or Street Fair', value: 'parade' },
+    { label: 'Government or Civic Event', value: 'government_event' },
+    { label: 'Religious Gathering', value: 'religious_gathering' },
+    { label: 'Outreach Program', value: 'outreach' },
+
+    // 💼 Formal & High-End Events
+    { label: 'Gala Night', value: 'gala_night' },
+    { label: 'Awards Ceremony', value: 'awards_ceremony' },
+    { label: 'Banquet Dinner', value: 'banquet' },
+    { label: 'Corporate Ball', value: 'corporate_ball' },
+    { label: 'VIP Reception', value: 'vip_reception' }
+];
+
+export const EventSupplierMap = {
+    // 🎉 Social Events
+    birthday: ['catering', 'photo_video', 'stylist_decorator', 'cake_pastry', 'souvenirs'],
+    debut: ['catering', 'stylist_decorator', 'photo_video', 'entertainment', 'cake_pastry'],
+    wedding: ['catering', 'stylist_decorator', 'floral_balloon', 'photo_video', 'entertainment'],
+    anniversary: ['venue', 'catering', 'photo_video', 'floral_balloon'],
+    christening: ['catering', 'photo_video', 'floral_balloon', 'souvenirs'],
+    reunion: ['venue', 'catering', 'photo_video', 'entertainment'],
+    graduation: ['venue', 'photo_video', 'printing', 'catering'],
+    housewarming: ['catering', 'photo_video', 'decor', 'floral_balloon'],
+
+    // 🏢 Corporate Events
+    conference: ['venue', 'photo_video', 'printing', 'catering', 'technical'],
+    product_launch: ['lighting_sound', 'stage_equipment', 'photo_video', 'entertainment'],
+    company_anniversary: ['venue', 'catering', 'photo_video', 'entertainment'],
+    team_building: ['venue', 'catering', 'transportation'],
+    corporate_gala: ['venue', 'catering', 'photo_video', 'lighting_sound', 'stage_equipment'],
+    business_meeting: ['venue', 'catering', 'technical'],
+    trade_show: ['tent_booth', 'printing', 'lighting_sound', 'technical'],
+    networking: ['venue', 'catering', 'photo_video'],
+
+    // 🎓 Educational Events
+    school_fair: ['tent_booth', 'lighting_sound', 'souvenirs'],
+    academic_conference: ['venue', 'photo_video', 'printing', 'catering'],
+    orientation: ['venue', 'photo_video', 'entertainment'],
+    recognition: ['venue', 'photo_video', 'floral_balloon', 'catering'],
+    training_workshop: ['venue', 'photo_video', 'printing'],
+
+    // 🎭 Entertainment Events
+    concert: ['lighting_sound', 'stage_equipment', 'technical', 'security_logistics', 'entertainment'],
+    talent_show: ['lighting_sound', 'stage_equipment', 'photo_video', 'entertainment'],
+    fashion_show: ['lighting_sound', 'stage_equipment', 'photo_video', 'entertainment'],
+    theater_play: ['stage_equipment', 'lighting_sound', 'technical'],
+    film_premiere: ['venue', 'photo_video', 'lighting_sound', 'entertainment'],
+    art_exhibit: ['venue', 'stylist_decorator', 'photo_video', 'lighting_sound'],
+
+    // 🕊️ Community & Public Events
+    charity: ['venue', 'catering', 'entertainment', 'souvenirs', 'security_logistics'],
+    community_festival: ['tent_booth', 'lighting_sound', 'security_logistics', 'entertainment'],
+    parade: ['transportation', 'security_logistics', 'entertainment'],
+    government_event: ['venue', 'security_logistics', 'lighting_sound', 'photo_video'],
+    religious_gathering: ['venue', 'photo_video', 'floral_balloon', 'catering'],
+    outreach: ['transportation', 'catering', 'souvenirs'],
+
+    // 💼 Formal & High-End Events
+    gala_night: ['venue', 'catering', 'photo_video', 'lighting_sound', 'entertainment'],
+    awards_ceremony: ['venue', 'photo_video', 'stage_equipment', 'lighting_sound'],
+    banquet: ['venue', 'catering', 'photo_video'],
+    corporate_ball: ['venue', 'catering', 'lighting_sound', 'entertainment'],
+    vip_reception: ['venue', 'catering', 'photo_video', 'security_logistics']
+};
+
 
 
 export const statusOptions = [
@@ -50,22 +187,6 @@ export const statusStyles = {
     hold: "bg-amber-100 text-amber-700",
     refunded: "bg-blue-100 text-blue-700",
     succeeded: "bg-green-100 text-green-700",
-};
-
-export const supplierTypeToExpertise = {
-    floral: ['Floral', 'Seasonal Arrangements', 'Exotic Flowers', 'Local Flowers', 'Bouquets', 'Centerpieces'],
-    wedding: ['Wedding Planning', 'Bridal Bouquets', 'Wedding Centerpieces', 'Ceremony Setup', 'Reception Styling'],
-    events: ['Event Planning', 'Corporate Events', 'Social Gatherings', 'Special Occasions', 'Festivals'],
-    corporate: ['Corporate Functions', 'Office Decor', 'Executive Gifts', 'Team Building', 'Business Conferences'],
-    catering: ['Catering', 'Buffet Services', 'Plated Meals', 'Beverage Service', 'Desserts & Pastries'],
-    photography: ['Photography', 'Videography', 'Photo Editing', 'Event Coverage', 'Portrait Sessions'],
-    entertainment: ['Live Bands', 'DJs', 'Performers', 'Hosts/MCs', 'Cultural Shows'],
-    lighting: ['Lighting Setup', 'Sound Systems', 'Stage Effects', 'Audio/Visual Equipment'],
-    decor: ['Decor Styling', 'Stage Design', 'Table Arrangements', 'Thematic Decorations', 'Balloon & Props'],
-    venue: ['Banquet Halls', 'Outdoor Venues', 'Hotels & Resorts', 'Conference Rooms', 'Private Spaces'],
-    transportation: ['Guest Transportation', 'Shuttle Services', 'Luxury Cars', 'Bridal Cars', 'Logistics Support'],
-    makeup: ['Bridal Makeup', 'Hairstyling', 'Grooming', 'Special Occasion Looks', 'On-site Services'],
-    printing: ['Invitations', 'Event Cards', 'Menus & Programs', 'Signage', 'Souvenirs & Giveaways']
 };
 
 

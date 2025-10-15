@@ -45,9 +45,9 @@ export default function AdminDashboard({ userData }) {
         if (!transactions.length) return "N/A";
         const supplierEarnings = {};
         transactions.forEach(t => {
-            supplierEarnings[t.supplier_id] = (supplierEarnings[t.supplier_id] || 0) + t.amount;
+            supplierEarnings[t.user_id] = (supplierEarnings[t.user_id] || 0) + t.amount;
         });
-        const topSupplierId = Object.keys(supplierEarnings).reduce((a, b) => supplierEarnings[a] > supplierEarnings[b] ? a : b);
+        const topSupplierId = Object.keys(supplierEarnings).reduce((a   , b) => supplierEarnings[a] > supplierEarnings[b] ? a : b);
         const topSupplier = suppliers.find(s => s.id === topSupplierId);
         return topSupplier ? topSupplier.name : "N/A";
     }, [transactions, suppliers]);

@@ -51,7 +51,7 @@ export default function AvailabilityPicker({ onChange, existingValue = "", setTi
                 return;
             }
             else if (dayPart.length === 0 || dayPart.length === 1) {
-                setTimeError("Please select at least one day of availability.");
+                setTimeError("Please select at least two day of availability.");
             } else {
                 setError("");
                 setTimeError("")
@@ -70,7 +70,7 @@ export default function AvailabilityPicker({ onChange, existingValue = "", setTi
             return;
         }
         else if (newDays.length === 0 || newDays.length === 1) {
-            setTimeError("Please select at least one day of availability.");
+            setTimeError("Please select at least two day of availability.");
         }
         else {
             setError("");

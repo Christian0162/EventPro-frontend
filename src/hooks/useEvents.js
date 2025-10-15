@@ -77,7 +77,7 @@ export const useAddEvent = () => {
                 event_description: data.event_description,
                 event_categories: data.event_categories,
                 event_background: data.event_background || "",
-                status: true,
+                status: "active",
                 createdAt: serverTimestamp(),
             });
             Swal.fire({

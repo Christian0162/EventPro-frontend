@@ -8,6 +8,7 @@ import { HeadProvider } from "react-head";
 import Verification from "./pages/verify/Verification";
 import Profile from "./profile/Profile";
 import PaymentSuccess from "./components/SuccessPayment.jsx";
+import { setupUserPresence } from "./firebase/presence.js";
 
 const GuestLayout = lazy(() => import("./layouts/GuestLayout"))
 const EventContract = lazy(() => import("./pages/events/EventContract"))
@@ -39,6 +40,7 @@ function App() {
             try {
                 if (user) {
                     setUser(user);
+                    setupUserPresence(user.uid)
                     const unsubscribeUsers = onSnapshot(doc(db, "users", auth.currentUser.uid), async (onsnapshot) => {
 
                         if (onsnapshot.exists()) {

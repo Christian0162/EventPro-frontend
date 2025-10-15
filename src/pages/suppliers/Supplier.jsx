@@ -113,7 +113,7 @@ export default function Supplier({ userData }) {
                                     type="search"
                                     value={searchTerm}
                                     onChange={handleSearchChange}
-                                    className="w-full pl-12 pr-4 py-2 bg-gray-50 border shadow-lg border-gray-300 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:bg-white outline-none transition-all duration-200"
+                                    className="w-full pl-12 pr-4 py-2 bg-gray-50 border shadow-lg border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:bg-white outline-none transition-all duration-200"
                                     placeholder="Search suppliers by name or service..."
                                 />
                             </div>

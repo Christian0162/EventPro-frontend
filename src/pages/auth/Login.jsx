@@ -42,7 +42,7 @@ export default function Login({ user }) {
                 <form onSubmit={handleSubmit}>
                     <div className="p-13 w-[30rem] shadow-2xl border border-gray-200 rounded-lg">
                         <div className="space-y-2 flex flex-col justify-center items-center">
-                            <span className="text-3xl font-bold ">Welcome back</span>
+                            <span className="text-3xl font-bold ">Welcome</span>
                             <div>
                                 <span className="text-gray-600"> Enter your credentials to access your account</span>
                             </div>

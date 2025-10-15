@@ -264,13 +264,16 @@ export default function SupplierRegistration() {
                                         </label>
                                         <input
                                             type="tel"
-                                            name="phone"
                                             required
-                                            maxLength={11}
-                                            minLength={11}
-                                            pattern='\d{11}'
-                                            onChange={(e) => setPhone_number(e.target.value)}
-                                            className={`w-full px-4 py-3 border rounded-lg  focus:border-transparent transition-colors `}
+                                            onChange={(e) => {
+                                                const value = e.target.value.replace(/\D/g, ""); // remove non-numeric
+                                                if (value.length <= 11) {
+                                                    setPhone_number(value);
+                                                }
+                                            }}
+                                            value={phone_number}
+                                            inputMode="numeric"
+                                            className="w-full px-4 py-3 border rounded-lg focus:border-transparent transition-colors"
                                             placeholder="(123) 456-7890"
                                         />
                                     </div>

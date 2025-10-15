@@ -14,7 +14,7 @@ import { useFetchReviews } from "../../hooks/useReviews";
 import { useFetchSupplierServices, useFetchSuppliers } from "../../hooks/useSupplier";
 import ContractModal from "../../components/ContractModal";
 import { useFetchContract } from "../../hooks/useContract";
-import { eventStatusStyles, headerBackgrounds, SupplierOptions } from "../../constants/categories";
+import { eventStatusStyles, EventTypeOptions, headerBackgrounds, SupplierOptions } from "../../constants/categories";
 import { RejectReview } from "../../components/ReviewModal";
 import LoadingOverlay from "../../components/LoadingOverlay";
 import { useFetchUserProfiles } from "../../hooks/useProfile";
@@ -23,6 +23,7 @@ import ProfileHover from "../../components/ProfileHover";
 import PageLoading from "../../components/PageLoading";
 import { UpdateEventBackground } from "../../components/UpdateModal";
 import { useFetchAllTransaction } from "../../hooks/useTransaction";
+import { EventSupplierMap } from "../../constants/categories";
 
 export default function EditEvent({ userData }) {
 
@@ -51,6 +52,7 @@ export default function EditEvent({ userData }) {
     const [hoverState, setHoverState] = useState({ id: null, section: null });
     const { users } = useFetchUsers()
     const { userProfiles } = useFetchUserProfiles()
+    const [error, setError] = useState('')
 
     const data = events.find(event => event.id === id)
 
@@ -72,11 +74,16 @@ export default function EditEvent({ userData }) {
         if (categories?.value.trim() && !tags.some(tag => tag.value === categories.value)) {
             setTags([...tags, categories]);
             setCategories(null);
+            setError('')
+        }
+        else {
+            setError('This supplier type is already added in the tag category.');
         }
     };
 
     const removeTag = (index) => {
         setTags(tags.filter((tag, i) => i !== index))
+        setError('')
     }
 
     useEffect(() => {
@@ -198,8 +205,14 @@ export default function EditEvent({ userData }) {
     const now = new Date();
     const eventDate = new Date(data?.event_date?.date_value);
 
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const eventEndTime = data?.event_time?.valueStartAndEnd[1] || "00:00"
+    const [eventHour, eventMinute] = eventEndTime.split(":").map(Number)
+
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes());
     const eventDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate())
+    eventDay.setHours(eventHour, eventMinute, 0, 0)
+
+    console.log(eventDay <= today)
 
     const eventContracts = contracts.filter(cont => cont.event_id === id && cont.status === "Approved")
 
@@ -226,6 +239,10 @@ export default function EditEvent({ userData }) {
     } else {
         status = { label: 'Completed', value: 'completed' };
     }
+
+    const matchedSuppliers = SupplierOptions.filter(s =>
+        EventSupplierMap[event_type?.value]?.includes(s.value)
+    );
 
     return (
         <>
@@ -384,7 +401,7 @@ export default function EditEvent({ userData }) {
                                     <label htmlFor="type" className="text-sm font-medium text-gray-700 mb-2">Event Type</label>
                                     <Select
                                         name="event_type"
-                                        options={SupplierOptions}
+                                        options={EventTypeOptions}
                                         value={event_type || ""}
                                         onChange={setEvent_type}
                                         placeholder="Select event type"
@@ -465,11 +482,14 @@ export default function EditEvent({ userData }) {
 
                                 {/* Add Supplier Controls */}
                                 <div className="flex flex-col md:flex-row gap-3 items-end">
-                                    <div className="flex-grow">
+                                    <div className="flex-grow items-center">
                                         <Select
-                                            options={SupplierOptions}
+                                            options={matchedSuppliers}
                                             value={categories}
-                                            onChange={setCategories}
+                                            onChange={(value) => {
+                                                setCategories(value);
+                                                setError(''); // clear error when selecting again
+                                            }}
                                             placeholder="Select supplier category"
                                             isClearable
                                             className="w-full"
@@ -484,7 +504,10 @@ export default function EditEvent({ userData }) {
                                                 })
                                             }}
                                         />
+
+
                                     </div>
+
                                     <button
                                         type="button"
                                         className="flex items-center justify-center py-2 px-6 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
@@ -495,6 +518,12 @@ export default function EditEvent({ userData }) {
                                         Add Category
                                     </button>
                                 </div>
+                                {/* Error message */}
+                                {error && (
+                                    <span className="text-red-500 text-sm ml-1 ">
+                                        {error || 'This supplier type is already added in the tag category.'}
+                                    </span>
+                                )}
                             </div>
 
                             {isUpdating && (

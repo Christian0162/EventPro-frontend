@@ -102,18 +102,18 @@ export default function SupplierShop({ userData }) {
                                             <span className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2 rounded-full text-sm font-medium shadow-sm">
                                                 {supplier?.supplier_type?.label}
                                             </span>
-                                            {(userData.verification_status === "unverified" || userData.verification_status === "rejected") && (
+                                            {(userData.verification_status === "unverified" || userData.verification_status === "rejected") && !supplier.is_verified && (
                                                 <a href={'/verify'} className={`transtion-all duration-75 flex group items-center gap-2 bg-blue-50 border border-blue-200 hover:bg-blue-400 rounded-full px-4 py-2`}>
                                                     <span className={`text-blue-700 group-hover:text-white font-medium text-sm`}>Verify</span>
                                                 </a>
                                             )}
-                                            {userData.verification_status === "pending" && (
+                                            {userData.verification_status === "pending" && !supplier.is_verified && (
                                                 <span className="flex group items-center gap-2 bg-yellow-50 border border-yellow-200 rounded-full px-4 py-2">
                                                     <span className={`text-yellow-700 font-medium text-sm`}>Pending</span>
                                                 </span>
                                             )}
 
-                                            {userData.verification_status === "verified" && (
+                                            {userData.verification_status === "verified" && supplier.is_verified && (
                                                 <span className="flex group items-center gap-2 bg-green-50 border border-green-200 rounded-full px-4 py-2">
                                                     <span className={`text-green-700 font-medzium text-sm`}>Verified</span>
                                                     <CircleCheckBig size={16} className="text-green-600" />

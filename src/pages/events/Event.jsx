@@ -3,7 +3,7 @@ import { Title } from "react-head";
 import { CalendarDays, MapPin, CircleDollarSign, Trash, Users, MessageCircleMore, Heart } from "lucide-react";
 import { db } from "../../firebase/firebase";
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, serverTimestamp, addDoc, query, where, getDoc, doc, getDocs, deleteDoc } from "firebase/firestore";
+import { collection, onSnapshot, serverTimestamp, addDoc, query, where, doc, getDocs, deleteDoc } from "firebase/firestore";
 import { ClipLoader } from "react-spinners";
 import Swal from "sweetalert2";
 import { useFetchEvents } from "../../hooks/useEvents";
@@ -16,10 +16,10 @@ import PageLoading from "../../components/PageLoading";
 import { eventStatusStyles } from "../../constants/categories";
 import { useFetchContract } from "../../hooks/useContract";
 import { useFetchAllTransaction } from "../../hooks/useTransaction";
+import { useFetchSuppliers, useFetchSupplierServices } from "../../hooks/useSupplier";
 
 export default function Event({ userData }) {
-    const [supplierData, setSupplierData] = useState({})
-    const [gettingShop, setGettingShop] = useState(false)
+
     const [isCreatingFavorites, setIsCreatingFavorites] = useState(false)
     const [isCreatingContact, setIsCreatingContact] = useState(false)
     const [likedEvents, setLikedEvents] = useState({});
@@ -33,11 +33,17 @@ export default function Event({ userData }) {
     const { applications: supplierApplications, isLoading: isApplicationLoading } = useFetchAllApplication()
     const { contracts } = useFetchContract()
     const { transactions } = useFetchAllTransaction()
+    const { services } = useFetchSupplierServices()
+    const { suppliers, isLoading: isSupplierLoading } = useFetchSuppliers()
     const navigate = useNavigate()
 
     const applications = supplierApplications.filter(app => app.supplier_id === userData.id)
 
     const isAllLoading = isEventLoading || isApplicationLoading
+
+    const supplierData = suppliers.find(s => s.id === userData.id)
+
+    const supplierService = services.filter(s => s.supplier_id === supplierData?.id)
 
     useEffect(() => {
         const unsubscribe = onSnapshot(collection(db, "favorites"), (snapshot) => {
@@ -59,13 +65,21 @@ export default function Event({ userData }) {
             const createdEvents = events.filter(events => events.user_id === userData.id)
             setAllEvents(createdEvents)
         } else {
-            const today = new Date().toISOString().split("T")[0];
+            const activeEvents = events.filter(events => {
+                const now = new Date();
+                const eventDate = new Date(events?.event_date?.date_value);
 
-            const activeEvents = events.filter(events =>
-                events.status === "active" &&
-                events.event_date?.date_value >= today &&
-                events.event_status?.value?.toLowerCase() !== "completed"
-            ); setAllEvents(activeEvents)
+                const eventEndTime = events?.event_time?.valueStartAndEnd[1] || "00:00"
+                const [eventHour, eventMinute] = eventEndTime.split(":").map(Number)
+
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes());
+                const eventDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate())
+                eventDay.setHours(eventHour, eventMinute, 0, 0)
+                const isActive = events.status === "active"
+                return today < eventDay && isActive
+            }
+            );
+            setAllEvents(activeEvents)
         }
     }, [events, userData])
 
@@ -174,21 +188,6 @@ export default function Event({ userData }) {
         });
     }
 
-    useEffect(() => {
-        setGettingShop(true)
-        const fetchData = async () => {
-            const fetchShop = await getDoc(doc(db, "shops", userData.id))
-
-            if (fetchShop.exists()) {
-                setSupplierData({ ...fetchShop.data(), id: fetchShop.id })
-                setGettingShop(false)
-            } else {
-                setGettingShop(false)
-            }
-        }
-        fetchData()
-    }, [])
-
     const handleChat = async (e, event_id, event_name) => {
         e.preventDefault()
         setIsCreatingContact(true)
@@ -258,13 +257,14 @@ export default function Event({ userData }) {
                                 className="w-100 border border-gray-300  bg-white rounded-lg px-4 py-2 shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                             />
                         </div>
-                        {userData.role === "Event Planner" && userData.verification_status === "verified" && (
-                            <Link to={'/events/create'}>
-                                <button className="bg-blue-600 text-white rounded-md px-5 lg:px-10 md:px-8 sm:px-7 py-2 lg:py-3 font-semibold mt-3">Create New Event</button>
-                            </Link>
-                        )}
+
 
                     </div>
+                    {userData.role === "Event Planner" && userData.verification_status === "verified" && (
+                        <Link to={'/events/create'}>
+                            <button className="bg-blue-600 text-white rounded-md px-5 lg:px-10 md:px-8 sm:px-7 py-2 lg:py-3 font-semibold mt-3">Create New Event</button>
+                        </Link>
+                    )}
 
 
                     {events?.length > 0 && (
@@ -374,8 +374,8 @@ export default function Event({ userData }) {
                                                 </a>
                                             )}
                                             {userData.role === "Supplier" && (
-                                                !gettingShop ? (
-                                                    supplierData?.supplier_name ? (
+                                                !isSupplierLoading ? (
+                                                    supplierData?.supplier_name && supplierService.length !== 0 ? (
                                                         <button
                                                             onClick={() => handleApply(events.id, events.user_id)}
                                                             disabled={
@@ -391,7 +391,8 @@ export default function Event({ userData }) {
                                                                     ? 'bg-blue-400 cursor-not-allowed'
                                                                     : !supplierData.is_verified
                                                                         ? 'bg-blue-400 cursor-not-allowed'
-                                                                        : 'bg-blue-600 hover:bg-blue-700'
+                                                                        : !events.event_categories.some(cat => cat.label === supplierData.supplier_type.label) ? 'bg-blue-400 cursor-not-allowed' :
+                                                                            'bg-blue-600 hover:bg-blue-700'
                                                                 } text-white font-bold rounded-lg`}
                                                         >
                                                             {isApplying && applyingEventId === events.id ?
@@ -404,7 +405,7 @@ export default function Event({ userData }) {
                                                                         !supplierData.is_verified ? 'Account not verified' : !events.event_categories.some(cat => cat.label === supplierData.supplier_type.label) ? 'Your shop isn’t eligible for this event.' : 'Apply'}
                                                         </button>
                                                     ) : (
-                                                        <Link to="/shop" className="w-full py-2 mt-2 text-center bg-gray-200 hover:bg-blue-600 hover:text-white rounded-lg transition">Need shop to apply</Link>
+                                                        <Link to="/shop" className="w-full block py-2 mt-2 text-center bg-gray-200 hover:bg-blue-600 hover:text-white rounded-lg transition">{supplierData.supplier_name.length === 0 ? 'Need shop to apply' : 'Services required to apply'} </Link>
                                                     )
                                                 ) : (
                                                     <div className="flex items-center justify-center w-full py-2 mt-2 bg-blue-400 rounded-lg">

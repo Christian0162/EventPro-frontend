@@ -3,6 +3,7 @@ import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 import { getFirestore } from "firebase/firestore";
+import { getDatabase } from "firebase/database";
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 
@@ -23,11 +24,12 @@ const app = initializeApp(firebaseConfig);
 
 initializeAppCheck(app, {
   // sitekey
-  provider: new ReCaptchaV3Provider('6LdEn2MrAAAAAC2zzYz_CHrg9f3wPpuVHi0Wa18Y'),
+  provider: new ReCaptchaV3Provider(import.meta.env.VITE_CAPTCHA_SITE_KEY),
   isTokenAutoRefreshEnabled: true,
 });
 
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const rtdb = getDatabase(app)
 export default app;

@@ -53,13 +53,6 @@ export const useAuthLogin = () => {
                         status: 'active'
                     })
                 }
-
-                await updateDoc(doc(db, "users", user.user.uid), {
-                    lastLoginAt: serverTimestamp()
-                })
-
-
-
             }
             else {
                 console.log('no user found')
@@ -101,6 +94,13 @@ export const useAuthLogin = () => {
 export const useAuthLogout = () => {
 
     const logout = async (auth) => {
+
+        const userDocRef = doc(db, "users", auth?.currentUser?.uid);
+
+        updateDoc(userDocRef, {
+            is_online: false,
+            last_active: serverTimestamp(),
+        });
 
         Swal.fire({
             icon: 'success',

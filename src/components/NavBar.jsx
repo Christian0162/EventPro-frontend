@@ -58,7 +58,7 @@ const NavBar = React.memo(function NavBar({ user, userData }) {
                                     ? "bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-200"
                                     : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                                 }`
-                            }>
+                               }>
                                 <Heart size={20} />
                             </NavLink>
 
@@ -71,7 +71,7 @@ const NavBar = React.memo(function NavBar({ user, userData }) {
                                 <MessageCircleMore size={20} />
                             </NavLink>
 
-                            <UserNotifications userData={userData} />
+                            <UserNotification userData={userData} />
 
                             <div className="flex items-center gap-5 ml-3">
                                 <div className="border-l h-6 border-gray-700"></div>

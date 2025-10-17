@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { Heart, MessageCircleMore, Calendar, Menu, X } from "lucide-react";
 import UserDropDown from "./UserDropdown";
-import UserNotifications from "./userNotification";
+import UserNotification from "./userNotification";
 import React, { useState } from "react";
 
 const NavBar = React.memo(function NavBar({ user, userData }) {
@@ -37,10 +37,9 @@ const NavBar = React.memo(function NavBar({ user, userData }) {
                                 to={`/${path}`}
                                 onClick={closeMenu}
                                 className={({ isActive }) =>
-                                    `px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                                        isActive
-                                            ? "bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-200"
-                                            : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                                    `px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${isActive
+                                        ? "bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-200"
+                                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                                     }`
                                 }
                             >
@@ -55,20 +54,18 @@ const NavBar = React.memo(function NavBar({ user, userData }) {
                     {user ? (
                         <>
                             <NavLink to="/favorites" className={({ isActive }) =>
-                                `px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                                    isActive
-                                        ? "bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-200"
-                                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                                `px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${isActive
+                                    ? "bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-200"
+                                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                                 }`
                             }>
                                 <Heart size={20} />
                             </NavLink>
 
                             <NavLink to="/chats" className={({ isActive }) =>
-                                `px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                                    isActive
-                                        ? "bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-200"
-                                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                                `px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${isActive
+                                    ? "bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-200"
+                                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                                 }`
                             }>
                                 <MessageCircleMore size={20} />
@@ -89,10 +86,9 @@ const NavBar = React.memo(function NavBar({ user, userData }) {
                                     to={`/${path}`}
                                     onClick={closeMenu}
                                     className={({ isActive }) =>
-                                        `px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                                            isActive
-                                                ? "bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-200"
-                                                : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                                        `px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${isActive
+                                            ? "bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-200"
+                                            : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                                         }`
                                     }
                                 >
@@ -122,10 +118,9 @@ const NavBar = React.memo(function NavBar({ user, userData }) {
                                 to={`/${path}`}
                                 onClick={closeMenu}
                                 className={({ isActive }) =>
-                                    `block w-full text-left px-3 py-2 rounded-md text-sm font-medium ${
-                                        isActive
-                                            ? "bg-blue-50 text-blue-700"
-                                            : "text-gray-700 hover:bg-gray-100"
+                                    `block w-full text-left px-3 py-2 rounded-md text-sm font-medium ${isActive
+                                        ? "bg-blue-50 text-blue-700"
+                                        : "text-gray-700 hover:bg-gray-100"
                                     }`
                                 }
                             >
@@ -137,7 +132,7 @@ const NavBar = React.memo(function NavBar({ user, userData }) {
                             <div className="flex gap-4 pt-3 border-t border-gray-100 w-full">
                                 <Heart size={20} className="text-gray-600" />
                                 <MessageCircleMore size={20} className="text-gray-600" />
-                                <UserNotifications userData={userData} />
+                                <UserNotification userData={userData} />
                             </div>
                         )}
                     </div>

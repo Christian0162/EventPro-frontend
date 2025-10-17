@@ -14,7 +14,7 @@ import { useFetchSuppliers } from "../hooks/useSupplier";
 import { useFetchAllReports } from "../hooks/useReports";
 import { ReportReview } from "./ReviewModal";
 
-export default function UserNotifications({ userData }) {
+export default function UserNotification({ userData }) {
     const [isOpen, setIsOpen] = useState(false)
     const [modalOpen, setModalOpen] = useState(false)
     const [selectedNotif, setSelectedNotif] = useState(null)

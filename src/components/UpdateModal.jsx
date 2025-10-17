@@ -214,7 +214,8 @@ export const SupplierDetails = ({ supplierData }) => {
             await updateDoc(doc(db, "shops", auth.currentUser.uid), {
                 supplier_name: store_name,
                 supplier_location: supplier_location,
-                supplier_type: supplier_type
+                supplier_type: supplier_type,
+                supplier_expertise: []
             })
 
             Swal.fire('Updated', 'Your profile\'s About section has been updated.', 'success')

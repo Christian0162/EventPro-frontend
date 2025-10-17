@@ -183,7 +183,7 @@ export default function EventDashboard({ userData }) {
                     {/* Header Section */}
                     <div>
                         <div className="flex justify-between items-baseline">
-                            <div className="flex flex-col lg:flex-row justify-between items-start gap-4 mb-10">
+                            <div className="flex flex-col lg:flex-row justify-between items-start gap-4 mb-5">
                                 <div>
                                     <h1 className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-blue-600 to-violet-600 bg-clip-text text-transparent">
                                         Event Dashboard
@@ -203,7 +203,7 @@ export default function EventDashboard({ userData }) {
                             />
                         </div>
 
-                        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto mb-5">
                             {userData.role !== 'Supplier' && userData.verification_status === 'unverified' && (
                                 <a href='/verify' className="px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-colors text-center">
                                     Verify Account

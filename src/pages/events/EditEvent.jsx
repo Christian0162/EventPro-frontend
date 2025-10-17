@@ -7,7 +7,6 @@ import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "../../firebase/firebase";
 import Swal from "sweetalert2";
 import { useFetchEvents, useUpdateEvent } from "../../hooks/useEvents";
-import SupplierModal from "../../components/SupplierModal";
 import { Review } from '../../components/ReviewModal'
 import { useParams, Link } from "react-router-dom";
 import { useFetchReviews } from "../../hooks/useReviews";
@@ -24,9 +23,11 @@ import PageLoading from "../../components/PageLoading";
 import { UpdateEventBackground } from "../../components/UpdateModal";
 import { useFetchAllTransaction } from "../../hooks/useTransaction";
 import { EventSupplierMap } from "../../constants/categories";
+import { lazy, Suspense } from "react";
 
 export default function EditEvent({ userData }) {
 
+    const SupplierModal = lazy(() => import("../../components/SupplierModal"));
     const { id } = useParams();
     const [event_name, setEvent_name] = useState('')
     const [event_location, setEvent_location] = useState('')
@@ -53,6 +54,8 @@ export default function EditEvent({ userData }) {
     const { users } = useFetchUsers()
     const { userProfiles } = useFetchUserProfiles()
     const [error, setError] = useState('')
+    const [isModalOpen, setIsModalOpen] = useState(false)
+    const [selectedShop, setSelectedShop] = useState(null)
 
     const data = events.find(event => event.id === id)
 
@@ -240,6 +243,16 @@ export default function EditEvent({ userData }) {
         status = { label: 'Completed', value: 'completed' };
     }
 
+    const openModal = (supplier) => {
+        setSelectedShop(supplier)
+        setIsModalOpen(true)
+    };
+
+    const closeModal = () => {
+        setIsModalOpen(false)
+
+    };
+
     const matchedSuppliers = SupplierOptions.filter(s =>
         EventSupplierMap[event_type?.value]?.includes(s.value)
     );
@@ -250,11 +263,26 @@ export default function EditEvent({ userData }) {
                 <PageLoading />
             )}
 
+            {isModalOpen && selectedShop && (
+                <Suspense fallback={<LoadingOverlay isLoading={true} message="Pleasee waitt.." />}>
+                    <SupplierModal
+                        isOpen={isModalOpen}
+                        onClose={closeModal}
+                        supplierData={selectedShop?.supplierData}
+                        services={selectedShop?.services}
+                        reviews={selectedShop?.reviews}
+                        userData={userData}
+                        averageRating={selectedShop?.averageRating}
+                        applications={applications}
+                    />
+                </Suspense>
+            )}
+
             {!isAllLoading && (
                 <>
                     {eventDay < today && (
                         <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg shadow-sm">
-                            ⚠️ This event is <b>no longer visible to the public</b> because its date has already passed.
+                            ⚠️ This event is <b>no longer visible to the public</b> because its date and time has already passed.
                         </div>
                     )}
 
@@ -601,21 +629,30 @@ export default function EditEvent({ userData }) {
                                                                     </div>
                                                                     <div className="flex items-center mt-1">
                                                                         <span className="text-sm text-gray-600 mr-2">Rating: {averageRating}</span>
-                                                                        <SupplierModal
-                                                                            className={'text-sm text-blue-600 hover:text-blue-800 font-medium'}
-                                                                            supplierData={supplier}
-                                                                            applications={applications}
-                                                                            userData={userData.role}
-                                                                            services={userServices}
-                                                                            reviews={reviews.filter(r => r.reviewed_id === supplier.id)}
-                                                                            averageRating={averageRating}
-                                                                        />
+                                                                        {/* Action Button */}
+                                                                        <button
+                                                                            onClick={() => openModal({
+                                                                                supplierData: supplier,
+                                                                                services: userServices,
+                                                                                reviews: reviews.filter(
+                                                                                    (r) => r.reviewed_id === supplier.id
+                                                                                ),
+                                                                                averageRating,
+                                                                            })}
+                                                                            className={'text-sm text-blue-600 hover:text-blue-800 font-medium mr-4'}
+                                                                        >
+                                                                            View Details
+                                                                        </button>
+
+
                                                                     </div>
                                                                 </div>
                                                             </div>
                                                         </div>
                                                     );
                                                 })}
+
+
                                         </div>
                                     ) : (
                                         <div className="text-center py-8 bg-gray-50 rounded-lg">
@@ -670,15 +707,22 @@ export default function EditEvent({ userData }) {
                                                         </div>
                                                         <div className="flex items-center mt-1">
                                                             <span className="text-sm text-gray-600 mr-2">Rating: {averageRating}</span>
-                                                            <SupplierModal
-                                                                className={'text-sm text-blue-600 hover:text-blue-800 font-medium'}
-                                                                supplierData={supplier}
-                                                                applications={applications}
-                                                                userData={userData.role}
-                                                                services={userServices}
-                                                                reviews={reviews.filter(r => r.reviewed_id === supplier.id)}
-                                                                averageRating={averageRating}
-                                                            />
+                                                            {/* Action Button */}
+                                                            <button
+                                                                onClick={() => openModal({
+                                                                    supplierData: supplier,
+                                                                    services: userServices,
+                                                                    reviews: reviews.filter(
+                                                                        (r) => r.reviewed_id === supplier.id
+                                                                    ),
+                                                                    averageRating,
+                                                                })}
+                                                                className={'text-sm text-blue-600 hover:text-blue-800 font-medium mr-4'}
+                                                            >
+                                                                View Details
+                                                            </button>
+
+
                                                         </div>
                                                     </div>
                                                 </div>
@@ -703,6 +747,20 @@ export default function EditEvent({ userData }) {
                                 </div>
                             }
 
+                            {isModalOpen && selectedShop && (
+                                <Suspense fallback={<LoadingOverlay isLoading={true} message="Pleasee waitt.." />}>
+                                    <SupplierModal
+                                        isOpen={isModalOpen}
+                                        onClose={closeModal}
+                                        supplierData={selectedShop?.supplierData}
+                                        services={selectedShop?.services}
+                                        reviews={selectedShop?.reviews}
+                                        userData={userData}
+                                        averageRating={selectedShop?.averageRating}
+                                        applications={applications}
+                                    />
+                                </Suspense>
+                            )}
                             {!isAllLoading && suppliers.filter(supplier => applications.some(app => app.supplier_id === supplier.id && app.status === "Approved") &&
                                 contracts.some(c => c.supplier_id === supplier.id && c.status === "Completed" && c.event_id === id)
                             ).length === 0 && (
@@ -772,15 +830,19 @@ export default function EditEvent({ userData }) {
                                                         eventData={eventData}
                                                         supplierData={supplier}
                                                     />
-                                                    <SupplierModal
-                                                        className={'text-sm text-blue-600 hover:text-blue-800 font-medium'}
-                                                        supplierData={supplier}
-                                                        applications={applications}
-                                                        userData={userData.role}
-                                                        services={userServices}
-                                                        reviews={reviews.filter(r => r.reviewed_id === supplier.id)}
-                                                        averageRating={averageRating}
-                                                    />
+                                                    <button
+                                                        onClick={() => openModal({
+                                                            supplierData: supplier,
+                                                            services: userServices,
+                                                            reviews: reviews.filter(
+                                                                (r) => r.reviewed_id === supplier.id
+                                                            ),
+                                                            averageRating,
+                                                        })}
+                                                        className={'text-sm text-blue-600 hover:text-blue-800 font-medium mr-4'}
+                                                    >
+                                                        View Details
+                                                    </button>
                                                 </div>
                                             </div>
                                         )
@@ -843,15 +905,21 @@ export default function EditEvent({ userData }) {
                                                         </div>
                                                         <div className="flex items-center mt-1 space-x-2">
                                                             <span className="text-sm text-gray-600">Rating: {averageRating}</span>
-                                                            <SupplierModal
+                                                            <button
+                                                                onClick={() => openModal({
+                                                                    supplierData: supplier,
+                                                                    services: userServices,
+                                                                    reviews: reviews.filter(
+                                                                        (r) => r.reviewed_id === supplier.id
+                                                                    ),
+                                                                    averageRating,
+                                                                })}
                                                                 className={'text-sm text-blue-600 hover:text-blue-800 font-medium mr-4'}
-                                                                supplierData={supplier}
-                                                                applications={applications}
-                                                                userData={userData.role}
-                                                                services={userServices}
-                                                                reviews={reviews.filter(r => r.reviewed_id === supplier.id)}
-                                                                averageRating={averageRating}
-                                                            />                                                        </div>
+                                                            >
+                                                                View Details
+                                                            </button>
+
+                                                        </div>
                                                     </div>
                                                 </div>
 
@@ -945,15 +1013,19 @@ export default function EditEvent({ userData }) {
                                                             </div>
                                                             <div className="flex items-center mt-1 space-x-2">
                                                                 <span className="text-sm text-gray-600">Rating: {averageRating}</span>
-                                                                <SupplierModal
+                                                                <button
+                                                                    onClick={() => openModal({
+                                                                        supplierData: supplier,
+                                                                        services: userServices,
+                                                                        reviews: reviews.filter(
+                                                                            (r) => r.reviewed_id === supplier.id
+                                                                        ),
+                                                                        averageRating,
+                                                                    })}
                                                                     className={'text-sm text-blue-600 hover:text-blue-800 font-medium mr-4'}
-                                                                    supplierData={supplier}
-                                                                    applications={applications}
-                                                                    userData={userData.role}
-                                                                    services={userServices}
-                                                                    reviews={reviews.filter(r => r.reviewed_id === supplier.id)}
-                                                                    averageRating={averageRating}
-                                                                />
+                                                                >
+                                                                    View Details
+                                                                </button>
                                                             </div>
                                                         </div>
                                                     </div>

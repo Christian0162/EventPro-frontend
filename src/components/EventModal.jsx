@@ -11,7 +11,7 @@ import { useFetchContract } from '../hooks/useContract';
 import { useFetchAllTransaction } from '../hooks/useTransaction';
 import PageLoading from './PageLoading';
 
-export default function EventModal({ eventData, event_purpose }) {
+export default function EventModal({ eventData, event_purpose, userData }) {
     const [isOpen, setIsOpen] = useState(false);
     const [hoveredReviewerId, setHoveredReviewerId] = useState(null)
     const { userProfiles, isLoading: isProfileLoading } = useFetchUserProfiles()
@@ -310,11 +310,13 @@ export default function EventModal({ eventData, event_purpose }) {
                                             >
                                                 Close
                                             </button>
-                                            <a href={`/events/edit/${eventData.id}`}
-                                                className="w-full bg-blue-600 text-center hover:bg-blue-800 hover:opacity-90 text-white font-medium py-3 rounded-lg transition-all duration-200"
-                                            >
-                                                Edit
-                                            </a>
+                                            {userData?.role === "Event Planner" && eventData.user_id === userData?.id && (
+                                                <a href={`/events/edit/${eventData.id}`}
+                                                    className="w-full bg-blue-600 text-center hover:bg-blue-800 hover:opacity-90 text-white font-medium py-3 rounded-lg transition-all duration-200"
+                                                >
+                                                    Edit
+                                                </a>
+                                            )}
                                         </div>
                                     </div>
                                 </>

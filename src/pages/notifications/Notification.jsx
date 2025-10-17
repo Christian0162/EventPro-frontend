@@ -8,19 +8,26 @@ import { useFetchNotificationsById } from '../../hooks/useNotifications';
 export default function Notification({ userData }) {
 
     const { notifications } = useFetchNotificationsById(userData.id)
+    const [isReading, setIsReading] = useState(false)
 
-    const hanldeMarksAllRead = async () => {
-        const q = query(collection(db, "notifications"),
-            where('user_id', '==', userData.id),
-            where('unread', '==', true)
-        )
+    const markAllAsRead = async () => {
+        const unread = notifications.filter(notification => notification.unread)
 
-        const onSnapShotNotif = await getDocs(q)
-        const notificaions = onSnapShotNotif.docs.map((notficDoc) => updateDoc(doc(db, "notifications", notficDoc.id), {
-            unread: false,
-        }))
+        setIsReading(true)
+        try {
+            for (const updateUnread of unread) {
+                await updateDoc(doc(db, "notifications", updateUnread.id), {
+                    unread: false
+                })
+            }
+        }
+        catch (e) {
+            console.error(e)
+        }
+        finally {
+            setIsReading(false)
 
-        await Promise.all(notificaions)
+        }
     }
 
     return (
@@ -30,7 +37,7 @@ export default function Notification({ userData }) {
                 <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent mb-2">
                     Notifications
                 </h1>
-                <button onClick={() => hanldeMarksAllRead()} className='transition-all duration-200 flex items-center bg-blue-600 hover:bg-blue-700 py-2 px-5 gap-2 text-white rounded-xl'>
+                <button onClick={() => markAllAsRead()} className='transition-all duration-200 flex items-center bg-blue-600 hover:bg-blue-700 py-2 px-5 gap-2 text-white rounded-xl'>
                     Mark All As Read
                     <Check size={20} className='text-white' />
                 </button>

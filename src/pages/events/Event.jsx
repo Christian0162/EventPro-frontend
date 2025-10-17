@@ -209,9 +209,9 @@ export default function Event({ userData }) {
                     isActive: false,
                     createdAt: serverTimestamp()
                 })
-                navigate(`/chats/${supplierData.id}`)
+                navigate(`/chats/${supplierData?.id}`)
             } else {
-                navigate(`/chats/${supplierData.id}`)
+                navigate(`/chats/${supplierData?.id}`)
             }
         }
         catch (e) {
@@ -382,16 +382,16 @@ export default function Event({ userData }) {
                                                                 applications.find(app => app.event_id === events.id)?.status === "Pending" ||
                                                                 applications.find(app => app.event_id === events.id)?.status === "Approved" ||
                                                                 (isApplying && applyingEventId === events.id) ||
-                                                                !supplierData.is_verified || !events.event_categories.some(cat => cat.label === supplierData.supplier_type.label)
+                                                                !supplierData?.is_verified || !events.event_categories.some(cat => cat.label === supplierData?.supplier_type.label)
                                                             }
                                                             className={`flex items-center justify-center gap-2 text-center py-2 w-full ${applications.find(app => app.event_id === events.id)?.status === "Pending" ||
                                                                 applications.find(app => app.event_id === events.id)?.status === "Approved"
                                                                 ? 'bg-blue-300 cursor-not-allowed'
                                                                 : (isApplying && applyingEventId === events.id)
                                                                     ? 'bg-blue-400 cursor-not-allowed'
-                                                                    : !supplierData.is_verified
+                                                                    : !supplierData?.is_verified
                                                                         ? 'bg-blue-400 cursor-not-allowed'
-                                                                        : !events.event_categories.some(cat => cat.label === supplierData.supplier_type.label) ? 'bg-blue-400 cursor-not-allowed' :
+                                                                        : !events.event_categories.some(cat => cat.label === supplierData?.supplier_type.label) ? 'bg-blue-400 cursor-not-allowed' :
                                                                             'bg-blue-600 hover:bg-blue-700'
                                                                 } text-white font-bold rounded-lg`}
                                                         >
@@ -402,10 +402,10 @@ export default function Event({ userData }) {
                                                                 </> :
                                                                 applications.find(app => app.event_id === events.id)?.status === "Pending" ? 'Pending' :
                                                                     applications.find(app => app.event_id === events.id)?.status === "Approved" ? 'Approved' :
-                                                                        !supplierData.is_verified ? 'Account not verified' : !events.event_categories.some(cat => cat.label === supplierData.supplier_type.label) ? 'Your shop isn’t eligible for this event.' : 'Apply'}
+                                                                        !supplierData?.is_verified ? 'Account not verified' : !events.event_categories.some(cat => cat.label === supplierData?.supplier_type.label) ? 'Your shop isn’t eligible for this event.' : 'Apply'}
                                                         </button>
                                                     ) : (
-                                                        <Link to="/shop" className="w-full block py-2 mt-2 text-center bg-gray-200 hover:bg-blue-600 hover:text-white rounded-lg transition">{supplierData.supplier_name.length === 0 ? 'Need shop to apply' : 'Services required to apply'} </Link>
+                                                        <Link to="/shop" className="w-full block py-2 mt-2 text-center bg-gray-200 hover:bg-blue-600 hover:text-white rounded-lg transition">{supplierData?.supplier_name.length === 0 ? 'Need shop to apply' : 'Services required to apply'} </Link>
                                                     )
                                                 ) : (
                                                     <div className="flex items-center justify-center w-full py-2 mt-2 bg-blue-400 rounded-lg">

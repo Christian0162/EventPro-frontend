@@ -270,7 +270,7 @@ export default function UserNotifications({ userData }) {
                                     {selectedItem && (
                                         <>
                                             {selectedItem.type === "event" ? (
-                                                <EventModal eventData={selectedItem.data} event_purpose={`dashboard`} />
+                                                <EventModal userData={userData} eventData={selectedItem.data} event_purpose={`dashboard`} />
                                             ) : selectedItem.type === "report" ? (
                                                 <ReportReview report={selectedItem?.report} userData={selectedItem.userData} />
                                             ) : (

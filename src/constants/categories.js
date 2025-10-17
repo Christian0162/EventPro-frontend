@@ -46,108 +46,73 @@ export const supplierTypeToExpertise = {
 
 
 export const EventTypeOptions = [
-    // 🎉 Social Events
-    { label: 'Birthday Party', value: 'birthday' },
-    { label: 'Debut / Sweet 16 / 18th Birthday', value: 'debut' },
-    { label: 'Wedding / Engagement Party', value: 'wedding' },
-    { label: 'Anniversary Celebration', value: 'anniversary' },
-    { label: 'Christening / Baptism', value: 'christening' },
-    { label: 'Reunion (Family, School, etc.)', value: 'reunion' },
-    { label: 'Graduation Party', value: 'graduation' },
-    { label: 'Housewarming', value: 'housewarming' },
-
-    // 🏢 Corporate Events
-    { label: 'Conference / Seminar', value: 'conference' },
-    { label: 'Product Launch', value: 'product_launch' },
-    { label: 'Company Anniversary', value: 'company_anniversary' },
-    { label: 'Team Building', value: 'team_building' },
-    { label: 'Corporate Gala / Awards Night', value: 'corporate_gala' },
-    { label: 'Business Meeting / Summit', value: 'business_meeting' },
-    { label: 'Trade Show / Expo', value: 'trade_show' },
-    { label: 'Networking Event', value: 'networking' },
-
-    // 🎓 Educational Events
-    { label: 'School Fair / Foundation Day', value: 'school_fair' },
-    { label: 'Academic Conference', value: 'academic_conference' },
-    { label: 'Orientation / Induction', value: 'orientation' },
-    { label: 'Recognition or Graduation Ceremony', value: 'recognition' },
-    { label: 'Training Workshop / Seminar', value: 'training_workshop' },
-
-    // 🎭 Entertainment Events
-    { label: 'Concert / Music Festival', value: 'concert' },
-    { label: 'Talent Show', value: 'talent_show' },
-    { label: 'Fashion Show', value: 'fashion_show' },
-    { label: 'Theater Play', value: 'theater_play' },
-    { label: 'Film Premiere / Screening', value: 'film_premiere' },
-    { label: 'Cultural or Art Exhibit', value: 'art_exhibit' },
-
-    // 🕊️ Community & Public Events
-    { label: 'Charity Gala / Fundraiser', value: 'charity' },
-    { label: 'Community Festival', value: 'community_festival' },
-    { label: 'Parade or Street Fair', value: 'parade' },
-    { label: 'Government or Civic Event', value: 'government_event' },
-    { label: 'Religious Gathering', value: 'religious_gathering' },
-    { label: 'Outreach Program', value: 'outreach' },
-
-    // 💼 Formal & High-End Events
-    { label: 'Gala Night', value: 'gala_night' },
-    { label: 'Awards Ceremony', value: 'awards_ceremony' },
-    { label: 'Banquet Dinner', value: 'banquet' },
-    { label: 'Corporate Ball', value: 'corporate_ball' },
-    { label: 'VIP Reception', value: 'vip_reception' }
+    { label: "Birthday Celebration", value: "birthday_celebration" },
+    { label: "Wedding Ceremony", value: "wedding_ceremony" },
+    { label: "Corporate Event", value: "corporate_event" },
+    { label: "Concert / Live Performance", value: "concert_live_performance" },
+    { label: "Formal Gala", value: "formal_gala" },
+    { label: "Anniversary Celebration", value: "anniversary_celebration" },
+    { label: "Family Reunion", value: "family_reunion" },
+    { label: "Festival / Fair", value: "festival_fair" },
+    { label: "Christening / Baptism", value: "christening_baptism" },
+    { label: "Entertainment Events", value: "entertainment_events" },
+    { label: "Others", value: "others" },
 ];
 
 export const EventSupplierMap = {
-    // 🎉 Social Events
-    birthday: ['catering', 'photo_video', 'stylist_decorator', 'cake_pastry', 'souvenirs'],
-    debut: ['catering', 'stylist_decorator', 'photo_video', 'entertainment', 'cake_pastry'],
-    wedding: ['catering', 'stylist_decorator', 'floral_balloon', 'photo_video', 'entertainment'],
-    anniversary: ['venue', 'catering', 'photo_video', 'floral_balloon'],
-    christening: ['catering', 'photo_video', 'floral_balloon', 'souvenirs'],
-    reunion: ['venue', 'catering', 'photo_video', 'entertainment'],
-    graduation: ['venue', 'photo_video', 'printing', 'catering'],
-    housewarming: ['catering', 'photo_video', 'decor', 'floral_balloon'],
+    birthday_celebration: [
+        "catering", "photo_video", "cake_pastry", "floral_balloon",
+        "souvenirs", "entertainment", "venue", "stylist_decorator"
+    ],
 
-    // 🏢 Corporate Events
-    conference: ['venue', 'photo_video', 'printing', 'catering', 'technical'],
-    product_launch: ['lighting_sound', 'stage_equipment', 'photo_video', 'entertainment'],
-    company_anniversary: ['venue', 'catering', 'photo_video', 'entertainment'],
-    team_building: ['venue', 'catering', 'transportation'],
-    corporate_gala: ['venue', 'catering', 'photo_video', 'lighting_sound', 'stage_equipment'],
-    business_meeting: ['venue', 'catering', 'technical'],
-    trade_show: ['tent_booth', 'printing', 'lighting_sound', 'technical'],
-    networking: ['venue', 'catering', 'photo_video'],
+    wedding_ceremony: [
+        "catering", "photo_video", "stylist_decorator", "floral_balloon",
+        "cake_pastry", "venue", "entertainment", "transportation"
+    ],
 
-    // 🎓 Educational Events
-    school_fair: ['tent_booth', 'lighting_sound', 'souvenirs'],
-    academic_conference: ['venue', 'photo_video', 'printing', 'catering'],
-    orientation: ['venue', 'photo_video', 'entertainment'],
-    recognition: ['venue', 'photo_video', 'floral_balloon', 'catering'],
-    training_workshop: ['venue', 'photo_video', 'printing'],
+    corporate_event: [
+        "venue", "lighting_sound", "catering", "stage_equipment",
+        "photo_video", "printing", "security_logistics", "technical"
+    ],
 
-    // 🎭 Entertainment Events
-    concert: ['lighting_sound', 'stage_equipment', 'technical', 'security_logistics', 'entertainment'],
-    talent_show: ['lighting_sound', 'stage_equipment', 'photo_video', 'entertainment'],
-    fashion_show: ['lighting_sound', 'stage_equipment', 'photo_video', 'entertainment'],
-    theater_play: ['stage_equipment', 'lighting_sound', 'technical'],
-    film_premiere: ['venue', 'photo_video', 'lighting_sound', 'entertainment'],
-    art_exhibit: ['venue', 'stylist_decorator', 'photo_video', 'lighting_sound'],
+    concert_live_performance: [
+        "lighting_sound", "stage_equipment", "technical",
+        "security_logistics", "event_production", "entertainment"
+    ],
 
-    // 🕊️ Community & Public Events
-    charity: ['venue', 'catering', 'entertainment', 'souvenirs', 'security_logistics'],
-    community_festival: ['tent_booth', 'lighting_sound', 'security_logistics', 'entertainment'],
-    parade: ['transportation', 'security_logistics', 'entertainment'],
-    government_event: ['venue', 'security_logistics', 'lighting_sound', 'photo_video'],
-    religious_gathering: ['venue', 'photo_video', 'floral_balloon', 'catering'],
-    outreach: ['transportation', 'catering', 'souvenirs'],
+    formal_gala: [
+        "venue", "stylist_decorator", "catering", "photo_video",
+        "lighting_sound", "bar_beverage", "security_logistics"
+    ],
 
-    // 💼 Formal & High-End Events
-    gala_night: ['venue', 'catering', 'photo_video', 'lighting_sound', 'entertainment'],
-    awards_ceremony: ['venue', 'photo_video', 'stage_equipment', 'lighting_sound'],
-    banquet: ['venue', 'catering', 'photo_video'],
-    corporate_ball: ['venue', 'catering', 'lighting_sound', 'entertainment'],
-    vip_reception: ['venue', 'catering', 'photo_video', 'security_logistics']
+    anniversary_celebration: [
+        "catering", "floral_balloon", "photo_video", "cake_pastry",
+        "stylist_decorator", "venue", "entertainment"
+    ],
+
+    family_reunion: [
+        "catering", "photo_video", "venue", "souvenirs", "floral_balloon"
+    ],
+
+    festival_fair: [
+        "tent_booth", "lighting_sound", "stage_equipment",
+        "security_logistics", "event_production", "technical"
+    ],
+
+    christening_baptism: [
+        "catering", "photo_video", "cake_pastry", "floral_balloon",
+        "souvenirs", "stylist_decorator"
+    ],
+
+    entertainment_events: [
+        "entertainment", "lighting_sound", "stage_equipment",
+        "technical", "event_production"
+    ],
+
+    others: SupplierOptions.map(supplier => supplier.value),
 };
+
+
 
 
 

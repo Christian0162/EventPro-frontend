@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { Heart, MessageCircleMore, Calendar, Menu, X } from "lucide-react";
 import UserDropDown from "./UserDropdown";
-import UserNotifications from "./userNotification";
+import UserNotifications from "./UserNotification";
 import React, { useState } from "react";
 
 const NavBar = React.memo(function NavBar({ user, userData }) {

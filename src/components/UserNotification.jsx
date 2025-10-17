@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useFetchNotificationsById } from "../hooks/useNotifications"
 import { BellDot, X, Check, Settings, MessageSquare } from "lucide-react";
-import { auth, db } from "../firebase/firebase"
+import { db } from "../firebase/firebase"
 import { doc, updateDoc } from "firebase/firestore"
 import { Link } from "react-router-dom";
 import { Dialog, DialogPanel } from "@headlessui/react";

@@ -1,7 +1,6 @@
 import { Title } from "react-head";
 import Cards from "../../components/Cards";
 import { MapPin, Clock, Star, DollarSign, MessageCircleMore, Heart, Trash, CalendarDays, CircleDollarSign, Users } from "lucide-react";
-import SupplierModal from "../../components/SupplierModal";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useFetchFavorites } from "../../hooks/useFavorites";
@@ -15,24 +14,27 @@ import { useFetchEvents } from "../../hooks/useEvents";
 import Swal from "sweetalert2";
 import { useFetchSupplierById } from "../../hooks/useSupplier";
 import EventModal from "../../components/EventModal";
-import { Link } from "react-router-dom";
-import ClipLoader from "react-spinners/ClipLoader"; // Add this import
+import ClipLoader from "react-spinners/ClipLoader";
 import PageLoading from "../../components/PageLoading";
+import { lazy, Suspense } from "react";
 
 export default function Favorites({ userData }) {
 
+    const SupplierModal = lazy(() => import("../../components/SupplierModal"));
     const { favorites, isLoading: isFavoritesLoading } = useFetchFavorites()
     const { suppliers } = useFetchSuppliers()
     const { services } = useFetchSupplierServices()
     const [applications, setApplications] = useState([])
     const [isApplying, setIsApplying] = useState(false)
     const [applyingEventId, setApplyingEventId] = useState(null)
-    const { reviews: shopReviews, isLoading: isReviewLoading } = useFetchReviews()
+    const { reviews, isLoading: isReviewLoading } = useFetchReviews()
     const { events } = useFetchEvents()
     const { supplier, isLoading: isSupplierLoading } = useFetchSupplierById(userData.id)
     const [isCreatingFavorites, setIsCreatingFavorites] = useState(false)
     const [isCreatingContact, setIsCreatingContact] = useState(false)
     const [likedEvents, setLikedEvents] = useState({});
+    const [isModalOpen, setIsModalOpen] = useState(false)
+    const [selectedShop, setSelectedShop] = useState(null)
     const navigate = useNavigate()
 
     const isAllLoading = isReviewLoading || isSupplierLoading || isFavoritesLoading
@@ -206,8 +208,8 @@ export default function Favorites({ userData }) {
     }
 
     const calculateAverageRating = (shopId) => {
-        const reviews = shopReviews[shopId] || [];
-        const validRatings = reviews
+        const shopReviews = reviews.filter(r => r.reviewed_id === shopId) || [];
+        const validRatings = shopReviews
             .map(review => Number(review.rating))
             .filter(rating => !isNaN(rating) && rating > 0);
 
@@ -218,8 +220,8 @@ export default function Favorites({ userData }) {
     };
 
     const getReviewCount = (shopId) => {
-        const reviews = shopReviews[shopId] || [];
-        return reviews.length;
+        const shopReviews = reviews.filter(r => r.reviewed_id === shopId) || [];
+        return shopReviews.length;
     };
 
     // Helper function to check application status
@@ -228,6 +230,16 @@ export default function Favorites({ userData }) {
             app.event_id === eventId && app.supplier_id === userData.id
         );
         return application ? application.status : null;
+    };
+
+    const openModal = (supplier) => {
+        setSelectedShop(supplier)
+        setIsModalOpen(true)
+    };
+
+    const closeModal = () => {
+        setIsModalOpen(false)
+
     };
 
     return (
@@ -253,6 +265,7 @@ export default function Favorites({ userData }) {
                             {shop.map((shopItem, index) => {
                                 const averageRating = calculateAverageRating(shopItem.id);
                                 const reviewCount = getReviewCount(shopItem.id);
+                                const userServices = services.filter(serv => serv.supplier_id === shopItem.id)
 
                                 return (
                                     <Cards key={shopItem.id || index} className="group cursor-pointer">
@@ -297,6 +310,11 @@ export default function Favorites({ userData }) {
                                                     <span className="text-gray-600 text-sm">{shopItem.supplier_location}</span>
                                                 </div>
 
+                                                <div className="flex items-center space-x-1 mb-4">
+                                                    <Clock className="text-gray-400" size={16} />
+                                                    <span className="text-sm text-gray-600">{shopItem.supplier_availability}</span>
+                                                </div>
+
                                                 {/* Categories */}
                                                 <div className="flex flex-wrap gap-2 mb-4">
                                                     {shopItem?.supplier_expertise?.map((expertise, expertiseIndex) => (
@@ -312,13 +330,8 @@ export default function Favorites({ userData }) {
                                                 {/* Price and Hours */}
                                                 <div className="flex justify-between items-center mb-5">
                                                     <div className="flex items-center space-x-1">
-                                                        <DollarSign className="text-green-600" size={18} />
-                                                        <span className="text-lg font-bold text-gray-900">₱{shopItem.supplier_price}</span>
+                                                        <span className="text-lg font-bold text-gray-900">₱{userServices[0]?.service_price}</span>
                                                         <span className="text-sm text-gray-500">/day</span>
-                                                    </div>
-                                                    <div className="flex items-center space-x-1">
-                                                        <Clock className="text-gray-400" size={16} />
-                                                        <span className="text-sm text-gray-600">{shopItem.supplier_availability}</span>
                                                     </div>
                                                 </div>
 
@@ -342,20 +355,39 @@ export default function Favorites({ userData }) {
                                                     </div>
                                                 </div>
 
-                                                {/* Action Button - FIXED: Added proper props */}
-                                                <SupplierModal
-                                                    className={`py-2 rounded-lg font-semibold w-full bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2`}
-                                                    services={services[shopItem.id]}
-                                                    supplierData={shopItem}  // Changed from supplier to supplierData
-                                                    userData={userData}
-                                                    reviews={shopReviews[shopItem.id]}
-                                                    averageRating={averageRating}
-                                                />
+                                                {/* Action Button */}
+                                                <button
+                                                    onClick={() => openModal({
+                                                        supplierData: shopItem,
+                                                        services: userServices,
+                                                        reviews: reviews.filter(
+                                                            (r) => r.reviewed_id === shopItem.id
+                                                        ),
+                                                        averageRating,
+                                                    })}
+                                                    className="py-2 rounded-lg font-semibold w-full bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                                                >
+                                                    View Details
+                                                </button>
                                             </div>
                                         </div>
                                     </Cards>
                                 );
                             })}
+
+                            {isModalOpen && selectedShop && (
+                                <Suspense fallback={<LoadingOverlay isLoading={true} message="Pleasee waitt.." />}>
+                                    <SupplierModal
+                                        isOpen={isModalOpen}
+                                        onClose={closeModal}
+                                        supplierData={selectedShop?.supplierData}
+                                        services={selectedShop?.services}
+                                        reviews={selectedShop?.reviews}
+                                        userData={userData}
+                                        averageRating={selectedShop?.averageRating}
+                                    />
+                                </Suspense>
+                            )}
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">

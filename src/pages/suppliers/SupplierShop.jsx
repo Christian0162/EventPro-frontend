@@ -71,7 +71,7 @@ export default function SupplierShop({ userData }) {
                         )}
                         {(!userData || userData.verification_status !== "verified") && (
                             <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg shadow-sm">
-                                ⚠️ Your shop is currently <b>hidden</b> until yor shop is verified.
+                                ⚠️ Your shop is currently <b>hidden</b> until yor shop is unverified.
                             </div>
                         )}
 
@@ -83,6 +83,7 @@ export default function SupplierShop({ userData }) {
                                 <div className="relative h-64 md:h-80 overflow-hidden rounded-t-2xl">
                                     {supplier?.supplier_background_image ? (
                                         <img
+                                            loading="lazy"
                                             src={supplier.supplier_background_image}
                                             alt="background image"
                                             className="absolute inset-0 w-full h-full object-cover"

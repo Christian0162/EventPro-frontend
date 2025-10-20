@@ -7,14 +7,24 @@ import { formatDistanceToNow } from 'date-fns'
 import { useFetchUsers } from '../hooks/useUsers'
 import { useFetchUserProfiles } from '../hooks/useProfile'
 import { useFetchSuppliers } from '../hooks/useSupplier'
+import { useFetchEvents } from "../hooks/useEvents";
+import { useFetchContract } from "../hooks/useContract";
+import EventModal from "./EventModal";
+import ContractModal from "./ContractModal";
+import { useFetchAllReports } from "../hooks/useReports";
+import { ReportReview } from "./ReviewModal";
 
-export default function NotificationModal({ notification }) {
+export default function NotificationModal({ notification, userData }) {
     const [isOpen, setIsOpen] = useState(false)
     const [isHovered, setIsHovered] = useState(false)
     const { users } = useFetchUsers()
     const { userProfiles } = useFetchUserProfiles()
     const { suppliers } = useFetchSuppliers()
     const [senderData, setSenderData] = useState([])
+    const { events } = useFetchEvents()
+    const { contracts } = useFetchContract()
+    const [selectedItem, setSelectedItem] = useState(null);
+    const { reports } = useFetchAllReports()
 
     const selectedUser = users?.find(u => u.id === notification.sender_id)
 
@@ -49,12 +59,33 @@ export default function NotificationModal({ notification }) {
         await deleteDoc(doc(db, "notifications", id))
     }
 
+    const handleNotifClick = () => {
+        updateNotif()
+
+        // Determine the referenced item (event or contract)
+        if (notification.referenced_type === "event") {
+            const matchedEvent = events.find(e => e.id === notification.referenced_id);
+            setSelectedItem({ type: 'event', data: matchedEvent });
+        } else if (notification.referenced_type === "contract") {
+            const matchedContract = contracts.find(c => c.id === notification.referenced_id);
+            const eventData = events.find(event => event.id === matchedContract.event_id)
+            const supplierData = suppliers.find(sup => sup.id === matchedContract.supplier_id)
+            setSelectedItem({ type: "contract", contract: matchedContract, supplier: supplierData, event: eventData });
+        } else if (notification.referenced_type === "report") {
+            const userReport = reports.find(r => r.id === notification.referenced_id)
+            setSelectedItem({ type: "report", report: userReport, userData: userData })
+        } else {
+            setSelectedItem(null);
+        }
+
+    };
+
     return (
         <>
             <button
                 onMouseEnter={() => setIsHovered(notification.id)}
                 onMouseLeave={() => setIsHovered(null)}
-                onClick={() => { updateNotif(); open() }}
+                onClick={() => { updateNotif(); open(); handleNotifClick() }}
                 className={`group relative w-full bg-white rounded-xl p-5 text-left shadow-sm border transition-all duration-300 hover:shadow-md hover:scale-[1.01] ${notification.unread
                     ? 'border-l-4 border-l-blue-500 border-slate-200'
                     : 'border-slate-200'
@@ -166,6 +197,20 @@ export default function NotificationModal({ notification }) {
                                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-gray-700 shadow-sm">
                                     {notification.feedback || "No feedback provided."}
                                 </div>
+                            </div>
+
+                            <div className='mt-5 flex justify-center items-center'>
+                                {selectedItem && (
+                                    <>
+                                        {selectedItem.type === "event" ? (
+                                            <EventModal userData={userData} eventData={selectedItem.data} event_purpose={`dashboard`} />
+                                        ) : selectedItem.type === "report" ? (
+                                            <ReportReview report={selectedItem?.report} userData={selectedItem.userData} />
+                                        ) : (
+                                            <ContractModal event_id={selectedItem.event.id} supplier_id={selectedItem.supplier.id} user_id={userData.id} userData={userData} supplierData={selectedItem.supplier} eventData={selectedItem.event} />
+                                        )}
+                                    </>
+                                )}
                             </div>
                         </div>
                     </DialogPanel>

@@ -1,67 +1,80 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Bell, Check } from 'lucide-react';
-import { collection, getDocs, onSnapshot, orderBy, query, updateDoc, where, doc } from 'firebase/firestore';
-import { db, auth } from '../../firebase/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../../firebase/firebase';
 import NotificationModal from '../../components/NotificationModal';
 import { useFetchNotificationsById } from '../../hooks/useNotifications';
+import PageLoading from '../../components/PageLoading';
 
 export default function Notification({ userData }) {
+    const { notifications, isLoading } = useFetchNotificationsById(userData.id);
+    const [isReading, setIsReading] = useState(false);
 
-    const { notifications } = useFetchNotificationsById(userData.id)
-
-    const hanldeMarksAllRead = async () => {
-        const q = query(collection(db, "notifications"),
-            where('user_id', '==', userData.id),
-            where('unread', '==', true)
-        )
-
-        const onSnapShotNotif = await getDocs(q)
-        const notificaions = onSnapShotNotif.docs.map((notficDoc) => updateDoc(doc(db, "notifications", notficDoc.id), {
-            unread: false,
-        }))
-
-        await Promise.all(notificaions)
-    }
+    const markAllAsRead = async () => {
+        const unread = notifications.filter((n) => n.unread);
+        setIsReading(true);
+        try {
+            for (const updateUnread of unread) {
+                await updateDoc(doc(db, 'notifications', updateUnread.id), { unread: false });
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsReading(false);
+        }
+    };
 
     return (
-        <div className="">
-            {/* Header */}
-            <div className="mb-8 flex items-center justify-between">
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent mb-2">
-                    Notifications
-                </h1>
-                <button onClick={() => hanldeMarksAllRead()} className='transition-all duration-200 flex items-center bg-blue-600 hover:bg-blue-700 py-2 px-5 gap-2 text-white rounded-xl'>
-                    Mark All As Read
-                    <Check size={20} className='text-white' />
-                </button>
-            </div>
+        <>
+            {isLoading && (
+                <PageLoading />
+            )}
 
-            {/* Notifications List */}
-            <div className="space-y-3">
-                {notifications.map((notification) => (
-                    <NotificationModal key={notification.id} notification={notification} />
-                ))}
-            </div>
+            {!isLoading && (
+                <div>
+                    {/* Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+                        <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
+                            Notifications
+                        </h1>
 
-            {/* Empty state placeholder */}
-            {notifications.length === 0 && (
-                <div className="text-center py-16">
-                    <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Bell className="w-8 h-8 text-slate-400" />
+                        <button
+                            onClick={markAllAsRead}
+                            disabled={isReading}
+                            className={`transition-all duration-200 flex items-center justify-center gap-2 py-2 px-4 sm:px-5 rounded-xl font-medium 
+                                ${isReading
+                                    ? 'bg-blue-400 cursor-not-allowed'
+                                    : 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md'
+                                }`}
+                        >
+                            {isReading ? 'Marking...' : 'Mark All As Read'}
+                            <Check size={18} className="hidden sm:block text-white" />
+                        </button>
                     </div>
-                    <h3 className="text-lg font-medium text-slate-900 mb-2">No notifications yet</h3>
-                    <p className="text-slate-500">When you have notifications, they'll appear here.</p>
-                </div>
-            )}
 
-            {/* Load More */}
-            {notifications.length > 4 && (
-                <div className="text-center mt-8">
-                    <button className="px-6 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-all duration-300 shadow-lg">
-                        Load More Notifications
-                    </button>
+                    {/* Notifications List */}
+                    <div className="space-y-3">
+                        {notifications.map((notification) => (
+                            <NotificationModal userData={userData} key={notification.id} notification={notification} />
+                        ))}
+                    </div>
+
+                    {/* Empty state */}
+                    {notifications.length === 0 && (
+                        <div className="flex flex-col items-center justify-center text-center py-16 px-4 sm:px-0">
+                            <div className="w-14 h-14 sm:w-16 sm:h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                                <Bell className="w-7 h-7 sm:w-8 sm:h-8 text-slate-400" />
+                            </div>
+                            <h3 className="text-lg font-semibold text-slate-900 mb-1">
+                                No notifications yet
+                            </h3>
+                            <p className="text-slate-500 text-sm sm:text-base">
+                                When you have notifications, they'll appear here.
+                            </p>
+                        </div>
+                    )}
                 </div>
             )}
-        </div>
+        </>
     );
 }

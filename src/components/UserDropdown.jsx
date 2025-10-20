@@ -34,6 +34,7 @@ export default function UserDropDown({ userData }) {
                         <img
                             src={userProfile?.profile_pic}
                             alt="Profile"
+                            loading="lazy"
                             className="w-full h-full object-cover"
                         />
                     ) : (

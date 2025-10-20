@@ -180,6 +180,9 @@ export default function SupplierPanels({ userData, shop, reviews, services, aver
                                             </span>
                                         ))}
                                     </div>
+                                    {shop?.supplier_expertise?.length === 0 && (
+                                        <span className='text-gray-600'>No expertise provided.</span>
+                                    )}
                                 </div>
                             </ShopCards>
 

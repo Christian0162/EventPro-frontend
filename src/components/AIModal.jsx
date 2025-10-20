@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { db } from '../firebase/firebase'
 import { useFetchReviews } from '../hooks/useReviews'
 import nlp from 'compromise';
+import Fuse from 'fuse.js'
 
 export default function AIModal({ ai_response, ai_shops }) {
     const [isOpen, setIsOpen] = useState(false)
@@ -22,6 +23,16 @@ export default function AIModal({ ai_response, ai_shops }) {
         setError('')
         setIsOpen(false)
     }
+
+    function normalizeText(text) {
+        return text
+            ?.toLowerCase()
+            .replace(/[^a-z0-9\s]/g, ' ') // replace punctuation with space (not remove)
+            .replace(/\s+/g, ' ')         // collapse extra spaces
+            .trim();
+    }
+
+
 
     const handleAiSearch = async (e) => {
         e.preventDefault();
@@ -85,6 +96,7 @@ export default function AIModal({ ai_response, ai_shops }) {
                 return;
             }
 
+
             // Filter shops based on prompt keywords
             const promptLower = prompt.toLowerCase();
 
@@ -94,53 +106,51 @@ export default function AIModal({ ai_response, ai_shops }) {
             let ratingThreshold = null;
             let shouldFilterByRating = false;
 
-            console.log()
-
-            console.log(ratingMatch)
-
             if (ratingMatch) {
-                ratingThreshold = parseFloat(ratingMatch[1]);
+                ratingThreshold = parseFloat(ratingMatch[0]);
                 shouldFilterByRating = true;
             }
 
-            const filteredShops = shopData.filter(shop => {
-                // If rating threshold is specified, filter by rating
-                if (shouldFilterByRating && ratingThreshold !== null) {
-                    if (promptLower.includes('below') || promptLower.includes('less') || promptLower.includes('under')) {
-                        // Show shops with rating <= threshold
-                        if (shop.avg_rating > ratingThreshold) {
-                            return true;
-                        }
+            const options = {
+                includeScore: true,
+                threshold: 0.2,
+                distance: 50,
+                keys: [
+                    'supplier_name',
+                    'supplier_type.label',
+                    'supplier_expertise'
+                ]
+            }
 
-                    } else if (promptLower.includes('above') || promptLower.includes('more') || promptLower.includes('over')) {
-                        // Show shops with rating >= threshold
-                        if (shop.avg_rating < ratingThreshold) {
-                            return true;
-                        }
-                    } else {
-                        // Default: show shops with exact rating or higher
-                        if (shop.avg_rating < ratingThreshold) {
-                            return false;
-                        }
-                    }
-                }
+            const normalizedPrompt = normalizeText(promptLower);
+            const keywords = normalizedPrompt.split(/\s+/);
+            const fuse = new Fuse(shopData, options);
 
-                // Check if shop matches any other keywords in prompt (excluding rating terms)
-                const keywordMatch =
-                    shop.supplier_name.toLowerCase().includes(promptLower) ||
-                    shop.supplier_type?.value?.toLowerCase().includes(promptLower) ||
-                    (shop.supplier_expertise || []).some(expertise =>
-                        expertise.toLowerCase().includes(promptLower)
-                    ) ||
-                    (shop.category || '').toLowerCase().includes(promptLower) ||
-                    (shop.expertise || []).some(expertise =>
-                        promptLower.includes(expertise.toLowerCase())
-                    );
+            // Run searches for each word
+            const allResults = keywords.flatMap(word => fuse.search(word));
+            const uniqueResults = Array.from(
+                new Map(allResults.map(r => [r.item.id, r.item])).values()
+            );
 
-                // If rating filter is active, return all shops that pass the rating filter
-                // Otherwise, use keyword matching
-                return shouldFilterByRating ? true : keywordMatch;
+            // Rating logic
+            const isBelow = normalizedPrompt.includes('below') ||
+                normalizedPrompt.includes('less') ||
+                normalizedPrompt.includes('under');
+            const isAbove = normalizedPrompt.includes('above') ||
+                normalizedPrompt.includes('more') ||
+                normalizedPrompt.includes('over');
+
+            const filteredShops = uniqueResults.filter(shop => {
+                if (!shouldFilterByRating || isNaN(ratingThreshold)) return true;
+
+                const rating = Number(shop.avg_rating);
+                if (isBelow) return rating <= ratingThreshold;
+                if (isAbove) return rating >= ratingThreshold;
+
+                return rating >= ratingThreshold;
             });
+
+
 
             if (filteredShops.length === 0) {
                 setError("No suppliers match your search criteria.");
@@ -152,7 +162,7 @@ export default function AIModal({ ai_response, ai_shops }) {
             const sortedShops = [...filteredShops].sort((a, b) => b.avg_rating - a.avg_rating);
 
             // Send data to AI recommendation endpoint
-            const response = await fetch("https://eventpro-backend.onrender.com/api/v1/recommend", {
+            const response = await fetch("http://127.0.0.1:8000/api/v1/recommend", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

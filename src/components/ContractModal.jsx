@@ -47,7 +47,7 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
             if (!d.penalty_applied || d.penalty_applied.length === 0) return;
 
             d.penalty_applied.forEach((penalty) => {
-                // 🕒 Late Delivery
+                //  Late Delivery
                 if (penalty.includes("Late Delivery")) {
                     const planned = new Date(d.planned_date);
                     const delivered = d.delivered_date?.seconds
@@ -81,8 +81,6 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
         return totalDeduction;
     };
     const isDownPayment = contract?.service_plan?.service_payment_notice?.label === "Down Payment required atleast 50 percent."
-
-    console.log("downpayment:", isDownPayment)
     const platformFee = Number(contract?.service_plan?.service_price) > 5000 ? Number(contract?.service_plan?.service_price) * 0.10 : Number(contract?.service_plan?.service_price) * 0.05
     const service_price = Number(contract?.service_plan?.service_price) || 0;
     const process_fee = payment_method?.process_fee || 0;
@@ -90,7 +88,7 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
 
     const totalDeductions = computeTotalDeductions(contractDeliveries, service_price);
 
-    const fullAmount = contract?.service_plan?.service_price + processFee
+    const fullAmount = Number(contract?.service_plan?.service_price) + processFee
     const netAmount = Number(service_price - platformFee);
     const finalAmount = netAmount - totalDeductions;
 
@@ -99,6 +97,8 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
 
     const total_paid = contract_transaction.reduce((sum, trans) => sum + trans.amount, 0)
     const total_fees = contract_transaction.reduce((sum, trans) => sum + trans.process_fee, 0)
+
+    console.log(fullAmount)
 
     const not_include_fees = total_paid - total_fees
 
@@ -120,15 +120,11 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
         setContract(contract[0])
     }, [AllContracts, users, eventData, supplierData])
 
-    console.log(eventUser)
-
     useEffect(() => {
         const filteredTransaction = transactions.filter(trans => trans.contract_id === contract?.id && trans.status === "HOLD")
 
         setContract_Transaction(filteredTransaction)
     }, [user_id, transactions, contract])
-
-
 
 
     useEffect(() => {
@@ -242,7 +238,7 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
         }
     }
 
-    const handleRelease = async (e, platform_fee, netAmount) => {
+    const handleRelease = async (e, platform_fee) => {
         e.preventDefault()
         setIsReleasing(true)
 
@@ -789,7 +785,7 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
                                                                             <div>
                                                                                 <div className="border-t pt-2 border-gray-300 flex justify-between items-center">
                                                                                     <span className="text-md  text-gray-800">To Pay Now (Full Payment)</span>
-                                                                                    <span className="text-lg font-semibold text-blue-600">₱{contract_transaction?.length > 0 ? 0 : contract.service_plan.service_price.toLocaleString()}</span>
+                                                                                    <span className="text-lg font-semibold text-blue-600">₱{contract_transaction?.length > 0 ? 0 : fullAmount.toLocaleString()}</span>
                                                                                 </div>
                                                                             </div>
                                                                         )}
@@ -809,7 +805,7 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
 
                                                             </div>
                                                             <p className='text-sm mt-4 text-gray-600'>
-                                                                Note: Your payment is securely processed via Xendit. The downpayment is received by our platform and only released to the supplier once confirmed
+                                                                Note: Your payment is securely processed via Xendit. The downpayment is received by our platform and only manually released to the supplier once confirmed
                                                             </p>
                                                         </div>
 
@@ -831,7 +827,7 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
 
                                                     <div className={`flex flex-col mt-5 gap-3 overflow-y-auto ${transactions.length > 2 && 'h-[200px]'}`}>
                                                         {transactions.map((t, i) => (
-                                                            <div className='bg-gray-50 border border-gray-200 shadow-lg rounded-lg py-5 px-6 flex items-center justify-between'>
+                                                            <div key={i} className='bg-gray-50 border border-gray-200 shadow-lg rounded-lg py-5 px-6 flex items-center justify-between'>
                                                                 <div className='flex flex-col space-y-2'>
                                                                     <div className='flex items-baseline gap-2'>
                                                                         <span className='font-semibold'>Payment Transaction</span>
@@ -843,6 +839,10 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
                                                                 <span className='text-gray-800 font-semibold'>₱ {t.amount}</span>
                                                             </div>
                                                         ))}
+
+                                                        {transactions.length === 0 && (
+                                                            <div className='block text-center py-2 pb-5 text-gray-600 font-semibold'>No transactions made yet.</div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </>
@@ -860,8 +860,9 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
                                                     ? `Message Planner`
                                                     : `Message Supplier`}
                                             </button>
-
-                                            <ReportModal contractData={contract} userData={userData} eventData={eventData} supplierData={supplierData} />
+                                            {contract?.status === "Approved" && (
+                                                <ReportModal contractData={contract} userData={userData} eventData={eventData} supplierData={supplierData} />
+                                            )}
                                         </div>
                                         {userData?.role != "Supplier" && contract?.status !== "Completed" && (
                                             <>
@@ -920,7 +921,7 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
                                         )}
 
                                         {supplier_id === user_id && contract?.status === "Pending" && (
-                                            <div className='flex p-2 justify-end items-end ml-auto '>
+                                            <div className='flex p-2 gap-2 justify-end items-end ml-auto '>
                                                 <RejectReview contract={contract} supplier={supplierData} event_id={eventData.id} supplier_id={supplierData.id} className={`transition duration-50 py-1 px-5 border rounded-md hover:bg-red-600 hover:text-white`} />
                                                 <button onClick={() => handleApprove(contract?.id)} disabled={isSubmitting} className={`transition-all duration-50 px-7 py-2 ${isSubmitting ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'} text-white text-sm rounded`}>{isSubmitting ?
                                                     <>

@@ -175,7 +175,7 @@ export default function ServiceModal({ userData, supplierData }) {
                                                 <PhilippinePeso size={20} className='text-blue-600' />
                                                 <label htmlFor="" className='text-gray-700 font-bold'>Price</label>
                                             </div>
-                                            <input type="text" className='px-4 py-2 rounded-md focus:outline-none border border-gray-400' onChange={(e) => setPrice(e.target.value)} required placeholder='e.g ₱5000' />
+                                            <input type="number" className='px-4 py-2 rounded-md focus:outline-none border border-gray-400' onChange={(e) => setPrice(e.target.value)} required placeholder='e.g ₱5000' />
                                         </div>
 
                                         <div className='flex flex-col gap-2'>

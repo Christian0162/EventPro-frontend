@@ -22,11 +22,10 @@ import ProfileHover from './ProfileHover'
 import AvailabilityPicker from './AvailabilityPicker'
 import EventBookingModal from './EventBookingModal'
 
-export default function SupplierModal({ supplierData, applications, userData, reviews, services, averageRating, className }) {
+export default function SupplierModal({ isOpen, onClose, supplierData, applications, userData, reviews, services, averageRating, className }) {
 
     const navigate = useNavigate()
 
-    const [isOpen, setIsOpen] = useState(false)
     const [isLiked, setIsLiked] = useState(false)
     const [contactEditing, setContactEditing] = useState(false)
     const [bookingEdting, setBookingEditing] = useState(false)
@@ -48,14 +47,6 @@ export default function SupplierModal({ supplierData, applications, userData, re
     const { events } = useFetchEventsById(userData?.id)
 
     const activeContracts = contracts.filter(cont => events.some(event => cont.event_id === event.id))
-
-    function open() {
-        setIsOpen(true)
-    }
-
-    function close() {
-        setIsOpen(false)
-    }
 
     useEffect(() => {
 
@@ -203,22 +194,17 @@ export default function SupplierModal({ supplierData, applications, userData, re
         }
     }
 
+    console.log('asd')
+
     return (
         <>
-            <Button
-                onClick={open}
-                className={` ${className}`}
-            >
-                View Details
-            </Button>
-
-            <Dialog open={isOpen} as="div" className="relative z-50 focus:outline-none" onClose={close}>
+            <Dialog open={isOpen} as="div" className="relative z-50 focus:outline-none" onClose={onClose}>
                 <div className="fixed inset-0 bg-black/25 backdrop-blur-sm" />
                 <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
                             transition
-                            className="w-full max-w-5xl mt-20 rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                            className="w-full max-w-5xl mt-20 rounded-2xl bg-white shadow-2xl8"
                         >
                             {(isCreatingContact || isCreatingFavorites) && (
                                 <LoadingOverlay isLoading={isCreatingContact || isCreatingFavorites} message='Processing..' />
@@ -227,7 +213,7 @@ export default function SupplierModal({ supplierData, applications, userData, re
                             {/* Header with close button */}
                             <div className="relative">
                                 <button
-                                    onClick={close}
+                                    onClick={onClose}
                                     className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/80 hover:bg-white transition-colors duration-200"
                                 >
                                     <X size={20} className="text-gray-600" />
@@ -331,15 +317,16 @@ export default function SupplierModal({ supplierData, applications, userData, re
                                                             {supplierData?.supplier_expertise?.map((skill, index) => (
                                                                 <span
                                                                     key={index}
-                                                                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${index === 0
-                                                                        ? 'bg-blue-500 text-white shadow-sm'
-                                                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                                                        }`}
+                                                                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200
+                                                                         bg-gray-100 text-gray-700 hover:bg-gray-200`}
                                                                 >
                                                                     {skill}
                                                                 </span>
                                                             ))}
                                                         </div>
+                                                        {supplierData?.supplier_expertise?.length === 0 && (
+                                                            <span className='text-gray-600'>No expertise provided.</span>
+                                                        )}
                                                     </div>
                                                 </ShopCards>
 
@@ -656,7 +643,7 @@ export default function SupplierModal({ supplierData, applications, userData, re
                                 {supplierData.id !== auth.currentUser.uid && (
                                     <div className="flex gap-3 pt-4 border-t border-gray-100">
                                         <Button
-                                            onClick={close}
+                                            onClick={onClose}
                                             className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
                                         >
                                             Close
@@ -671,7 +658,7 @@ export default function SupplierModal({ supplierData, applications, userData, re
                                 {supplierData.id === auth.currentUser.uid && (
                                     <div className="flex gap-3 pt-4 border-t border-gray-100">
                                         <Button
-                                            onClick={close}
+                                            onClick={onClose}
                                             className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
                                         >
                                             Close

@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Title } from "react-head";
-import { CalendarDays, MapPin, CircleDollarSign, Trash, Users, MessageCircleMore, Heart } from "lucide-react";
+import { CalendarDays, MapPin, CircleDollarSign, Trash, Users, MessageCircleMore, Heart, CircleCheck } from "lucide-react";
 import { db } from "../../firebase/firebase";
 import { useEffect, useState } from "react";
 import { collection, onSnapshot, serverTimestamp, addDoc, query, where, doc, getDocs, deleteDoc } from "firebase/firestore";
@@ -209,9 +209,9 @@ export default function Event({ userData }) {
                     isActive: false,
                     createdAt: serverTimestamp()
                 })
-                navigate(`/chats/${supplierData.id}`)
+                navigate(`/chats/${supplierData?.id}`)
             } else {
-                navigate(`/chats/${supplierData.id}`)
+                navigate(`/chats/${supplierData?.id}`)
             }
         }
         catch (e) {
@@ -321,7 +321,7 @@ export default function Event({ userData }) {
                                                             </button>
                                                         </>
                                                     )}
-                                                    {userData.role === "Event Planner" && (
+                                                    {userData.role === "Event Planner" && eventContracts.length === 0 && (
                                                         <button onClick={() => handleDelete(events.id)} className="p-2 rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all duration-200 opacity-0 group-hover:opacity-100">
                                                             <Trash size={18} />
                                                         </button>
@@ -355,11 +355,16 @@ export default function Event({ userData }) {
                                                 </div>
                                                 <div className="flex flex-wrap gap-2">
                                                     {events.event_categories?.filter(c => c?.label).length > 0 ? (
-                                                        events.event_categories.map((category, index) => (
-                                                            <span key={index} className="px-2.5 py-1 bg-slate-100 text-slate-700 text-xs font-medium rounded-full">
-                                                                {category.label}
-                                                            </span>
-                                                        ))
+                                                        events.event_categories.map((category, index) => {
+                                                            const eventSuppliers = suppliers.filter(s => eventContracts.some(c => c.supplier_id === s.id))
+                                                            const isTagExistOnSupplier = eventSuppliers[index]?.supplier_type?.label === category.label
+                                                            return (
+                                                                <span key={index} className={`px-2.5 py-1 flex gap-1 items-center ${isTagExistOnSupplier ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'} text-xs font-medium rounded-full`}>
+                                                                    {category.label}
+                                                                    {isTagExistOnSupplier && (<CircleCheck size={15} />)}
+                                                                </span>
+                                                            )
+                                                        })
                                                     ) : (
                                                         <span className="text-slate-500 text-xs italic">No specific supplier categories listed.</span>
                                                     )}
@@ -382,16 +387,16 @@ export default function Event({ userData }) {
                                                                 applications.find(app => app.event_id === events.id)?.status === "Pending" ||
                                                                 applications.find(app => app.event_id === events.id)?.status === "Approved" ||
                                                                 (isApplying && applyingEventId === events.id) ||
-                                                                !supplierData.is_verified || !events.event_categories.some(cat => cat.label === supplierData.supplier_type.label)
+                                                                !supplierData?.is_verified || !events.event_categories.some(cat => cat.label === supplierData?.supplier_type.label)
                                                             }
                                                             className={`flex items-center justify-center gap-2 text-center py-2 w-full ${applications.find(app => app.event_id === events.id)?.status === "Pending" ||
                                                                 applications.find(app => app.event_id === events.id)?.status === "Approved"
                                                                 ? 'bg-blue-300 cursor-not-allowed'
                                                                 : (isApplying && applyingEventId === events.id)
                                                                     ? 'bg-blue-400 cursor-not-allowed'
-                                                                    : !supplierData.is_verified
+                                                                    : !supplierData?.is_verified
                                                                         ? 'bg-blue-400 cursor-not-allowed'
-                                                                        : !events.event_categories.some(cat => cat.label === supplierData.supplier_type.label) ? 'bg-blue-400 cursor-not-allowed' :
+                                                                        : !events.event_categories.some(cat => cat.label === supplierData?.supplier_type.label) ? 'bg-blue-400 cursor-not-allowed' :
                                                                             'bg-blue-600 hover:bg-blue-700'
                                                                 } text-white font-bold rounded-lg`}
                                                         >
@@ -402,10 +407,10 @@ export default function Event({ userData }) {
                                                                 </> :
                                                                 applications.find(app => app.event_id === events.id)?.status === "Pending" ? 'Pending' :
                                                                     applications.find(app => app.event_id === events.id)?.status === "Approved" ? 'Approved' :
-                                                                        !supplierData.is_verified ? 'Account not verified' : !events.event_categories.some(cat => cat.label === supplierData.supplier_type.label) ? 'Your shop isn’t eligible for this event.' : 'Apply'}
+                                                                        !supplierData?.is_verified ? 'Account not verified' : !events.event_categories.some(cat => cat.label === supplierData?.supplier_type.label) ? 'Your shop isn’t eligible for this event.' : 'Apply'}
                                                         </button>
                                                     ) : (
-                                                        <Link to="/shop" className="w-full block py-2 mt-2 text-center bg-gray-200 hover:bg-blue-600 hover:text-white rounded-lg transition">{supplierData.supplier_name.length === 0 ? 'Need shop to apply' : 'Services required to apply'} </Link>
+                                                        <Link to="/shop" className="w-full block py-2 mt-2 text-center bg-gray-200 hover:bg-blue-600 hover:text-white rounded-lg transition">{supplierData?.supplier_name.length === 0 ? 'Need shop to apply' : 'Services required to apply'} </Link>
                                                     )
                                                 ) : (
                                                     <div className="flex items-center justify-center w-full py-2 mt-2 bg-blue-400 rounded-lg">
@@ -438,7 +443,8 @@ export default function Event({ userData }) {
                     )}
 
                 </>
-            )}
+            )
+            }
         </>
     );
 };

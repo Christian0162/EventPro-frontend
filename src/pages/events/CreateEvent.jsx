@@ -6,7 +6,7 @@ import { X, Calendar, Tag, Send } from "lucide-react";
 import Loading from "../../components/Loading";
 import AddressAutoComplete from "../../components/AddressAutoComplete";
 import { useAddEvent } from "../../hooks/useEvents";
-import { SupplierOptions } from "../../constants/categories";
+import { EventSupplierMap, EventTypeOptions, SupplierOptions } from "../../constants/categories";
 import LoadingOverlay from "../../components/LoadingOverlay";
 
 export default function CreateEvent({ userData }) {
@@ -93,6 +93,10 @@ export default function CreateEvent({ userData }) {
             setCategories(null);
         }
     };
+
+    const matchedSuppliers = SupplierOptions.filter(s =>
+        EventSupplierMap[eventType?.value]?.includes(s.value)
+    );
 
     return (
         <>
@@ -199,7 +203,7 @@ export default function CreateEvent({ userData }) {
                             <label htmlFor="type" className="text-sm font-medium text-gray-700 mb-2">Event Type</label>
                             <Select
                                 name="event_type"
-                                options={SupplierOptions}
+                                options={EventTypeOptions}
                                 value={eventType || ""}
                                 onChange={setEventType}
                                 placeholder="Select event type"
@@ -282,7 +286,7 @@ export default function CreateEvent({ userData }) {
                         <div className="flex flex-col md:flex-row gap-3 items-end">
                             <div className="flex-grow">
                                 <Select
-                                    options={SupplierOptions}
+                                    options={matchedSuppliers}
                                     value={categories}
                                     onChange={setCategories}
                                     placeholder="Select supplier category"

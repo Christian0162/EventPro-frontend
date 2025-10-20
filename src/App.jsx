@@ -51,6 +51,7 @@ function App() {
                             console.warn("No user data found");
                             setUserData(null);
                         }
+                        setIsLoading(false);
 
                         return () => unsubscribeUsers()
                     })
@@ -64,8 +65,6 @@ function App() {
                 setUser(null);
                 setUserData(null);
 
-            } finally {
-                setIsLoading(false);
             }
         });
         return () => unsubscribe();
@@ -108,10 +107,10 @@ function App() {
                                     <Dashboard user={user} userData={userData} />
                                 </AuthLayout> : <Navigate to={'/login'} />}></Route>
 
-                            <Route path="/admin/dashboard" element={user ?
+                            <Route path="/admin/dashboard" element={userData?.role === "Admin" ?
                                 <AuthLayout user={user} userData={userData}>
                                     <AdminDashboard user={user} userData={userData} />
-                                </AuthLayout> : <Navigate to={'/login'} />}></Route>
+                                </AuthLayout> : <Navigate to={'/dashboard'} />}></Route>
 
                             <Route path="/review/:id" element={user ?
                                 <AuthLayout user={user} userData={userData}>

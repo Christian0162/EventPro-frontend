@@ -162,7 +162,7 @@ export default function AIModal({ ai_response, ai_shops }) {
             const sortedShops = [...filteredShops].sort((a, b) => b.avg_rating - a.avg_rating);
 
             // Send data to AI recommendation endpoint
-            const response = await fetch("http://127.0.0.1:8000/api/v1/recommend", {
+            const response = await fetch("https://eventpro-backend.onrender.com/api/v1/recommend", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

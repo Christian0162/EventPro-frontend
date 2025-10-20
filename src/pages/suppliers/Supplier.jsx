@@ -57,8 +57,7 @@ export default function Supplier({ userData }) {
         }
         if (category) {
             filtered = filtered.filter(shopItem =>
-                shopItem.supplier_expertise?.some(exp =>
-                    exp.toLowerCase().includes(category.value.toLowerCase())
+                shopItem.supplier_type.value?.toLowerCase().includes(category.value.toLowerCase()
                 )
             );
         }
@@ -97,11 +96,9 @@ export default function Supplier({ userData }) {
 
     };
 
+    if (isAllLoading) return <PageLoading />;
     return (
         <>
-            {isAllLoading && (
-                <PageLoading />
-            )}
 
             <div className={`mb-8  ${isAllLoading ? 'hidden' : 'block'}`}>
                 <div className="flex items-center justify-between mb-6">
@@ -209,6 +206,7 @@ export default function Supplier({ userData }) {
                                             {shopItem.supplier_background_image.length > 0 ? (
                                                 <img
                                                     src={shopItem?.supplier_background_image}
+                                                    loading="lazy"
                                                     className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                                                     alt={`${shopItem.supplier_name} background`}
                                                 />
@@ -225,7 +223,7 @@ export default function Supplier({ userData }) {
                                     </div>
 
                                     {/* Content */}
-                                    <div className="p-5">
+                                    <div className="p-5 flex flex-grow flex-col justify-between">
                                         <div>
                                             <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-blue-600 transition-colors duration-200">
                                                 {shopItem.supplier_name}

@@ -51,6 +51,7 @@ function App() {
                             console.warn("No user data found");
                             setUserData(null);
                         }
+                        setIsLoading(false);
 
                         return () => unsubscribeUsers()
                     })
@@ -64,8 +65,6 @@ function App() {
                 setUser(null);
                 setUserData(null);
 
-            } finally {
-                setIsLoading(false);
             }
         });
         return () => unsubscribe();

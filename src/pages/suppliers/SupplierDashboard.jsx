@@ -94,8 +94,6 @@ export default function SupplierDashboard({ userData }) {
         contracts.filter(contract => contract?.status === "Pending" && contract.supplier_id === userData.id),
         [contracts]);
 
-    console.log(pendingContracts)
-
     const activeContracts = useMemo(() =>
         contracts.filter(contract => contract?.status === "Approved" && contract.supplier_id === userData.id),
         [contracts, userData.id]);
@@ -377,6 +375,7 @@ export default function SupplierDashboard({ userData }) {
                                                     <div className="flex items-start gap-3">
                                                         {userProfiles.find((u) => u.id === rev.user_id)?.profile_pic ? (
                                                             <img
+                                                                loading="lazy"
                                                                 src={userProfiles.find((u) => u.id === rev.user_id).profile_pic}
                                                                 alt="Reviewer"
                                                                 className="w-10 h-10 rounded-full object-cover"

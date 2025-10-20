@@ -7,6 +7,7 @@ export const useFetchNotificationsById = (id) => {
     const [notifications, setNotifications] = useState([])
 
     useEffect(() => {
+        if (!id) return
         try {
             setIsLoading(true)
             const q = query(collection(db, "notifications"),
@@ -14,6 +15,8 @@ export const useFetchNotificationsById = (id) => {
                 orderBy('createdAt', 'desc'))
             const unsubscribe = onSnapshot(q, (onsnapshot) => {
                 setNotifications(onsnapshot.docs.map(notification => ({ id: notification.id, ...notification.data() })))
+                setIsLoading(false)
+
             })
 
             return () => unsubscribe()
@@ -21,10 +24,6 @@ export const useFetchNotificationsById = (id) => {
 
         catch (e) {
             console.error(e)
-            setIsLoading(false)
-        }
-
-        finally {
             setIsLoading(false)
         }
 

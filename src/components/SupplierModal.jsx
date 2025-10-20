@@ -317,10 +317,8 @@ export default function SupplierModal({ isOpen, onClose, supplierData, applicati
                                                             {supplierData?.supplier_expertise?.map((skill, index) => (
                                                                 <span
                                                                     key={index}
-                                                                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${index === 0
-                                                                        ? 'bg-blue-500 text-white shadow-sm'
-                                                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                                                        }`}
+                                                                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200
+                                                                         bg-gray-100 text-gray-700 hover:bg-gray-200`}
                                                                 >
                                                                     {skill}
                                                                 </span>

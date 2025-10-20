@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { Heart, MessageCircleMore, Calendar, Menu, X } from "lucide-react";
+import { Heart, MessageCircleMore, Calendar, Menu, X, BellDot } from "lucide-react";
 import UserDropDown from "./UserDropdown";
 import UserNotification from "./UserNotification";
 import React, { useState } from "react";
@@ -58,7 +58,7 @@ const NavBar = React.memo(function NavBar({ user, userData }) {
                                     ? "bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-200"
                                     : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                                 }`
-                               }>
+                            }>
                                 <Heart size={20} />
                             </NavLink>
 
@@ -129,10 +129,15 @@ const NavBar = React.memo(function NavBar({ user, userData }) {
                         ))}
 
                         {user && (
-                            <div className="flex gap-4 pt-3 border-t border-gray-100 w-full">
+                            <div className="flex items-center gap-4 pt-3 border-t border-gray-100 w-full">
                                 <Heart size={20} className="text-gray-600" />
                                 <MessageCircleMore size={20} className="text-gray-600" />
-                                <UserNotification userData={userData} />
+                                <a href="/notification"
+                                    className="relative transition-all duration-200 focus:outline-none focus:bg-blue-50 focus:text-blue-700 focus:shadow-sm focus:ring-2 focus:ring-blue-200 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-full text-sm flex items-center justify-center group"
+
+                                >
+                                    <BellDot size={20}/>
+                                </a>
                             </div>
                         )}
                     </div>

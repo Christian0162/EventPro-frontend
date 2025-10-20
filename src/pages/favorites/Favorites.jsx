@@ -14,7 +14,7 @@ import { useFetchEvents } from "../../hooks/useEvents";
 import Swal from "sweetalert2";
 import { useFetchSupplierById } from "../../hooks/useSupplier";
 import EventModal from "../../components/EventModal";
-import ClipLoader from "react-spinners/ClipLoader"; // Add this import
+import ClipLoader from "react-spinners/ClipLoader";
 import PageLoading from "../../components/PageLoading";
 import { lazy, Suspense } from "react";
 
@@ -310,6 +310,11 @@ export default function Favorites({ userData }) {
                                                     <span className="text-gray-600 text-sm">{shopItem.supplier_location}</span>
                                                 </div>
 
+                                                <div className="flex items-center space-x-1 mb-4">
+                                                    <Clock className="text-gray-400" size={16} />
+                                                    <span className="text-sm text-gray-600">{shopItem.supplier_availability}</span>
+                                                </div>
+
                                                 {/* Categories */}
                                                 <div className="flex flex-wrap gap-2 mb-4">
                                                     {shopItem?.supplier_expertise?.map((expertise, expertiseIndex) => (
@@ -325,13 +330,8 @@ export default function Favorites({ userData }) {
                                                 {/* Price and Hours */}
                                                 <div className="flex justify-between items-center mb-5">
                                                     <div className="flex items-center space-x-1">
-                                                        <DollarSign className="text-green-600" size={18} />
-                                                        <span className="text-lg font-bold text-gray-900">₱{shopItem.supplier_price}</span>
+                                                        <span className="text-lg font-bold text-gray-900">₱{userServices[0]?.service_price}</span>
                                                         <span className="text-sm text-gray-500">/day</span>
-                                                    </div>
-                                                    <div className="flex items-center space-x-1">
-                                                        <Clock className="text-gray-400" size={16} />
-                                                        <span className="text-sm text-gray-600">{shopItem.supplier_availability}</span>
                                                     </div>
                                                 </div>
 

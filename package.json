@@ -28,6 +28,7 @@
     "filepond-plugin-image-preview": "^4.6.12",
     "firebase": "^11.9.0",
     "firebase-admin": "^13.4.0",
+    "fuse.js": "^7.1.0",
     "jspdf": "^3.0.3",
     "jspdf-autotable": "^5.0.2",
     "lucide-react": "^0.503.0",

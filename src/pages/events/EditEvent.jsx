@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import AddressAutoComplete from "../../components/AddressAutoComplete";
 import Select from "react-select"
-import { X, Calendar, Clock, MapPin, Tag, Users, FileText, Send } from "lucide-react";
+import { X, Calendar, Clock, MapPin, Tag, Users, FileText, Send, Check, CircleCheck } from "lucide-react";
 import PrimaryButton from "../../components/PrimaryButton";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "../../firebase/firebase";
@@ -489,22 +489,28 @@ export default function EditEvent({ userData }) {
 
                                 {/* Tags Display */}
                                 {tags.length > 0 && (
-                                    <div className="flex flex-wrap gap-2">
-                                        {tags.map((tag, index) => (
-                                            <span
-                                                key={index}
-                                                className="inline-flex items-center gap-2 py-2 px-3 bg-blue-100 border border-blue-300 rounded-lg text-sm text-blue-800 font-medium"
-                                            >
-                                                {tag.label}
-                                                <button
-                                                    type="button"
-                                                    onClick={() => removeTag(index)}
-                                                    className="hover:bg-blue-200 rounded-full p-1 transition-colors"
+                                    <div className="flex flex-wrap gap-2 ">
+                                        {tags.map((tag, index) => {
+
+                                            const eventSuppliers = suppliers.filter(s => eventContracts.some(c => c.supplier_id === s.id))
+                                            const isTagExistOnSupplier = eventSuppliers[index]?.supplier_type?.label === tag.label
+                                            return (
+                                                <span
+                                                    key={index}
+                                                    className={`inline-flex  items-center gap-2 py-2 px-3  border ${isTagExistOnSupplier ? 'bg-green-100 border-green-300 text-green-800' : 'bg-blue-100 border-blue-300 text-blue-800'} rounded-lg text-sm  font-medium`}
                                                 >
-                                                    <X width={14} height={14} strokeWidth={2} />
-                                                </button>
-                                            </span>
-                                        ))}
+                                                    {isTagExistOnSupplier && (<CircleCheck />)}
+                                                    {tag.label}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeTag(index)}
+                                                        className="hover:bg-blue-200 rounded-full p-1 transition-colors"
+                                                    >
+                                                        <X width={14} height={14} strokeWidth={2} />
+                                                    </button>
+                                                </span>
+                                            )
+                                        })}
                                     </div>
                                 )}
 
@@ -747,20 +753,6 @@ export default function EditEvent({ userData }) {
                                 </div>
                             }
 
-                            {isModalOpen && selectedShop && (
-                                <Suspense fallback={<LoadingOverlay isLoading={true} message="Pleasee waitt.." />}>
-                                    <SupplierModal
-                                        isOpen={isModalOpen}
-                                        onClose={closeModal}
-                                        supplierData={selectedShop?.supplierData}
-                                        services={selectedShop?.services}
-                                        reviews={selectedShop?.reviews}
-                                        userData={userData}
-                                        averageRating={selectedShop?.averageRating}
-                                        applications={applications}
-                                    />
-                                </Suspense>
-                            )}
                             {!isAllLoading && suppliers.filter(supplier => applications.some(app => app.supplier_id === supplier.id && app.status === "Approved") &&
                                 contracts.some(c => c.supplier_id === supplier.id && c.status === "Completed" && c.event_id === id)
                             ).length === 0 && (
@@ -816,7 +808,19 @@ export default function EditEvent({ userData }) {
                                                         </div>
                                                         <div className="flex items-center mt-1">
                                                             <span className="text-sm text-gray-600 mr-2">Rating: {averageRating}</span>
-                                                            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full font-medium">Approved</span>
+                                                            <button
+                                                                onClick={() => openModal({
+                                                                    supplierData: supplier,
+                                                                    services: userServices,
+                                                                    reviews: reviews.filter(
+                                                                        (r) => r.reviewed_id === supplier.id
+                                                                    ),
+                                                                    averageRating,
+                                                                })}
+                                                                className={'text-sm text-blue-600 hover:text-blue-800 font-medium mr-4'}
+                                                            >
+                                                                View Details
+                                                            </button>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -830,19 +834,7 @@ export default function EditEvent({ userData }) {
                                                         eventData={eventData}
                                                         supplierData={supplier}
                                                     />
-                                                    <button
-                                                        onClick={() => openModal({
-                                                            supplierData: supplier,
-                                                            services: userServices,
-                                                            reviews: reviews.filter(
-                                                                (r) => r.reviewed_id === supplier.id
-                                                            ),
-                                                            averageRating,
-                                                        })}
-                                                        className={'text-sm text-blue-600 hover:text-blue-800 font-medium mr-4'}
-                                                    >
-                                                        View Details
-                                                    </button>
+
                                                 </div>
                                             </div>
                                         )

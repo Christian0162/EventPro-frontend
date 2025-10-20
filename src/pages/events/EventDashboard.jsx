@@ -134,7 +134,7 @@ export default function EventDashboard({ userData }) {
         const result = {};
 
         events.forEach(event => {
-            const type = event.event_type?.value || "Unknown";
+            const type = event.event_type?.label || "Unknown";
             const budget = Number(event.event_budget || 0);
 
             if (!result[type]) {

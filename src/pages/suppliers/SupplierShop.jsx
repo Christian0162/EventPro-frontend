@@ -83,6 +83,7 @@ export default function SupplierShop({ userData }) {
                                 <div className="relative h-64 md:h-80 overflow-hidden rounded-t-2xl">
                                     {supplier?.supplier_background_image ? (
                                         <img
+                                            loading="lazy"
                                             src={supplier.supplier_background_image}
                                             alt="background image"
                                             className="absolute inset-0 w-full h-full object-cover"

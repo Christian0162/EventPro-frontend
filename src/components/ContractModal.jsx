@@ -19,8 +19,7 @@ import { useFetchContract } from '../hooks/useContract'
 import DamagePenaltiesModal from './DamagePenaltiesModal'
 import ReportModal from './ReportModal'
 
-export default function ContractModal({ userData, event_id, supplier_id, eventData, supplierData, user_id }) {
-    const [isOpen, setIsOpen] = useState(false)
+export default function ContractModal({ isOpen, onClose, userData, event_id, supplier_id, eventData, supplierData, user_id }) {
     const [payment_method, setPayment_method] = useState([])
     const [payment_method_error, setPayment_method_error] = useState('')
     const [contract_transaction, setContract_Transaction] = useState([])
@@ -98,8 +97,6 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
     const total_paid = contract_transaction.reduce((sum, trans) => sum + trans.amount, 0)
     const total_fees = contract_transaction.reduce((sum, trans) => sum + trans.process_fee, 0)
 
-    console.log(fullAmount)
-
     const not_include_fees = total_paid - total_fees
 
     // Collect and count unique issues
@@ -138,14 +135,6 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
     const eventDate = new Date(eventData?.event_date?.date_value);
 
     const showSubmitButton = userData?.role === "Supplier" && now.getDate() >= eventDate.getDate();
-
-    function open() {
-        setIsOpen(true)
-    }
-
-    function close() {
-        setIsOpen(false)
-    }
 
     const handleDeliveryStatus = async (deliveryId) => {
         Swal.fire({
@@ -395,21 +384,20 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
         return <div className='h-6 w-6 rounded-full animate-spin border border-t-blue-600'></div>
     }
 
+    console.log(supplierData)
+
     return (
         <>
-            <Button onClick={open} className={'transition-all duration-100 hover:bg-blue-700 self-center px-3 py-2 text-sm rounded-md bg-blue-600 text-white '}>View Contract</Button>
-
-            <Dialog open={isOpen} as='div' className={'z-999 relative focus:outline-none'} onClose={close}>
+            <Dialog open={isOpen} as='div' className={'z-999 relative focus:outline-none'} onClose={onClose}>
                 <div className="fixed inset-0 bg-black/25 " />
                 <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
-                            transition
-                            className="w-full max-w-4xl rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                            className="w-full max-w-4xl rounded-2xl bg-white shadow-2xl duration-300"
                         >
                             <div className='relative'>
                                 <button
-                                    onClick={close}
+                                    onClick={onClose}
                                     className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/80 hover:bg-gray-100 transition-colors duration-200"
                                 >
                                     <X size={20} className="text-gray-600" />

@@ -1,17 +1,15 @@
-import DashboardCard from "../../components/DashboardCards"
 import { Eye, PhilippinePeso, CalendarPlus, Calendar, Star, TrendingUp, ChartNoAxesCombined, Package, ReceiptText } from "lucide-react"
 import { TabGroup, TabPanel, TabPanels, TabList, Tab } from "@headlessui/react"
 import { Title } from "react-head"
-import { where, query, collection, onSnapshot, serverTimestamp, addDoc, getDocs } from "firebase/firestore"
-import { db, auth } from "../../firebase/firebase"
-import { act, useEffect, useRef, useState } from "react"
+import { where, query, collection, serverTimestamp, addDoc, getDocs } from "firebase/firestore"
+import { db } from "../../firebase/firebase"
+import { useEffect, useRef, useState } from "react"
 import { LineChart, PieChart, BarChart } from "../../components/Charts"
 import { useFetchReviews } from "../../hooks/useReviews"
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import { useFetchContract } from "../../hooks/useContract"
 import { useFetchEvents } from "../../hooks/useEvents"
-import ContractModal from "../../components/ContractModal"
 import { useFetchSupplierById, useFetchSuppliers, useFetchSupplierServices } from "../../hooks/useSupplier"
 import { useMemo } from "react";
 import Swal from "sweetalert2"
@@ -22,6 +20,8 @@ import { useFetchDeliveries } from "../../hooks/useDeliveries"
 import { useFetchTransactionById } from "../../hooks/useTransaction"
 import { useFetchAllApplication } from "../../hooks/useApplication"
 import GenerateReport from "../../components/GeneraeReport"
+import { lazy, Suspense } from "react";
+import LoadingOverlay from "../../components/LoadingOverlay"
 
 export default function SupplierDashboard({ userData }) {
 
@@ -37,6 +37,9 @@ export default function SupplierDashboard({ userData }) {
     const { deliveries, isLoading: isDeliveriesLoading } = useFetchDeliveries()
     const { transactions, isLoading: isTransactionLoading } = useFetchTransactionById(userData.id)
     const { applications: userApplications, isLoading: isApplicationLoading } = useFetchAllApplication()
+    const ContractModal = useMemo(() => lazy(() => import("../../components/ContractModal")), []);
+    const [isContractModalOpen, setIsContractModalOpen] = useState(false);
+    const [selectedContract, setSelectedContract] = useState(null)
 
     const applications = userApplications.filter(app => app.supplier_id === userData.id &&
         contracts.some(cont => cont.supplier_id === app.supplier_id && cont.event_id === app.event_id && cont.status !== 'Completed'))
@@ -212,10 +215,35 @@ export default function SupplierDashboard({ userData }) {
         return colors[status]
     }
 
+    const openContractModal = (contract) => {
+        setSelectedContract(contract)
+        setIsContractModalOpen(true)
+    };
+
+    const closeContractModal = () => {
+        setIsContractModalOpen(false)
+        setSelectedContract(null)
+    };
+
 
     return (
         <>
             <Title>Supplier Dashboard</Title>
+
+            {isContractModalOpen && selectedContract && (
+                <Suspense fallback={<LoadingOverlay isLoading={true} message="Pleasee waitt.." />}>
+                    <ContractModal
+                        isOpen={isContractModalOpen}
+                        onClose={closeContractModal}
+                        userData={userData}
+                        event_id={selectedContract.event_id}
+                        user_id={userData.id}
+                        supplier_id={selectedContract.supplier_id}
+                        eventData={selectedContract.eventData}
+                        supplierData={selectedContract.supplierData}
+                    />
+                </Suspense>
+            )}
 
             {isAllLoading ? (
                 <PageLoading />
@@ -451,7 +479,27 @@ export default function SupplierDashboard({ userData }) {
                                                     </div>
                                                 </div>
 
-                                                <ContractModal userData={userData} event_id={offers.event_id} supplier_id={offers.supplier_id} supplierData={supplier} eventData={contractEventsforPending[index]} user_id={userData.id} />
+                                                <button
+                                                    onClick={() => openContractModal({
+                                                        supplierData: supplier,
+                                                        eventData: contractEventsforPending[index],
+                                                        supplier_id: offers.supplier_id,
+                                                        user_id: userData.id,
+                                                        userData: userData,
+                                                        event_id: offers.event_id,
+                                                    })}
+                                                    className={'transition-all duration-100 hover:bg-blue-700 self-center px-3 py-2 text-sm rounded-md bg-blue-600 text-white '}
+                                                >
+                                                    View Contract
+                                                </button>
+
+                                                {/* <ContractModal
+                                                    userData={userData}
+                                                    event_id={offers.event_id}
+                                                    supplier_id={offers.supplier_id}
+                                                    supplierData={supplier}
+                                                    eventData={contractEventsforPending[index]}
+                                                    user_id={userData.id} /> */}
 
                                             </div>
                                         </div>
@@ -484,7 +532,26 @@ export default function SupplierDashboard({ userData }) {
                                                     </div>
                                                 </div>
 
-                                                <ContractModal userData={userData} event_id={offers.event_id} supplier_id={offers.supplier_id} supplierData={supplier} eventData={contractEventsforActive[index]} user_id={userData.id} />
+                                                <button
+                                                    onClick={() => openContractModal({
+                                                        supplierData: supplier,
+                                                        eventData: contractEventsforActive[index],
+                                                        supplier_id: offers.supplier_id,
+                                                        user_id: userData.id,
+                                                        userData: userData,
+                                                        event_id: offers.event_id,
+                                                    })}
+                                                    className={'transition-all duration-100 hover:bg-blue-700 self-center px-3 py-2 text-sm rounded-md bg-blue-600 text-white '}
+                                                >
+                                                    View Contract
+                                                </button>
+
+                                                {/* <ContractModal userData={userData}
+                                                    event_id={offers.event_id}
+                                                    supplier_id={offers.supplier_id}
+                                                    supplierData={supplier}
+                                                    eventData={contractEventsforActive[index]}
+                                                    user_id={userData.id} /> */}
 
                                             </div>
                                         </div>
@@ -529,7 +596,27 @@ export default function SupplierDashboard({ userData }) {
                                         </div>
 
                                         <div className="flex gap-2">
-                                            <ContractModal userData={userData} event_id={contract.event_id} supplier_id={contract.supplier_id} supplierData={supplier} eventData={contractEventsforComplete[index]} user_id={userData.id} />
+                                            {/* <ContractModal
+                                                userData={userData}
+                                                event_id={contract.event_id}
+                                                supplier_id={contract.supplier_id}
+                                                supplierData={supplier}
+                                                eventData={contractEventsforComplete[index]}
+                                                user_id={userData.id} /> */}
+
+                                            <button
+                                                onClick={() => openContractModal({
+                                                    supplierData: supplier,
+                                                    eventData: contractEventsforComplete[index],
+                                                    supplier_id: contract.supplier_id,
+                                                    user_id: userData.id,
+                                                    userData: userData,
+                                                    event_id: contract.event_id,
+                                                })}
+                                                className={'transition-all duration-100 hover:bg-blue-700 self-center px-3 py-2 text-sm rounded-md bg-blue-600 text-white '}
+                                            >
+                                                View Contract
+                                            </button>
                                             {reviewed.find(rev => rev.reviewed_id === contract.supplier_id && rev.user_id === contract.planner_id && contract.event_id === rev.event_id) ? (
                                                 <span className="text-white py-1 px-4 rounded-md text-sm flex items-center bg-gray-400">Reviewed</span>
                                             ) : (

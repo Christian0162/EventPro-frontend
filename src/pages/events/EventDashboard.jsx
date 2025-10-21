@@ -1,5 +1,3 @@
-import DashboardCard from "../../components/DashboardCards"
-import { } from "react-router-dom"
 import { CalendarDays, Star, PhilippinePeso, ShieldCheck, Calendar, ReceiptText, BarChart3, ChartNoAxesCombined } from "lucide-react"
 import { TabGroup, TabPanel, TabPanels, TabList, Tab } from "@headlessui/react"
 import { PieChart, BarChart } from "../../components/Charts"
@@ -7,7 +5,6 @@ import { Title } from "react-head"
 import { useFetchContract } from "../../hooks/useContract"
 import { useEffect, useMemo, useState } from "react"
 import { useFetchEventsById } from "../../hooks/useEvents"
-import ContractModal from "../../components/ContractModal"
 import { useFetchSuppliers } from "../../hooks/useSupplier"
 import { useFetchTransactionById } from "../../hooks/useTransaction"
 import PageLoading from "../../components/PageLoading"
@@ -16,9 +13,14 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import FullCalendar from "@fullcalendar/react"
 import EventModal from "../../components/EventModal"
 import GenerateReport from "../../components/GeneraeReport"
+import { lazy, Suspense } from "react";
+import LoadingOverlay from "../../components/LoadingOverlay"
 
 export default function EventDashboard({ userData }) {
 
+    const ContractModal = useMemo(() => lazy(() => import("../../components/ContractModal")), []);
+    const [isContractModalOpen, setIsContractModalOpen] = useState(false);
+    const [selectedContract, setSelectedContract] = useState(null)
     const { contracts, isLoading: isContractsLoading } = useFetchContract()
     const { events, isLoading: isEventLoading } = useFetchEventsById(userData?.id)
     const { suppliers, isLoading: isSuppliersLoading } = useFetchSuppliers()
@@ -171,10 +173,35 @@ export default function EventDashboard({ userData }) {
         return colors[status]
     }
 
+    const openContractModal = (contract) => {
+        setSelectedContract(contract)
+        setIsContractModalOpen(true)
+    };
+
+    const closeContractModal = () => {
+        setIsContractModalOpen(false)
+        setSelectedContract(null)
+    };
+
     return (
         <>
             {isAllLoading && (
                 <PageLoading />
+            )}
+
+            {isContractModalOpen && selectedContract && (
+                <Suspense fallback={<LoadingOverlay isLoading={true} message="Pleasee waitt.." />}>
+                    <ContractModal
+                        isOpen={isContractModalOpen}
+                        onClose={closeContractModal}
+                        userData={userData}
+                        event_id={selectedContract.event_id}
+                        user_id={userData.id}
+                        supplier_id={selectedContract.supplier_id}
+                        eventData={selectedContract.eventData}
+                        supplierData={selectedContract.supplierData}
+                    />
+                </Suspense>
             )}
 
             {!isAllLoading && (
@@ -230,7 +257,7 @@ export default function EventDashboard({ userData }) {
                             { title: "Active Contracts", value: activeContracts.length, icon: ReceiptText, color: "from-blue-500 to-blue-600" },
                             { title: "Upcoming Events", value: totalUpcomingsEvents, icon: CalendarDays, color: "from-green-500 to-green-600" },
                             { title: "Rated Suppliers", value: reviewedSuppliers.length, icon: Star, color: "from-yellow-500 to-yellow-600" },
-                            { title: "Budget Spent", value: transactions.reduce((sum, trans, i) => sum + trans.amount, 0), icon: PhilippinePeso, color: "from-violet-500 to-violet-600" },
+                            { title: "Budget Spent", value: transactions.reduce((sum, trans, i) => sum + trans.amount, 0).toFixed(2), icon: PhilippinePeso, color: "from-violet-500 to-violet-600" },
                         ].map(({ title, value, icon: Icon, color }, i) => (
                             <div
                                 key={i}
@@ -384,7 +411,19 @@ export default function EventDashboard({ userData }) {
                                                     </div>
                                                 </div>
 
-                                                <ContractModal userData={userData} eventData={eventContracts[index]} event_id={offers.event_id} supplier_id={offers.supplier_id} supplierData={contractSuppliers[offers.supplier_id]} user_id={userData.id} />
+                                                <button
+                                                    onClick={() => openContractModal({
+                                                        supplierData: contractSuppliers[offers.supplier_id],
+                                                        eventData: eventContracts.find(e => e.id === offers.event_id),
+                                                        supplier_id: offers.supplier_id,
+                                                        user_id: userData.id,
+                                                        userData: userData,
+                                                        event_id: offers.event_id,
+                                                    })}
+                                                    className={'transition-all duration-100 hover:bg-blue-700 self-center px-3 py-2 text-sm rounded-md bg-blue-600 text-white '}
+                                                >
+                                                    View Contract
+                                                </button>
 
                                             </div>
                                         </div>
@@ -415,7 +454,6 @@ export default function EventDashboard({ userData }) {
                                                 }}
                                                 titleFormat={window.innerWidth < 640 ? { month: 'short', year: 'numeric' } : { month: 'long', year: 'numeric' }}
                                                 events={events.map(e => ({ title: e.event_name, date: e.event_date?.date_value }))}
-
                                             />
                                         </div>
                                     </div>

@@ -237,9 +237,17 @@ export default function Event({ userData }) {
 
             {!isAllLoading && (
                 <>
-                    <div className="flex justify-between md:items-center lg:items-center flex-col lg:flex-row md:flex-row">
+                    <div className="flex justify-between md:items-center lg:items-baseline flex-col lg:flex-row md:flex-row">
                         <div className="flex flex-col">
-                            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Events</h1>
+                            <div className="flex items-center gap-5">
+                                <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Events</h1>
+
+                                {userData.role === "Event Planner" && userData.verification_status === "verified" && (
+                                    <Link to={'/events/create'}>
+                                        <button className="bg-blue-600 text-white rounded-md px-5 lg:px-8 md:px-8 sm:px-7 py-2 lg:py-2 font-semibold mt-3">Create New Event</button>
+                                    </Link>
+                                )}
+                            </div>
                             <span className="mt-2 text-gray-600">
                                 {userData.verification_status === "verified" ?
                                     'Create and manage your events in one place' :
@@ -248,7 +256,7 @@ export default function Event({ userData }) {
                         </div>
 
 
-                        <div className="mt-6">
+                        <div>
                             <input
                                 type="text"
                                 placeholder="Search events by name, location, or category..."
@@ -260,12 +268,6 @@ export default function Event({ userData }) {
 
 
                     </div>
-                    {userData.role === "Event Planner" && userData.verification_status === "verified" && (
-                        <Link to={'/events/create'}>
-                            <button className="bg-blue-600 text-white rounded-md px-5 lg:px-10 md:px-8 sm:px-7 py-2 lg:py-3 font-semibold mt-3">Create New Event</button>
-                        </Link>
-                    )}
-
 
                     {events?.length > 0 && (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-5">

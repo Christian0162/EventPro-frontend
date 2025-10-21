@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useFetchNotificationsById } from "../hooks/useNotifications"
 import { BellDot, X, Check, Settings, MessageSquare } from "lucide-react";
 import { db } from "../firebase/firebase"
@@ -9,10 +9,11 @@ import { formatDistanceToNow } from "date-fns";
 import { useFetchEvents } from "../hooks/useEvents";
 import { useFetchContract } from "../hooks/useContract";
 import EventModal from "./EventModal";
-import ContractModal from "./ContractModal";
 import { useFetchSuppliers } from "../hooks/useSupplier";
 import { useFetchAllReports } from "../hooks/useReports";
 import { ReportReview } from "./ReviewModal";
+import { lazy, Suspense } from "react";
+import LoadingOverlay from "./LoadingOverlay";
 
 export default function UserNotification({ userData }) {
     const [isOpen, setIsOpen] = useState(false)
@@ -26,6 +27,9 @@ export default function UserNotification({ userData }) {
     const { suppliers } = useFetchSuppliers()
     const [selectedItem, setSelectedItem] = useState(null);
     const { reports } = useFetchAllReports()
+    const ContractModal = useMemo(() => lazy(() => import("./ContractModal")), []);
+    const [isContractModalOpen, setIsContractModalOpen] = useState(false);
+    const [selectedContract, setSelectedContract] = useState(null)
 
     const unreadCount = notifications.filter(notification => notification.unread).length
 
@@ -82,8 +86,33 @@ export default function UserNotification({ userData }) {
         setModalOpen(true);
     };
 
+    const openContractModal = (contract) => {
+        setSelectedContract(contract)
+        setIsContractModalOpen(true)
+    };
+
+    const closeContractModal = () => {
+        setIsContractModalOpen(false)
+        setSelectedContract(null)
+    };
+
     return (
         <>
+            {isContractModalOpen && selectedContract && (
+                <Suspense fallback={<LoadingOverlay isLoading={true} message="Pleasee waitt.." />}>
+                    <ContractModal
+                        isOpen={isContractModalOpen}
+                        onClose={closeContractModal}
+                        userData={userData}
+                        event_id={selectedContract.event_id}
+                        user_id={userData.id}
+                        supplier_id={selectedContract.supplier_id}
+                        eventData={selectedContract.eventData}
+                        supplierData={selectedContract.supplierData}
+                    />
+                </Suspense>
+            )}
+
             {/* Notification button */}
             <div className="relative">
                 <button
@@ -219,8 +248,7 @@ export default function UserNotification({ userData }) {
                 <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" />
                 <div className="fixed inset-0 flex items-center justify-center p-4">
                     <DialogPanel
-                        transition
-                        className="w-full max-w-lg rounded-2xl bg-white shadow-2xl p-6 mt-15 relative transition-all duration-300 ease-out data-closed:scale-95 data-closed:opacity-0"
+                        className="w-full max-w-lg rounded-2xl bg-white shadow-2xl p-6 mt-15 relative transition-all"
                     >
                         {/* Close button */}
                         <button
@@ -274,7 +302,21 @@ export default function UserNotification({ userData }) {
                                             ) : selectedItem.type === "report" ? (
                                                 <ReportReview report={selectedItem?.report} userData={selectedItem.userData} />
                                             ) : (
-                                                <ContractModal event_id={selectedItem.event.id} supplier_id={selectedItem.supplier.id} user_id={userData.id} userData={userData} supplierData={selectedItem.supplier} eventData={selectedItem.event} />
+
+                                                <button
+                                                    onClick={() => openContractModal({
+                                                        supplierData: selectedItem.supplier,
+                                                        eventData: selectedItem.event,
+                                                        supplier_id: selectedItem.supplier.id,
+                                                        user_id: userData.id,
+                                                        userData: userData,
+                                                        event_id: selectedItem.event.id,
+                                                    })}
+                                                    className={'transition-all duration-100 hover:bg-blue-700 self-center px-3 py-2 text-sm rounded-md bg-blue-600 text-white '}
+                                                >
+                                                    View Contract
+                                                </button>
+
                                             )}
                                         </>
                                     )}

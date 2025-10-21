@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import AddressAutoComplete from "../../components/AddressAutoComplete";
 import Select from "react-select"
 import { X, Calendar, Clock, MapPin, Tag, Users, FileText, Send, Check, CircleCheck } from "lucide-react";
@@ -11,7 +11,6 @@ import { Review } from '../../components/ReviewModal'
 import { useParams, Link } from "react-router-dom";
 import { useFetchReviews } from "../../hooks/useReviews";
 import { useFetchSupplierServices, useFetchSuppliers } from "../../hooks/useSupplier";
-import ContractModal from "../../components/ContractModal";
 import { useFetchContract } from "../../hooks/useContract";
 import { eventStatusStyles, EventTypeOptions, headerBackgrounds, SupplierOptions } from "../../constants/categories";
 import { RejectReview } from "../../components/ReviewModal";
@@ -24,10 +23,14 @@ import { UpdateEventBackground } from "../../components/UpdateModal";
 import { useFetchAllTransaction } from "../../hooks/useTransaction";
 import { EventSupplierMap } from "../../constants/categories";
 import { lazy, Suspense } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function EditEvent({ userData }) {
 
-    const SupplierModal = lazy(() => import("../../components/SupplierModal"));
+    const SupplierModal = useMemo(() => lazy(() => import("../../components/SupplierModal")), []);
+    const ContractModal = useMemo(() => lazy(() => import("../../components/ContractModal")), []);
+
+    const navigate = useNavigate()
     const { id } = useParams();
     const [event_name, setEvent_name] = useState('')
     const [event_location, setEvent_location] = useState('')
@@ -54,8 +57,10 @@ export default function EditEvent({ userData }) {
     const { users } = useFetchUsers()
     const { userProfiles } = useFetchUserProfiles()
     const [error, setError] = useState('')
-    const [isModalOpen, setIsModalOpen] = useState(false)
+    const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
+    const [isContractModalOpen, setIsContractModalOpen] = useState(false);
     const [selectedShop, setSelectedShop] = useState(null)
+    const [selectedContract, setSelectedContract] = useState(null)
 
     const data = events.find(event => event.id === id)
 
@@ -243,19 +248,34 @@ export default function EditEvent({ userData }) {
         status = { label: 'Completed', value: 'completed' };
     }
 
-    const openModal = (supplier) => {
+
+    const openSupplierModal = (supplier) => {
         setSelectedShop(supplier)
-        setIsModalOpen(true)
+        setIsSupplierModalOpen(true)
     };
 
-    const closeModal = () => {
-        setIsModalOpen(false)
+    const closeSupplierModal = () => {
+        setIsSupplierModalOpen(false)
+        setSelectedShop(null)
+    };
 
+    const openContractModal = (contract) => {
+        setSelectedContract(contract)
+        setIsContractModalOpen(true)
+    };
+
+    const closeContractModal = () => {
+        setIsContractModalOpen(false)
+        setSelectedContract(null)
     };
 
     const matchedSuppliers = SupplierOptions.filter(s =>
         EventSupplierMap[event_type?.value]?.includes(s.value)
     );
+
+    if (userData?.role === "Supplier") {
+        return navigate('/')
+    }
 
     return (
         <>
@@ -263,17 +283,32 @@ export default function EditEvent({ userData }) {
                 <PageLoading />
             )}
 
-            {isModalOpen && selectedShop && (
+            {isSupplierModalOpen && selectedShop && (
                 <Suspense fallback={<LoadingOverlay isLoading={true} message="Pleasee waitt.." />}>
                     <SupplierModal
-                        isOpen={isModalOpen}
-                        onClose={closeModal}
+                        isOpen={isSupplierModalOpen}
+                        onClose={closeSupplierModal}
                         supplierData={selectedShop?.supplierData}
                         services={selectedShop?.services}
                         reviews={selectedShop?.reviews}
                         userData={userData}
                         averageRating={selectedShop?.averageRating}
                         applications={applications}
+                    />
+                </Suspense>
+            )}
+
+            {isContractModalOpen && selectedContract && (
+                <Suspense fallback={<LoadingOverlay isLoading={true} message="Pleasee waitt.." />}>
+                    <ContractModal
+                        isOpen={isContractModalOpen}
+                        onClose={closeContractModal}
+                        userData={userData}
+                        event_id={selectedContract.event_id}
+                        user_id={userData.id}
+                        supplier_id={selectedContract.supplier_id}
+                        eventData={selectedContract.eventData}
+                        supplierData={selectedContract.supplierData}
                     />
                 </Suspense>
             )}
@@ -637,7 +672,7 @@ export default function EditEvent({ userData }) {
                                                                         <span className="text-sm text-gray-600 mr-2">Rating: {averageRating}</span>
                                                                         {/* Action Button */}
                                                                         <button
-                                                                            onClick={() => openModal({
+                                                                            onClick={() => openSupplierModal({
                                                                                 supplierData: supplier,
                                                                                 services: userServices,
                                                                                 reviews: reviews.filter(
@@ -715,7 +750,7 @@ export default function EditEvent({ userData }) {
                                                             <span className="text-sm text-gray-600 mr-2">Rating: {averageRating}</span>
                                                             {/* Action Button */}
                                                             <button
-                                                                onClick={() => openModal({
+                                                                onClick={() => openSupplierModal({
                                                                     supplierData: supplier,
                                                                     services: userServices,
                                                                     reviews: reviews.filter(
@@ -735,9 +770,19 @@ export default function EditEvent({ userData }) {
 
                                                 <div className="flex gap-3">
                                                     <div className="flex items-center space-x-2">
-                                                        <ContractModal userData={userData} event_id={id} user_id={userData.id} supplier_id={supplier.id} eventData={eventData} supplierData={supplier} />
-                                                    </div>
-
+                                                        <button
+                                                            onClick={() => openContractModal({
+                                                                supplierData: supplier,
+                                                                eventData: eventData,
+                                                                supplier_id: supplier.id,
+                                                                user_id: userData.id,
+                                                                userData: userData,
+                                                                event_id: id,
+                                                            })}
+                                                            className={'transition-all duration-100 hover:bg-blue-700 self-center px-3 py-2 text-sm rounded-md bg-blue-600 text-white '}
+                                                        >
+                                                            View Contract
+                                                        </button>                                                    </div>
                                                     <div className="flex items-center text-sm gap-3">
                                                         {reviews.find(rev => rev.reviewed_id === supplier.id && rev.user_id === userData.id && rev.event_id === eventData.id) ? (
                                                             <span className="text-white py-2 px-4 rounded-md text-sm bg-gray-500 ">Reviewed</span>
@@ -809,7 +854,7 @@ export default function EditEvent({ userData }) {
                                                         <div className="flex items-center mt-1">
                                                             <span className="text-sm text-gray-600 mr-2">Rating: {averageRating}</span>
                                                             <button
-                                                                onClick={() => openModal({
+                                                                onClick={() => openSupplierModal({
                                                                     supplierData: supplier,
                                                                     services: userServices,
                                                                     reviews: reviews.filter(
@@ -826,15 +871,19 @@ export default function EditEvent({ userData }) {
                                                 </div>
 
                                                 <div className="flex items-center space-x-3">
-                                                    <ContractModal
-                                                        userData={userData}
-                                                        event_id={id}
-                                                        user_id={userData.id}
-                                                        supplier_id={supplier.id}
-                                                        eventData={eventData}
-                                                        supplierData={supplier}
-                                                    />
-
+                                                    <button
+                                                        onClick={() => openContractModal({
+                                                            supplierData: supplier,
+                                                            eventData: eventData,
+                                                            supplier_id: supplier.id,
+                                                            user_id: userData.id,
+                                                            userData: userData,
+                                                            event_id: id,
+                                                        })}
+                                                        className={'transition-all duration-100 hover:bg-blue-700 self-center px-3 py-2 text-sm rounded-md bg-blue-600 text-white '}
+                                                    >
+                                                        View Contract
+                                                    </button>
                                                 </div>
                                             </div>
                                         )
@@ -898,7 +947,7 @@ export default function EditEvent({ userData }) {
                                                         <div className="flex items-center mt-1 space-x-2">
                                                             <span className="text-sm text-gray-600">Rating: {averageRating}</span>
                                                             <button
-                                                                onClick={() => openModal({
+                                                                onClick={() => openSupplierModal({
                                                                     supplierData: supplier,
                                                                     services: userServices,
                                                                     reviews: reviews.filter(
@@ -1006,7 +1055,7 @@ export default function EditEvent({ userData }) {
                                                             <div className="flex items-center mt-1 space-x-2">
                                                                 <span className="text-sm text-gray-600">Rating: {averageRating}</span>
                                                                 <button
-                                                                    onClick={() => openModal({
+                                                                    onClick={() => openSupplierModal({
                                                                         supplierData: supplier,
                                                                         services: userServices,
                                                                         reviews: reviews.filter(
@@ -1024,13 +1073,19 @@ export default function EditEvent({ userData }) {
 
                                                     <div className="flex items-center space-x-3">
 
-                                                        <ContractModal
-                                                            userData={userData}
-                                                            event_id={id}
-                                                            supplier_id={supplier.id}
-                                                            eventData={eventData}
-                                                            supplierData={supplier}
-                                                        />
+                                                        <button
+                                                            onClick={() => openContractModal({
+                                                                supplierData: supplier,
+                                                                eventData: eventData,
+                                                                supplier_id: supplier.id,
+                                                                user_id: userData.id,
+                                                                userData: userData,
+                                                                event_id: id,
+                                                            })}
+                                                            className={'transition-all duration-100 hover:bg-blue-700 self-center px-3 py-2 text-sm rounded-md bg-blue-600 text-white '}
+                                                        >
+                                                            View Contract
+                                                        </button>
                                                     </div>
                                                 </div>
                                             )

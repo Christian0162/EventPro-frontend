@@ -1,5 +1,5 @@
 import { Search, MapPin, PhilippinePeso, Clock, Star, Bot } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Cards from "../../components/Cards";
 import Select from 'react-select';
 import { SupplierOptions } from "../../constants/categories";
@@ -15,7 +15,8 @@ import LoadingOverlay from "../../components/LoadingOverlay";
 
 export default function Supplier({ userData }) {
 
-    const SupplierModal = lazy(() => import("../../components/SupplierModal"));
+    const SupplierModal = useMemo(() => lazy(() => import("../../components/SupplierModal")), []);
+
     const [category, setCategory] = useState(null);
     const [shop, setShop] = useState([]);
     const [filteredShops, setFilteredShops] = useState([]);
@@ -100,23 +101,30 @@ export default function Supplier({ userData }) {
     return (
         <>
 
-            <div className={`mb-8  ${isAllLoading ? 'hidden' : 'block'}`}>
-                <div className="flex items-center justify-between mb-6">
-                    <div>
-                        <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                            Suppliers
-                        </h1>
-                    </div>
-                    {userData.role !== "Supplier" && (
+            <div className={`mb-8 flex items-baseline justify-between`}>
+                <div className="flex flex-col gap-2 items-baseline justify-between">
+                    <div className="flex gap-4 items-baseline">
                         <div>
-                            <AIModal ai_response={setAi_response} ai_shops={setFilteredShops} />
+                            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                                Suppliers
+                            </h1>
                         </div>
-                    )}
+
+                        {userData.role !== "Supplier" && (
+                            <div>
+                                <AIModal ai_response={setAi_response} ai_shops={setFilteredShops} />
+                            </div>
+                        )}
+
+                    </div>
+                    <span className="mt-2 text-gray-600">
+                        Discover trusted suppliers for your needs.
+                    </span>
                 </div>
 
                 {/* Search and Filter Section */}
-                <div className="flex items-center">
-                    <div className="flex flex-col  md:flex-row gap-4">
+                <div className="flex flex-col items-end">
+                    <div className="flex flex-col md:flex-row gap-4">
                         {/* Search Bar */}
                         <div className="flex w-full gap-3">
                             <div className="flex w-[35rem] relative">
@@ -132,7 +140,7 @@ export default function Supplier({ userData }) {
                         </div>
                     </div>
                     {/* Category Filter */}
-                    <div className="w-full md:w-72 mt-3 ml-auto">
+                    <div className="w-full md:w-72 mt-3">
                         <Select
                             onChange={setCategory}
                             value={category}

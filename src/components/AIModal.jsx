@@ -162,7 +162,7 @@ export default function AIModal({ ai_response, ai_shops }) {
             const sortedShops = [...filteredShops].sort((a, b) => b.avg_rating - a.avg_rating);
 
             // Send data to AI recommendation endpoint
-            const response = await fetch("https://eventpro-backend.onrender.com/api/v1/recommend", {
+            const response = await fetch("http://127.0.0.1:8000/api/v1/recommend", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -172,6 +172,8 @@ export default function AIModal({ ai_response, ai_shops }) {
             });
 
             const data = await response.json();
+
+            console.log(data)
 
             if (data) {
                 // Update state with results
@@ -202,7 +204,7 @@ export default function AIModal({ ai_response, ai_shops }) {
                 className="relative overflow-hidden transition-all rounded-full hover:scale-105 px-6 py-2 text-white bg-gradient-to-r from-blue-600 via-purple-500 to-violet-600 bg-[length:200%_200%] duration-500 ease-in-out hover:bg-[position:100%_100%] flex items-center gap-3"
             >
                 <Bot size={21} />
-                <span className="hidden sm:block md:block lg:block">AI Search</span>
+                <span className="hidden sm:hidden md:hidden lg:hidden xl:block">AI Search</span>
             </Button>
 
             <Dialog open={isOpen} as="div" className="relative z-50 focus:outline-none" onClose={close}>

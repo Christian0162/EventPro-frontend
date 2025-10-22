@@ -6,7 +6,7 @@ import { useState } from "react";
 export const useCreatePayout = () => {
     const [isLoading, setIsLoading] = useState(false)
 
-    const createPayout = async (credentials) => {
+    const createPayout = async (credentials, userData) => {
 
         console.log(credentials.account_holder_name)
         Swal.fire({
@@ -58,7 +58,7 @@ export const useCreatePayout = () => {
                             })
 
                             await updateDoc(doc(db, 'users', credentials.user_id), {
-                                balance: credentials.balance - credentials.amount
+                                balance: userData.balance - credentials.amount
                             })
 
                             Swal.fire({

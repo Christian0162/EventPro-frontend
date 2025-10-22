@@ -4,13 +4,14 @@ import { useEffect, useState } from "react"
 
 export const useFetchAllContact = () => {
     const [contacts, setContacts] = useState([])
-    const [isLoading, setIsLoading] = useState(true)
+    const [isLoading, setIsLoading] = useState(false)
 
     useEffect(() => {
+        setIsLoading(true)
         try {
             const unsubscribe = onSnapshot(collection(db, "contacts"), (onsnapshot) => {
-                const contracts = onsnapshot.docs.map(contracts => ({ id: contracts.id, ...contracts.data() }))
-                setContacts(contracts)
+                setContacts(onsnapshot.docs.map(contracts => ({ id: contracts.id, ...contracts.data() })))
+                setIsLoading(false)
             })
 
             return () => unsubscribe()

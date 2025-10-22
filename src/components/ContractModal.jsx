@@ -18,9 +18,9 @@ import { useFetchUsers } from '../hooks/useUsers'
 import { useFetchContract } from '../hooks/useContract'
 import DamagePenaltiesModal from './DamagePenaltiesModal'
 import ReportModal from './ReportModal'
+import { useFetchAllReports } from '../hooks/useReports'
 
-export default function ContractModal({ userData, event_id, supplier_id, eventData, supplierData, user_id }) {
-    const [isOpen, setIsOpen] = useState(false)
+export default function ContractModal({ isOpen, onClose, userData, event_id, supplier_id, eventData, supplierData, user_id }) {
     const [payment_method, setPayment_method] = useState([])
     const [payment_method_error, setPayment_method_error] = useState('')
     const [contract_transaction, setContract_Transaction] = useState([])
@@ -35,8 +35,11 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
     const { contracts: AllContracts } = useFetchContract()
     const { users } = useFetchUsers()
     const paymentSectionRef = useRef(null);
+    const { reports } = useFetchAllReports()
     const navigate = useNavigate()
     const [now, setNow] = useState(new Date())
+
+    const isAlreadyReported = reports.find(r => r.contract_id === contract?.id && r.user_id === userData?.id)
 
     const contractDeliveries = deliveries.filter(del => del.contract_id === contract?.id && del.supplier_id === supplier_id)
 
@@ -98,8 +101,6 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
     const total_paid = contract_transaction.reduce((sum, trans) => sum + trans.amount, 0)
     const total_fees = contract_transaction.reduce((sum, trans) => sum + trans.process_fee, 0)
 
-    console.log(fullAmount)
-
     const not_include_fees = total_paid - total_fees
 
     // Collect and count unique issues
@@ -138,14 +139,6 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
     const eventDate = new Date(eventData?.event_date?.date_value);
 
     const showSubmitButton = userData?.role === "Supplier" && now.getDate() >= eventDate.getDate();
-
-    function open() {
-        setIsOpen(true)
-    }
-
-    function close() {
-        setIsOpen(false)
-    }
 
     const handleDeliveryStatus = async (deliveryId) => {
         Swal.fire({
@@ -395,21 +388,20 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
         return <div className='h-6 w-6 rounded-full animate-spin border border-t-blue-600'></div>
     }
 
+    console.log(supplierData)
+
     return (
         <>
-            <Button onClick={open} className={'transition-all duration-100 hover:bg-blue-700 self-center px-3 py-2 text-sm rounded-md bg-blue-600 text-white '}>View Contract</Button>
-
-            <Dialog open={isOpen} as='div' className={'z-999 relative focus:outline-none'} onClose={close}>
+            <Dialog open={isOpen} as='div' className={'z-999 relative focus:outline-none'} onClose={onClose}>
                 <div className="fixed inset-0 bg-black/25 " />
                 <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
-                            transition
-                            className="w-full max-w-4xl rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                            className="w-full max-w-4xl rounded-2xl bg-white shadow-2xl duration-300"
                         >
                             <div className='relative'>
                                 <button
-                                    onClick={close}
+                                    onClick={onClose}
                                     className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/80 hover:bg-gray-100 transition-colors duration-200"
                                 >
                                     <X size={20} className="text-gray-600" />
@@ -701,122 +693,124 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
                                                 )}
 
                                                 {/* Payment Summary */}
-                                                <div className={`w-full ${userData?.role === "Supplier" ? 'h-[470px]' : 'h-[410px]'}  rounded-lg p-6 mt-8 border border-gray-300`}>
-                                                    <div className='flex items-center justify-between mb-2'>
-                                                        <div className='flex gap-2 items-center'>
-                                                            <PhilippinePeso className='text-green-600' />
-                                                            <p className="font-bold text-lg">Payment Summary</p>
+                                                {contract.status !== 'Cancelled' && (
+                                                    <div className={`w-full ${userData?.role === "Supplier" ? 'h-[470px]' : 'h-[410px]'}  rounded-lg p-6 mt-8 border border-gray-300`}>
+                                                        <div className='flex items-center justify-between mb-2'>
+                                                            <div className='flex gap-2 items-center'>
+                                                                <PhilippinePeso className='text-green-600' />
+                                                                <p className="font-bold text-lg">Payment Summary</p>
+                                                            </div>
+
+                                                            <div className='flex items-center gap-2'>
+                                                                <span className='block text-sm text-gray-800 font-semibold'>Payment status:</span>
+                                                                <span className={`block text-white px-3 py-[2px] rounded-full text-sm ${(total_paid - total_fees) === service_price ? "bg-green-600" : contract_transaction.length > 0 ? "bg-orange-500" : 'bg-gray-400'}`}>{(total_paid - total_fees) === service_price ? 'FULLY PAID' : contract_transaction.length > 0 ? 'PARTIAL PAID' : 'UNPAID'}</span>
+                                                            </div>
                                                         </div>
 
-                                                        <div className='flex items-center gap-2'>
-                                                            <span className='block text-sm text-gray-800 font-semibold'>Payment status:</span>
-                                                            <span className={`block text-white px-3 py-[2px] rounded-full text-sm ${(total_paid - total_fees) === service_price ? "bg-green-600" : contract_transaction.length > 0 ? "bg-orange-500" : 'bg-gray-400'}`}>{(total_paid - total_fees) === service_price ? 'FULLY PAID' : contract_transaction.length > 0 ? 'PARTIAL PAID' : 'UNPAID'}</span>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="bg-gray-50 rounded-lg p-4">
-                                                        <div className='flex justify-between flex-col'>
-                                                            <div className="space-y-3">
-                                                                <div className="flex justify-between items-center">
-                                                                    <span className="text-gray-600">Services Subtotal</span>
-                                                                    <span className="font-semibold">₱{service_price.toLocaleString()}</span>
-                                                                </div>
-                                                                {userData?.role === "Supplier" && (
-                                                                    <>
-                                                                        <div className="flex justify-between items-center">
-                                                                            <span className="text-gray-600">Platform Fee</span>
-                                                                            <span className="font-semibold text-red-600"> - ₱{platformFee.toLocaleString()}</span>
-                                                                        </div>
-
-                                                                        <div className="flex flex-col gap-2">
+                                                        <div className="bg-gray-50 rounded-lg p-4">
+                                                            <div className='flex justify-between flex-col'>
+                                                                <div className="space-y-3">
+                                                                    <div className="flex justify-between items-center">
+                                                                        <span className="text-gray-600">Services Subtotal</span>
+                                                                        <span className="font-semibold">₱{service_price.toLocaleString()}</span>
+                                                                    </div>
+                                                                    {userData?.role === "Supplier" && (
+                                                                        <>
+                                                                            <div className="flex justify-between items-center">
+                                                                                <span className="text-gray-600">Platform Fee</span>
+                                                                                <span className="font-semibold text-red-600"> - ₱{platformFee.toLocaleString()}</span>
+                                                                            </div>
 
                                                                             <div className="flex flex-col gap-2">
-                                                                                <div className="flex justify-between items-center">
-                                                                                    <span className="text-gray-600 font-medium">Total Deductions (from deliveries)</span>
-                                                                                    <span className="font-semibold text-red-600">
-                                                                                        - ₱{totalDeductions.toLocaleString()}
-                                                                                    </span>
+
+                                                                                <div className="flex flex-col gap-2">
+                                                                                    <div className="flex justify-between items-center">
+                                                                                        <span className="text-gray-600 font-medium">Total Deductions (from deliveries)</span>
+                                                                                        <span className="font-semibold text-red-600">
+                                                                                            - ₱{totalDeductions.toLocaleString()}
+                                                                                        </span>
+                                                                                    </div>
+
+                                                                                    {Object.keys(issueCount).length > 0 && (
+                                                                                        <ul className="list-disc list-inside text-sm text-gray-600 mt-1">
+                                                                                            {Object.entries(issueCount).map(([issue, count]) => (
+                                                                                                <li key={issue}>
+                                                                                                    {issue} {count > 1 && <span className="text-gray-500">(×{count})</span>}
+                                                                                                </li>
+                                                                                            ))}
+                                                                                        </ul>
+                                                                                    )}
                                                                                 </div>
-
-                                                                                {Object.keys(issueCount).length > 0 && (
-                                                                                    <ul className="list-disc list-inside text-sm text-gray-600 mt-1">
-                                                                                        {Object.entries(issueCount).map(([issue, count]) => (
-                                                                                            <li key={issue}>
-                                                                                                {issue} {count > 1 && <span className="text-gray-500">(×{count})</span>}
-                                                                                            </li>
-                                                                                        ))}
-                                                                                    </ul>
-                                                                                )}
                                                                             </div>
-                                                                        </div>
 
-                                                                        <div className="border-t border-gray-300 pt-3">
+                                                                            <div className="border-t border-gray-300 pt-3">
+                                                                                <div className="flex justify-between items-center">
+                                                                                    <span className="text-md font-semibold text-gray-800">Amount To Recieve</span>
+                                                                                    <span className="text-lg font-semibold text-gray-800">₱{userData?.role === "Supplier" ? finalAmount.toLocaleString() : service_price}</span>
+                                                                                </div>
+                                                                            </div>
+                                                                        </>
+                                                                    )}
+
+
+                                                                    {userData?.role === "Event Planner" && (
+                                                                        <>
                                                                             <div className="flex justify-between items-center">
-                                                                                <span className="text-md font-semibold text-gray-800">Amount To Recieve</span>
-                                                                                <span className="text-lg font-semibold text-gray-800">₱{userData?.role === "Supplier" ? finalAmount.toLocaleString() : service_price}</span>
+                                                                                <span className="text-gray-600">Processing Fee ({process_fee * 100}% Xendit)</span>
+                                                                                <span className="font-semibold">₱{processFee.toLocaleString()}</span>
                                                                             </div>
-                                                                        </div>
-                                                                    </>
-                                                                )}
-
-
-                                                                {userData?.role === "Event Planner" && (
-                                                                    <>
-                                                                        <div className="flex justify-between items-center">
-                                                                            <span className="text-gray-600">Processing Fee ({process_fee * 100}% Xendit)</span>
-                                                                            <span className="font-semibold">₱{processFee.toLocaleString()}</span>
-                                                                        </div>
-                                                                        {isDownPayment ? (
-                                                                            <>
+                                                                            {isDownPayment ? (
+                                                                                <>
+                                                                                    <div>
+                                                                                        <div className="border-t pt-2 border-gray-300 flex justify-between items-center">
+                                                                                            <span className="text-md  text-gray-800">To Pay Now (Down Payment)</span>
+                                                                                            <span className="text-lg font-semibold text-blue-600">₱{contract_transaction?.length > 0 ? 0 : downpayment.toLocaleString()}</span>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    <div>
+                                                                                        <div className="flex justify-between items-center">
+                                                                                            <span className="text-md text-gray-800">Next Payment (Balance)</span>
+                                                                                            <span className="text-lg font-semibold text-orange-600">₱{contract_transaction?.length > 1 ? 0 : nextpayment.toLocaleString()}</span>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </>
+                                                                            ) : (
                                                                                 <div>
                                                                                     <div className="border-t pt-2 border-gray-300 flex justify-between items-center">
-                                                                                        <span className="text-md  text-gray-800">To Pay Now (Down Payment)</span>
-                                                                                        <span className="text-lg font-semibold text-blue-600">₱{contract_transaction?.length > 0 ? 0 : downpayment.toLocaleString()}</span>
+                                                                                        <span className="text-md  text-gray-800">To Pay Now (Full Payment)</span>
+                                                                                        <span className="text-lg font-semibold text-blue-600">₱{contract_transaction?.length > 0 ? 0 : fullAmount.toLocaleString()}</span>
                                                                                     </div>
                                                                                 </div>
-                                                                                <div>
-                                                                                    <div className="flex justify-between items-center">
-                                                                                        <span className="text-md text-gray-800">Next Payment (Balance)</span>
-                                                                                        <span className="text-lg font-semibold text-orange-600">₱{contract_transaction?.length > 1 ? 0 : nextpayment.toLocaleString()}</span>
-                                                                                    </div>
-                                                                                </div>
-                                                                            </>
-                                                                        ) : (
-                                                                            <div>
-                                                                                <div className="border-t pt-2 border-gray-300 flex justify-between items-center">
-                                                                                    <span className="text-md  text-gray-800">To Pay Now (Full Payment)</span>
-                                                                                    <span className="text-lg font-semibold text-blue-600">₱{contract_transaction?.length > 0 ? 0 : fullAmount.toLocaleString()}</span>
-                                                                                </div>
+                                                                            )}
+
+                                                                        </>
+                                                                    )}
+
+                                                                    <div className="border-t border-gray-300 mt-12 mb-1 pt-2">
+                                                                        <div className="flex justify-between items-center">
+                                                                            <div className='flex gap-2 items-baseline'>
+                                                                                <span className="text-lg font-semibold text-gray-800">Total Paid by Planner</span>
+                                                                                <span className="text-md text-gray-600">(Not incl. fees)</span>
                                                                             </div>
-                                                                        )}
-
-                                                                    </>
-                                                                )}
-
-                                                                <div className="border-t border-gray-300 mt-12 mb-1 pt-2">
-                                                                    <div className="flex justify-between items-center">
-                                                                        <div className='flex gap-2 items-baseline'>
-                                                                            <span className="text-lg font-semibold text-gray-800">Total Paid by Planner</span>
-                                                                            <span className="text-md text-gray-600">(Not incl. fees)</span>
+                                                                            <span className="text-2xl font-semibold text-green-600">₱{not_include_fees.toLocaleString()}</span>
                                                                         </div>
-                                                                        <span className="text-2xl font-semibold text-green-600">₱{not_include_fees.toLocaleString()}</span>
                                                                     </div>
+
                                                                 </div>
-
+                                                                <p className='text-sm mt-4 text-gray-600'>
+                                                                    Note: Your payment is securely processed via Xendit. The downpayment is received by our platform and only manually released to the supplier once confirmed
+                                                                </p>
                                                             </div>
-                                                            <p className='text-sm mt-4 text-gray-600'>
-                                                                Note: Your payment is securely processed via Xendit. The downpayment is received by our platform and only manually released to the supplier once confirmed
-                                                            </p>
-                                                        </div>
 
 
 
-                                                        {/* <div className='relative top-8 w-full rounded-2xl p-1 border border-gray-600 h-5'>
+                                                            {/* <div className='relative top-8 w-full rounded-2xl p-1 border border-gray-600 h-5'>
                                                                     <div className={`transition-all bg-green-500 h-2.5 rounded-2xl`} style={{ width: `${(totalpaid / netAmount) * 100}%`}}></div>
                                                                 </div> */}
-                                                    </div>
+                                                        </div>
 
-                                                </div>
+                                                    </div>
+                                                )}
 
                                                 <div className={`w-full mt-5 flex flex-col px-7 py-7 rounded-lg transition-all duration-200 shadow-md border border-gray-300 `}
                                                 >
@@ -861,7 +855,13 @@ export default function ContractModal({ userData, event_id, supplier_id, eventDa
                                                     : `Message Supplier`}
                                             </button>
                                             {contract?.status === "Approved" && (
-                                                <ReportModal contractData={contract} userData={userData} eventData={eventData} supplierData={supplierData} />
+                                                <>
+                                                    {isAlreadyReported ? (
+                                                        <div className='bg-gray-300 px-5 py-2 rounded-lg text-gray-600'>Reported</div>
+                                                    ) : (
+                                                        <ReportModal contractData={contract} userData={userData} eventData={eventData} supplierData={supplierData} />
+                                                    )}
+                                                </>
                                             )}
                                         </div>
                                         {userData?.role != "Supplier" && contract?.status !== "Completed" && (

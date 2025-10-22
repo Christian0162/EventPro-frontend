@@ -1,5 +1,3 @@
-import DashboardCard from "../../components/DashboardCards"
-import { } from "react-router-dom"
 import { CalendarDays, Star, PhilippinePeso, ShieldCheck, Calendar, ReceiptText, BarChart3, ChartNoAxesCombined } from "lucide-react"
 import { TabGroup, TabPanel, TabPanels, TabList, Tab } from "@headlessui/react"
 import { PieChart, BarChart } from "../../components/Charts"
@@ -7,7 +5,6 @@ import { Title } from "react-head"
 import { useFetchContract } from "../../hooks/useContract"
 import { useEffect, useMemo, useState } from "react"
 import { useFetchEventsById } from "../../hooks/useEvents"
-import ContractModal from "../../components/ContractModal"
 import { useFetchSuppliers } from "../../hooks/useSupplier"
 import { useFetchTransactionById } from "../../hooks/useTransaction"
 import PageLoading from "../../components/PageLoading"
@@ -16,9 +13,16 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import FullCalendar from "@fullcalendar/react"
 import EventModal from "../../components/EventModal"
 import GenerateReport from "../../components/GeneraeReport"
+import { lazy, Suspense } from "react";
+import LoadingOverlay from "../../components/LoadingOverlay"
+import { addDoc, collection, getDocs, query, serverTimestamp, where } from "firebase/firestore"
+import { db } from "../../firebase/firebase"
 
 export default function EventDashboard({ userData }) {
 
+    const ContractModal = useMemo(() => lazy(() => import("../../components/ContractModal")), []);
+    const [isContractModalOpen, setIsContractModalOpen] = useState(false);
+    const [selectedContract, setSelectedContract] = useState(null)
     const { contracts, isLoading: isContractsLoading } = useFetchContract()
     const { events, isLoading: isEventLoading } = useFetchEventsById(userData?.id)
     const { suppliers, isLoading: isSuppliersLoading } = useFetchSuppliers()
@@ -51,6 +55,63 @@ export default function EventDashboard({ userData }) {
         label: '',
         value: ''
     };
+
+    const createdEvents = useMemo(() => events.filter(e => e.user_id === userData.id), [events, userData])
+
+    useEffect(() => {
+        // if (!createdEvents.length) return;
+                console.log('asd')
+
+        const sendEventNotif = async () => {
+
+            for (let i = 0; i < createdEvents.length; i++) {
+                const event = createdEvents[i];
+
+                if (!event?.id || !userData?.id) return;
+
+                const now = new Date();
+                const eventDate = new Date(event?.event_date?.date_value);
+
+                const eventEndTime = event?.event_time?.valueStartAndEnd[1] || "00:00"
+                const [eventHour, eventMinute] = eventEndTime.split(":").map(Number)
+
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes());
+                const eventDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate())
+                eventDay.setHours(eventHour, eventMinute, 0, 0)
+
+
+                const isEventVisible = eventDay < today
+                console.log(isEventVisible)
+
+                if (isEventVisible) {
+
+                    const notifQuery = query(
+                        collection(db, "notifications"),
+                        where("referenced_id", "==", event.id),
+                        where("receiver_id", "==", userData?.id),
+                        where("referenced_type", "==", "event")
+                    );
+
+                    const notifSnap = await getDocs(notifQuery);
+
+                    if (notifSnap.empty) {
+                        await addDoc(collection(db, "notifications"), {
+                            avatar: 'A',
+                            message: `The event "${event.event_name}" is no longer visible to the supplier because the scheduled day and time have already passed.`,
+                            createdAt: serverTimestamp(),
+                            title: "Event Visibility Notice",
+                            referenced_type: 'event',
+                            referenced_id: event.id,
+                            unread: true,
+                            receiver_id: userData?.id,
+                        });
+                    }
+                }
+            }
+        };
+
+        sendEventNotif();
+    }, [userData, createdEvents]);
 
     const reviewedSuppliers = reviews.filter(rev => rev.user_id === userData.id)
 
@@ -113,11 +174,6 @@ export default function EventDashboard({ userData }) {
         contracts.filter(contract => events.some(event => contract?.status === "Approved" && event.id === contract.event_id)),
         [contracts, events]);
 
-    const contractEventsforPending = useMemo(() =>
-        bookingContracts.map(contract =>
-            events.find(event => event.id === contract.event_id)
-        ).filter(Boolean),
-        [bookingContracts, events]);
 
     const contractSuppliers = useMemo(() =>
         suppliers.reduce((acc, supplier) => {
@@ -171,10 +227,35 @@ export default function EventDashboard({ userData }) {
         return colors[status]
     }
 
+    const openContractModal = (contract) => {
+        setSelectedContract(contract)
+        setIsContractModalOpen(true)
+    };
+
+    const closeContractModal = () => {
+        setIsContractModalOpen(false)
+        setSelectedContract(null)
+    };
+
     return (
         <>
             {isAllLoading && (
                 <PageLoading />
+            )}
+
+            {isContractModalOpen && selectedContract && (
+                <Suspense fallback={<LoadingOverlay isLoading={true} message="Pleasee waitt.." />}>
+                    <ContractModal
+                        isOpen={isContractModalOpen}
+                        onClose={closeContractModal}
+                        userData={userData}
+                        event_id={selectedContract.event_id}
+                        user_id={userData.id}
+                        supplier_id={selectedContract.supplier_id}
+                        eventData={selectedContract.eventData}
+                        supplierData={selectedContract.supplierData}
+                    />
+                </Suspense>
             )}
 
             {!isAllLoading && (
@@ -230,7 +311,7 @@ export default function EventDashboard({ userData }) {
                             { title: "Active Contracts", value: activeContracts.length, icon: ReceiptText, color: "from-blue-500 to-blue-600" },
                             { title: "Upcoming Events", value: totalUpcomingsEvents, icon: CalendarDays, color: "from-green-500 to-green-600" },
                             { title: "Rated Suppliers", value: reviewedSuppliers.length, icon: Star, color: "from-yellow-500 to-yellow-600" },
-                            { title: "Budget Spent", value: transactions.reduce((sum, trans, i) => sum + trans.amount, 0), icon: PhilippinePeso, color: "from-violet-500 to-violet-600" },
+                            { title: "Budget Spent", value: transactions.reduce((sum, trans, i) => sum + trans.amount, 0).toFixed(2), icon: PhilippinePeso, color: "from-violet-500 to-violet-600" },
                         ].map(({ title, value, icon: Icon, color }, i) => (
                             <div
                                 key={i}
@@ -384,7 +465,19 @@ export default function EventDashboard({ userData }) {
                                                     </div>
                                                 </div>
 
-                                                <ContractModal userData={userData} eventData={eventContracts[index]} event_id={offers.event_id} supplier_id={offers.supplier_id} supplierData={contractSuppliers[offers.supplier_id]} user_id={userData.id} />
+                                                <button
+                                                    onClick={() => openContractModal({
+                                                        supplierData: contractSuppliers[offers.supplier_id],
+                                                        eventData: eventContracts.find(e => e.id === offers.event_id),
+                                                        supplier_id: offers.supplier_id,
+                                                        user_id: userData.id,
+                                                        userData: userData,
+                                                        event_id: offers.event_id,
+                                                    })}
+                                                    className={'transition-all duration-100 hover:bg-blue-700 self-center px-3 py-2 text-sm rounded-md bg-blue-600 text-white '}
+                                                >
+                                                    View Contract
+                                                </button>
 
                                             </div>
                                         </div>

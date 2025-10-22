@@ -165,9 +165,9 @@ export default function SupplierDashboard({ userData }) {
 
                     const notifQuery = query(
                         collection(db, "notifications"),
-                        where("contract_id", "==", contract.id),
-                        where("user_id", "==", supplier?.id),
-                        where("type", "==", "delivery_day")
+                        where("referenced_id", "==", contract.id),
+                        where("receiver_id", "==", supplier?.id),
+                        where("referenced_type", "==", "contract")
                     );
 
 
@@ -189,9 +189,7 @@ export default function SupplierDashboard({ userData }) {
                             referenced_type: 'contract',
                             referenced_id: contract.id,
                             unread: true,
-                            user_id: supplier?.id,
-                            contract_id: contract.id,
-                            type: "delivery_day",
+                            receiver_id: supplier?.id,
                         });
 
                         console.log("Notification created for delivery day:", contract.id);

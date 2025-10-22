@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Title } from "react-head";
-import { CalendarDays, MapPin, CircleDollarSign, Trash, Users, MessageCircleMore, Heart, CircleCheck } from "lucide-react";
+import { CalendarDays, MapPin, CircleDollarSign, Trash, Users, MessageCircleMore, Heart, CircleCheck, AlertTriangle } from "lucide-react";
 import { db } from "../../firebase/firebase";
 import { useEffect, useState } from "react";
 import { collection, onSnapshot, serverTimestamp, addDoc, query, where, doc, getDocs, deleteDoc } from "firebase/firestore";
@@ -237,11 +237,10 @@ export default function Event({ userData }) {
 
             {!isAllLoading && (
                 <>
-                    <div className="flex justify-between md:items-center lg:items-baseline flex-col lg:flex-row md:flex-row">
+                    <div className="flex justify-between md:items-start gap-3 md:gap-3 lg:items-baseline flex-col lg:flex-row md:flex-col">
                         <div className="flex flex-col">
                             <div className="flex items-center gap-5">
                                 <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Events</h1>
-
                                 {userData.role === "Event Planner" && userData.verification_status === "verified" && (
                                     <Link to={'/events/create'}>
                                         <button className="bg-blue-600 text-white rounded-md px-5 lg:px-8 md:px-8 sm:px-7 py-2 lg:py-2 font-semibold mt-3">Create New Event</button>
@@ -255,14 +254,13 @@ export default function Event({ userData }) {
                             </span>
                         </div>
 
-
                         <div>
                             <input
                                 type="text"
                                 placeholder="Search events by name, location, or category..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value.toLowerCase())}
-                                className="w-100 border border-gray-300  bg-white rounded-lg px-4 py-2 shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                className="w-full border sm:w-70 md:w-80 border-gray-300  bg-white rounded-lg px-4 py-2 shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                             />
                         </div>
 
@@ -276,6 +274,13 @@ export default function Event({ userData }) {
                                 const now = new Date();
                                 const eventDate = new Date(events?.event_date?.date_value);
                                 const eventContracts = contracts.filter(cont => cont.event_id === events.id && cont.status === "Approved")
+
+                                const eventEndTime = events?.event_time?.valueStartAndEnd[1] || "00:00"
+                                const [eventHour, eventMinute] = eventEndTime.split(":").map(Number)
+
+                                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes());
+                                const eventDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate())
+                                eventDay.setHours(eventHour, eventMinute, 0, 0)
 
                                 const isAllContractPaid = eventContracts.some(cont => {
                                     const contractTransaction = transactions?.filter(t => t.contract_id === cont.id)
@@ -301,6 +306,8 @@ export default function Event({ userData }) {
                                     status = { label: 'Completed', value: 'completed' };
                                 }
 
+                                console.log(status.value)
+
                                 return (
                                     <div key={index} className="group bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col h-full overflow-hidden">
                                         <div className="p-6 flex-grow">
@@ -323,6 +330,16 @@ export default function Event({ userData }) {
                                                             </button>
                                                         </>
                                                     )}
+
+                                                    {(status.value === 'completed' || status.value === 'payment_pending') && eventDate < now && (
+                                                        <div className="relative inline-block group">
+                                                            <AlertTriangle className="text-yellow-500 cursor-pointer" size={20} />
+                                                            <span className="absolute z-50 top-7 right-0 hidden w-50  text-sm text-white bg-gray-800 p-3 rounded shadow-md group-hover:block">
+                                                                This event is currently not visible anymore due to specific reasons — either the event time and date have already passed, or it is marked as payment pending or completed.
+                                                            </span>
+                                                        </div>
+                                                    )}
+
                                                     {userData.role === "Event Planner" && eventContracts.length === 0 && (
                                                         <button onClick={() => handleDelete(events.id)} className="p-2 rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all duration-200 opacity-0 group-hover:opacity-100">
                                                             <Trash size={18} />

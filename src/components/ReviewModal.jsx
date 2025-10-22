@@ -509,9 +509,6 @@ export const ReportReview = ({ report, userData }) => {
                 receiver_id: report?.user_id,
             });
 
-            // await updateDoc(doc(db, "contracts", report.contract_id), {
-            //     status
-            // })
 
             await updateDoc(doc(db, 'reports', report.id), {
                 status: 'rejected',
@@ -544,7 +541,7 @@ export const ReportReview = ({ report, userData }) => {
             Approving this report will have the following consequences:
             <ul class="mb-5 mt-5" style="text-center: left;">
                 <li>The reported account may be banned or terminated.</li>
-                <li>If the planner has escrow for the contract, it will be refunded within 2-3 days.</li>
+                <li>If the planner has an active escrow for the contract, it will be refunded within 2-3 days.</li>
             </ul>
             Are you sure you want to proceed?
         `,
@@ -577,6 +574,10 @@ export const ReportReview = ({ report, userData }) => {
                     status: 'approved',
                 });
 
+                await updateDoc(doc(db, "contracts", report.contract_id), {
+                    status: 'Cancelled'
+                })
+
                 await updateDoc(doc(db, 'users', id), {
                     reported_history: arrayUnion({
                         reason: report.penalty_applied,
@@ -603,6 +604,19 @@ export const ReportReview = ({ report, userData }) => {
                             status: "banned"
                         })
                     }
+                }
+
+                if (selectedUser.reportedAttempts === 2) {
+                    await addDoc(collection(db, "notifications"), {
+                        avatar: 'A',
+                        title: "Warning Issued",
+                        message: `Your account has received a warning due to a reported incident. If similar behavior occurs again, your account may be suspended or permanently banned.`,
+                        createdAt: serverTimestamp(),
+                        referenced_type: "report",
+                        referenced_id: report?.id,
+                        unread: true,
+                        receiver_id: id,
+                    });
                 }
 
                 if (report.reporter_role === "Supplier") {

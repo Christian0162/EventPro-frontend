@@ -99,6 +99,7 @@ export default function DeactivateModal({ user, userData }) {
 
                                 await updateDoc(doc(db, "users", userData.id), {
                                     status: "deactivated",
+                                    is_online: false,
                                     deactivated_at: serverTimestamp(),
                                     deactivation_reason: customReason > 0 ? customReason : reason,
                                     deactivation_history: arrayUnion({

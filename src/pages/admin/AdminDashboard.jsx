@@ -287,7 +287,7 @@ export default function AdminDashboard({ userData }) {
                                             <div className="flex items-start sm:items-center space-x-3 flex-1">
                                                 <Calendar size={20} className="text-blue-600 bg-gray-200 rounded-full h-8 w-8 p-2 flex-shrink-0" />
                                                 <div className="flex flex-col min-w-0 flex-1">
-                                                    <span className="font-medium text-gray-900">{supplier ? supplier.supplier_name : event.event_name}</span>
+                                                    <span className="font-medium text-gray-900">{supplier > 0 ? supplier.supplier_name : event.event_name}</span>
                                                     <span className="text-gray-500 text-xs sm:text-sm">
                                                         Requested: {r.created_at?.toDate().toLocaleDateString()}
                                                     </span>

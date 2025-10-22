@@ -101,7 +101,7 @@ export default function Supplier({ userData }) {
     return (
         <>
 
-            <div className={`mb-8 flex items-baseline justify-between`}>
+            <div className={`mb-8 flex flex-col lg:flex-row items-baseline justify-between`}>
                 <div className="flex flex-col gap-2 items-baseline justify-between">
                     <div className="flex gap-4 items-baseline">
                         <div>
@@ -117,17 +117,17 @@ export default function Supplier({ userData }) {
                         )}
 
                     </div>
-                    <span className="mt-2 text-gray-600">
+                    <span className="my-2 text-gray-600">
                         Discover trusted suppliers for your needs.
                     </span>
                 </div>
 
                 {/* Search and Filter Section */}
-                <div className="flex flex-col items-end">
+                <div className="flex flex-col items-start md:items-end">
                     <div className="flex flex-col md:flex-row gap-4">
                         {/* Search Bar */}
                         <div className="flex w-full gap-3">
-                            <div className="flex w-[35rem] relative">
+                            <div className="flex sm:w-[35rem] w-full relative">
                                 <Search className="absolute left-4 top-[1.30rem] transform -translate-y-1/2 text-gray-400" size={20} />
                                 <input
                                     type="search"
@@ -153,7 +153,7 @@ export default function Supplier({ userData }) {
             </div>
 
             {ai_response?.length > 0 && (
-                <div className="mb-8 max-w-[800px] px-4">
+                <div className="mb-8 max-w-[800px]">
                     <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 shadow-md rounded-2xl p-6 relative">
 
                         {/* Close Button */}

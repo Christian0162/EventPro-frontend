@@ -12,8 +12,6 @@ export default function SubmissionModal({ contract, supplierData, eventData }) {
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [note, setNote] = useState('')
 
-    console.log(contract.id)
-
     function open() {
         setIsOpen(true)
     }
@@ -48,7 +46,7 @@ export default function SubmissionModal({ contract, supplierData, eventData }) {
                 referenced_id: contract?.id,
                 title: 'New delivery submission received.',
                 unread: true,
-                reciever_id: eventData.user_id
+                receiver_id: eventData.user_id
             })
 
             Swal.fire(

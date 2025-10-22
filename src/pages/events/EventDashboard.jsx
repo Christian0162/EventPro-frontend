@@ -15,6 +15,8 @@ import EventModal from "../../components/EventModal"
 import GenerateReport from "../../components/GeneraeReport"
 import { lazy, Suspense } from "react";
 import LoadingOverlay from "../../components/LoadingOverlay"
+import { addDoc, collection, getDocs, query, serverTimestamp, where } from "firebase/firestore"
+import { db } from "../../firebase/firebase"
 
 export default function EventDashboard({ userData }) {
 
@@ -53,6 +55,63 @@ export default function EventDashboard({ userData }) {
         label: '',
         value: ''
     };
+
+    const createdEvents = useMemo(() => events.filter(e => e.user_id === userData.id), [events, userData])
+
+    useEffect(() => {
+        // if (!createdEvents.length) return;
+                console.log('asd')
+
+        const sendEventNotif = async () => {
+
+            for (let i = 0; i < createdEvents.length; i++) {
+                const event = createdEvents[i];
+
+                if (!event?.id || !userData?.id) return;
+
+                const now = new Date();
+                const eventDate = new Date(event?.event_date?.date_value);
+
+                const eventEndTime = event?.event_time?.valueStartAndEnd[1] || "00:00"
+                const [eventHour, eventMinute] = eventEndTime.split(":").map(Number)
+
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes());
+                const eventDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate())
+                eventDay.setHours(eventHour, eventMinute, 0, 0)
+
+
+                const isEventVisible = eventDay < today
+                console.log(isEventVisible)
+
+                if (isEventVisible) {
+
+                    const notifQuery = query(
+                        collection(db, "notifications"),
+                        where("referenced_id", "==", event.id),
+                        where("receiver_id", "==", userData?.id),
+                        where("referenced_type", "==", "event")
+                    );
+
+                    const notifSnap = await getDocs(notifQuery);
+
+                    if (notifSnap.empty) {
+                        await addDoc(collection(db, "notifications"), {
+                            avatar: 'A',
+                            message: `The event "${event.event_name}" is no longer visible to the supplier because the scheduled day and time have already passed.`,
+                            createdAt: serverTimestamp(),
+                            title: "Event Visibility Notice",
+                            referenced_type: 'event',
+                            referenced_id: event.id,
+                            unread: true,
+                            receiver_id: userData?.id,
+                        });
+                    }
+                }
+            }
+        };
+
+        sendEventNotif();
+    }, [userData, createdEvents]);
 
     const reviewedSuppliers = reviews.filter(rev => rev.user_id === userData.id)
 
@@ -115,11 +174,6 @@ export default function EventDashboard({ userData }) {
         contracts.filter(contract => events.some(event => contract?.status === "Approved" && event.id === contract.event_id)),
         [contracts, events]);
 
-    const contractEventsforPending = useMemo(() =>
-        bookingContracts.map(contract =>
-            events.find(event => event.id === contract.event_id)
-        ).filter(Boolean),
-        [bookingContracts, events]);
 
     const contractSuppliers = useMemo(() =>
         suppliers.reduce((acc, supplier) => {
@@ -454,6 +508,7 @@ export default function EventDashboard({ userData }) {
                                                 }}
                                                 titleFormat={window.innerWidth < 640 ? { month: 'short', year: 'numeric' } : { month: 'long', year: 'numeric' }}
                                                 events={events.map(e => ({ title: e.event_name, date: e.event_date?.date_value }))}
+
                                             />
                                         </div>
                                     </div>

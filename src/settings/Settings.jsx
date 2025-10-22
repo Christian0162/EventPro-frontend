@@ -43,10 +43,10 @@ export default function Settings({ userData, user }) {
     const { userProfile, isLoading: isUserProfileLoading } = useFetchUserProfileById(userData?.id)
 
     useEffect(() => {
-        setFirstName(userData.first_name)
-        setLastName(userData.last_name)
-        setEmailAddress(userData.email_address)
-        setContactNumber(userProfile.contact_number)
+        setFirstName(userData?.first_name ?? '');
+        setLastName(userData?.last_name ?? '');
+        setEmailAddress(userData?.email_address ?? '');
+        setContactNumber(userProfile?.contact_number ?? '');
     }, [userData, userProfile])
 
     console.log(userProfile)
@@ -54,7 +54,6 @@ export default function Settings({ userData, user }) {
     const [credentials, setCredentials] = useState({
         user_id: userData?.id,
         amount: '',
-        balance: userData.balance,
         account_holder_name: '',
         account_number: '',
         channel_code: '',
@@ -221,8 +220,7 @@ export default function Settings({ userData, user }) {
     };
 
 
-    const handlePayout = async (e) => {
-        e.preventDefault();
+    const handlePayout = async () => {
         setBalanceError('');
         setPaymentError('');
 
@@ -272,7 +270,7 @@ export default function Settings({ userData, user }) {
             }
 
             // ✅ Proceed with payout
-            await createPayout(credentials);
+            await createPayout(credentials, userData);
 
         } catch (e) {
             console.error(e);
@@ -746,7 +744,7 @@ export default function Settings({ userData, user }) {
                                         </div>
 
                                         <button
-                                            onClick={(e) => handlePayout(e)}
+                                            onClick={() => handlePayout()}
                                             className="w-full bg-green-500 text-white py-4 px-6 rounded-2xl font-semibold hover:bg-green-600 transition-all shadow-xl flex items-center justify-center"
                                             disabled={isCreatePayoutLoading}
                                         >

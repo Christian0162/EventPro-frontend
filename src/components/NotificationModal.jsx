@@ -43,7 +43,6 @@ export default function NotificationModal({ notification, userData }) {
         }
     }, [suppliers, selectedUser, userProfiles])
 
-    console.log(senderData)
 
     function open() {
         setIsOpen(true)
@@ -229,7 +228,23 @@ export default function NotificationModal({ notification, userData }) {
                                 {selectedItem && (
                                     <>
                                         {selectedItem.type === "event" ? (
-                                            <EventModal userData={userData} eventData={selectedItem.data} event_purpose={`dashboard`} />
+                                            <div className='flex'>
+                                                <EventModal userData={userData} eventData={selectedItem.data} event_purpose={`dashboard`} />
+
+                                                <button
+                                                    onClick={() => openModal({
+                                                        supplierData: shopItem,
+                                                        services: userServices,
+                                                        reviews: reviews.filter(
+                                                            (r) => r.reviewed_id === shopItem.id
+                                                        ),
+                                                        averageRating,
+                                                    })}
+                                                    className="py-2 rounded-lg font-semibold w-full bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                                                >
+                                                    View Details
+                                                </button>
+                                            </div>
                                         ) : selectedItem.type === "report" ? (
                                             <ReportReview report={selectedItem?.report} userData={selectedItem.userData} />
                                         ) : (

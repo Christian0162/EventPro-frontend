@@ -33,7 +33,7 @@ export default function UserNotification({ userData }) {
 
     const unreadCount = notifications.filter(notification => notification.unread).length
 
-    console.log(notifications)
+    // console.log(notifications)
 
     const markAsRead = async (id) => {
         await updateDoc(doc(db, "notifications", id), {
@@ -41,7 +41,7 @@ export default function UserNotification({ userData }) {
         })
     }
 
-    console.log(selectedItem)
+    // console.log(selectedItem)
 
     const markAllAsRead = async () => {
         const unread = notifications.filter(notification => notification.unread)

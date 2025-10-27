@@ -103,6 +103,15 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
 
     const not_include_fees = total_paid - total_fees
 
+    const eventDate = new Date(eventData?.event_date?.date_value);
+
+    const eventEndTime = eventData?.event_time?.valueStartAndEnd[1] || "00:00"
+    const [eventHour, eventMinute] = eventEndTime.split(":").map(Number)
+
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes());
+    const eventDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate())
+    eventDay.setHours(eventHour, eventMinute, 0, 0)
+
     // Collect and count unique issues
     const issueCount = contractDeliveries
         .flatMap((d) => d.penalty_applied || [])
@@ -119,6 +128,7 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
         const contract = AllContracts.filter(contract => contract?.event_id === eventData?.id && contract?.supplier_id === supplierData?.id)
         setEventUser(eventUser[0])
         setContract(contract[0])
+
     }, [AllContracts, users, eventData, supplierData])
 
     useEffect(() => {
@@ -136,9 +146,7 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
         return () => clearInterval(interval);
     }, []);
 
-    const eventDate = new Date(eventData?.event_date?.date_value);
-
-    const showSubmitButton = userData?.role === "Supplier" && now.getDate() >= eventDate.getDate();
+    const showSubmitButton = userData?.role === "Supplier" && today.getDate() >= eventDay.getDate();
 
     const handleDeliveryStatus = async (deliveryId) => {
         Swal.fire({
@@ -305,6 +313,10 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
             }
             setIsReleasing(false)
         }
+        else {
+            setIsReleasing(false)
+
+        }
     }
 
 
@@ -397,7 +409,7 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
                 <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
-                            className="w-full max-w-4xl rounded-2xl bg-white shadow-2xl duration-300"
+                            className="w-full max-w-5xl rounded-2xl bg-white shadow-2xl duration-300"
                         >
                             <div className='relative'>
                                 <button
@@ -587,7 +599,7 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
                                             )}
 
                                             {/* Submit Button for Supplier */}
-                                            {showSubmitButton && (contract?.status !== "Pending" && contract?.status !== "Completed") && contractDeliveries.length === 0 && (
+                                            {showSubmitButton && not_include_fees > 0 && (contract?.status !== "Pending" && contract?.status !== "Completed") && contractDeliveries.length === 0 && (
                                                 <div className="flex justify-end mt-6">
                                                     <SubmissionModal
                                                         contract={contract}

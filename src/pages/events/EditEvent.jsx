@@ -600,10 +600,12 @@ export default function EditEvent({ userData }) {
                             )}
 
                             <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
-                                <PrimaryButton className="w-full flex items-center justify-center">
-                                    <Send size={18} className="mr-2" />
-                                    Update Event
-                                </PrimaryButton>
+                                {eventContracts.length === 0 && (
+                                    <PrimaryButton className="w-full flex items-center justify-center">
+                                        <Send size={18} className="mr-2" />
+                                        Update Event
+                                    </PrimaryButton>
+                                )}
                                 <Link
                                     to={'/events'}
                                     className="flex items-center justify-center py-3 w-full text-center border border-gray-300 rounded-lg hover:border-blue-500 hover:text-blue-600 transition-colors font-medium"
@@ -711,22 +713,24 @@ export default function EditEvent({ userData }) {
                                 <Users className="mr-2 text-green-600" size={24} />
                                 <h3 className="text-xl font-bold text-gray-800">Recent Suppliers</h3>
                             </div>
-                            <p className="text-gray-600 mb-4">Suppliers from completed contracts</p>
+                            <p className="text-gray-600 mb-4">Suppliers from completed and cancelled contracts</p>
                             {suppliers.length > 0 &&
                                 <div className="space-y-4">
                                     {suppliers.filter(supplier => applications.some(app => app.supplier_id === supplier.id && app.status === "Approved") &&
-                                        contracts.some(c => c.supplier_id === supplier.id && c.status === "Completed" && c.event_id === id)
+                                        contracts.some(c => c.supplier_id === supplier.id && (c.status === "Completed" || c.status === "Cancelled") && c.event_id === id)
                                     ).map((supplier) => {
 
                                         const averageRating = calculateAverageRating(supplier.id);
                                         const userProfile = userProfiles.find(
                                             profile => profile.id === supplier.id
                                         )
+
+                                        const isCancelled = contracts.filter(c => c.supplier_id === supplier.id && c.event_id === id)
                                         const userDetail = users.find(user => user.id === supplier.id)
                                         const userServices = services.filter(serv => serv.supplier_id === supplier.id)
 
                                         return (
-                                            <div key={supplier.id} className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200 hover:bg-green-100 transition-colors">
+                                            <div key={supplier.id} className={`flex items-center justify-between p-4  rounded-lg border ${isCancelled.status === "Completed" ? 'bg-green-50 border-green-200 hover:bg-green-100 ' : 'bg-red-50 border-red-200 hover:bg-red-100 '} transition-colors`}>
                                                 <div className="flex items-center space-x-4">
                                                     {supplier.supplier_background_image ? (
                                                         <img src={supplier.supplier_background_image} alt="" className='h-12 w-12 rounded-full object-cover' />
@@ -782,14 +786,17 @@ export default function EditEvent({ userData }) {
                                                             className={'transition-all duration-100 hover:bg-blue-700 self-center px-3 py-2 text-sm rounded-md bg-blue-600 text-white '}
                                                         >
                                                             View Contract
-                                                        </button>                                                    </div>
-                                                    <div className="flex items-center text-sm gap-3">
-                                                        {reviews.find(rev => rev.reviewed_id === supplier.id && rev.user_id === userData.id && rev.event_id === eventData.id) ? (
-                                                            <span className="text-white py-2 px-4 rounded-md text-sm bg-gray-500 ">Reviewed</span>
-                                                        ) : (
-                                                            <Review reviewed_id={supplier.id} reviewer_name={event_name} eventData={eventData} />
-                                                        )}
+                                                        </button>
                                                     </div>
+                                                    {isCancelled?.status === "Completed" && (
+                                                        <div className="flex items-center text-sm gap-3">
+                                                            {reviews.find(rev => rev.reviewed_id === supplier.id && rev.user_id === userData.id && rev.event_id === eventData.id) ? (
+                                                                <span className="text-white py-2 px-4 rounded-md text-sm bg-gray-500 ">Reviewed</span>
+                                                            ) : (
+                                                                <Review reviewed_id={supplier.id} reviewer_name={event_name} eventData={eventData} />
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
 
                                             </div>
@@ -799,7 +806,7 @@ export default function EditEvent({ userData }) {
                             }
 
                             {!isAllLoading && suppliers.filter(supplier => applications.some(app => app.supplier_id === supplier.id && app.status === "Approved") &&
-                                contracts.some(c => c.supplier_id === supplier.id && c.status === "Completed" && c.event_id === id)
+                                contracts.some(c => c.supplier_id === supplier.id && (c.status === "Completed" || c.status === "Cancelled") && c.event_id === id)
                             ).length === 0 && (
                                     <div className="text-center py-8 bg-gray-50 rounded-lg">
                                         <Users className="mx-auto text-gray-400 mb-2" size={32} />

@@ -17,6 +17,7 @@ import { lazy, Suspense } from "react";
 import LoadingOverlay from "../../components/LoadingOverlay"
 import { addDoc, collection, getDocs, query, serverTimestamp, where } from "firebase/firestore"
 import { db } from "../../firebase/firebase"
+import { statusStyles } from "../../constants/categories"
 
 export default function EventDashboard({ userData }) {
 
@@ -37,7 +38,7 @@ export default function EventDashboard({ userData }) {
     const isAllLoading = isEventLoading || isSuppliersLoading || isTransactionsLoading || isReviewsLoading
 
     const totalEvents = events.length;
-    const approvedContracts = contracts.filter(c => c.status === "Approved").length;
+    const approvedContracts = contracts.filter(c => c.status === "Approved" && c.planner_id === userData.id);
     const totalSpent = transactions.reduce((sum, t) => sum + t.amount, 0);
     const avgRating =
         reviews.length > 0
@@ -46,7 +47,7 @@ export default function EventDashboard({ userData }) {
 
     const fields = [
         { label: "Total Events Organized".toUpperCase(), value: totalEvents },
-        { label: "Approved Contracts".toUpperCase(), value: approvedContracts },
+        { label: "Approved Contracts".toUpperCase(), value: approvedContracts.length },
         { label: "Total Budget Spent".toUpperCase(), value: `PHP ${totalSpent.toLocaleString()}` },
         { label: "Average Supplier Rating".toUpperCase(), value: avgRating },
     ];
@@ -57,11 +58,15 @@ export default function EventDashboard({ userData }) {
     };
 
     const createdEvents = useMemo(() => events.filter(e => e.user_id === userData.id), [events, userData])
+    const contractHistory = useMemo(() => contracts.filter(contract => contract?.status === "Completed" || contract?.status === "Cancelled" && contract.planner_id === userData.id), [contracts, userData.id])
+
+    const contractHistoryEvents = useMemo(() =>
+        contractHistory.map(contract =>
+            events.find(event => event.id === contract.event_id)
+        ).filter(Boolean),
+        [contractHistory, events]);
 
     useEffect(() => {
-        // if (!createdEvents.length) return;
-                console.log('asd')
-
         const sendEventNotif = async () => {
 
             for (let i = 0; i < createdEvents.length; i++) {
@@ -148,22 +153,56 @@ export default function EventDashboard({ userData }) {
         },
     ], [events]);
 
+    const getRandomColor = () => {
+        const colors = [
+            "#60a5fa", "#34d399", "#f59e0b", "#f87171", "#a78bfa", "#f472b6", "#4ade80"
+        ];
+        return colors[Math.floor(Math.random() * colors.length)];
+    };
+
+
     useEffect(() => {
-        if (events.length) {
-            setBarEventData({
-                labels: events.map(event => event.event_name),
-                planned: events.map(event => Number(event.event_budget)),
-                actual: events.map(event =>
-                    transactions.filter(trans => trans.event_id === event.id)
-                        .reduce((sum, value) => sum + value.amount, 0)
-                )
-            });
-        }
-    }, [events, transactions]);
+        const eventLabels = events.map(event => event.event_name);
+
+        const supplierDatasets = suppliers.filter(s => approvedContracts.some(c => s.id === c.supplier_id)).map(supplierId => {
+            const supplierContract = approvedContracts?.find(c => c.supplier_id === supplierId.id && c.status === "Approved");
+
+            const supplier = suppliers.find(s => s.id === supplierContract?.supplier_id)
+            console.log(supplierContract?.supplier_id)
+
+            return {
+                label: supplier?.supplier_type.label,
+                data: events.map(event =>
+                    event.id === supplierContract?.event_id
+                        ? supplierContract?.service_plan?.service_price || 0
+                        : 0
+                ),
+                backgroundColor: getRandomColor(),
+                borderRadius: 10,
+                stack: "Actual Spending"
+            };
+        });
+
+        // Add planned budget dataset
+        const plannedDataset = {
+            label: "Planned Budget",
+            data: events.map(event => Number(event.event_budget) || 0),
+            backgroundColor: "#60a5fa",
+            borderRadius: 10,
+            stack: "Planned"
+        };
+
+        setBarEventData({
+            labels: eventLabels,
+            datasets: [plannedDataset, ...supplierDatasets]
+        });
+
+    }, [events, transactions, suppliers]);
+
 
 
     const bookingContracts = useMemo(() =>
-        contracts.filter(contract => events.some(event => event.id === contract.event_id)),
+        contracts.filter(contract => events.some(event => event.id === contract.event_id && (contract.status !== "Completed" && contract.status !== "Cancelled"))),
         [contracts, events]);
 
     const eventContracts = events.filter(event =>
@@ -343,7 +382,7 @@ export default function EventDashboard({ userData }) {
                         <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100">
                             <div className="mb-4 sm:mb-6">
                                 <div className="w-full lg:w-auto">
-                                    <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2"><BarChart3 /> Budget Utilization</h3>
+                                    <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2"><BarChart3 /> Budget Allocation</h3>
                                 </div>
                             </div>
 
@@ -388,24 +427,12 @@ export default function EventDashboard({ userData }) {
                                     <BarChart
                                         className="h-96 w-full"
                                         labels={barEventData.labels || []}
-                                        datasets={[
-                                            {
-                                                label: "Planned Budget",
-                                                data: barEventData.planned,
-                                                backgroundColor: "#60a5fa",
-                                                borderRadius: 10,
-                                            },
-                                            {
-                                                label: "Actual Spending",
-                                                data: barEventData.actual,
-                                                backgroundColor: "#34d399",
-                                                borderRadius: 10,
-                                            },
-                                        ]}
-                                        title="Budget vs Actual"
+                                        datasets={barEventData.datasets || []}
+                                        title="Budget vs Actual Spending per Supplier"
                                         xLabel="Events"
                                         yLabel="Amount"
                                     />
+
                                 </div>
                             </div>
                         </div>
@@ -437,7 +464,7 @@ export default function EventDashboard({ userData }) {
                                                     </p>
                                                 </div>
 
-                                                <EventModal eventData={event} event_purpose={'dashboard'} />
+                                                <EventModal eventData={event} userData={userData} event_purpose={'dashboard'} />
                                             </div>
                                         ))}
                                     </div>
@@ -516,6 +543,73 @@ export default function EventDashboard({ userData }) {
                             </TabPanel >
                         </TabPanels>
                     </TabGroup>
+
+                    {/* Recent Contracts Sidebar */}
+                    < div className="lg:col-span-1 mt-5" >
+                        <div className="bg-white border border-gray-300 shadow-xl rounded-xl p-6 flex flex-col h-full">
+                            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2"><div className="p-2 bg-gradient-to-r from-blue-500 to-blue-700 text-white rounded-full"><ReceiptText size={20} /></div> Recent Contract History</h3>
+
+                            <div className="space-y-3 overflow-y-auto max-h-[400px] pr-2">
+                                {contractHistory.slice(0, 5).map((contract, index) => {
+                                    const supplier = suppliers.find(s => s.id === contract.supplier_id)
+
+                                    return (
+                                        <div
+                                            key={contract.id}
+                                            className="p-3 rounded-lg border flex justify-between items-center border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors shadow-sm"
+                                        >
+                                            <div>
+                                                <p className="font-semibold text-gray-800 text-sm">
+                                                    {supplier.supplier_name.charAt(0).toUpperCase() + supplier.supplier_name.slice(1) || "Untitled Event"}
+                                                </p>
+                                                <p className="text-xs text-gray-500 mt-1">
+                                                    {contract.created_at?.toDate().toLocaleDateString([], {
+                                                        year: 'numeric',
+                                                        month: 'short',
+                                                        day: 'numeric'
+                                                    })}
+                                                </p>
+                                                <span className={`inline-block mt-2 px-2 py-0.5 rounded-full text-xs font-medium ${statusStyles[contract.status.toLowerCase()]}`}>
+                                                    {contract.status}
+                                                </span>
+                                            </div>
+
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => openContractModal({
+                                                        supplierData: supplier,
+                                                        eventData: contractHistoryEvents[index],
+                                                        supplier_id: contract.supplier_id,
+                                                        user_id: userData.id,
+                                                        userData: userData,
+                                                        event_id: contract.event_id,
+                                                    })}
+                                                    className={'transition-all duration-100 hover:bg-blue-700 self-center px-3 py-2 text-sm rounded-md bg-blue-600 text-white '}
+                                                >
+                                                    View Contract
+                                                </button>
+                                                {contract.status === "Completed" && (
+                                                    <>
+                                                        {reviews.find(rev => rev.reviewed_id === contract.supplier_id && rev.user_id === contract.planner_id && contract.event_id === rev.event_id) ? (
+                                                            <span className="text-white py-1 px-4 rounded-md text-sm flex items-center bg-gray-400">Reviewed</span>
+                                                        ) : (
+                                                            <Review reviewed_id={contract?.planner_id} reviewer_name={supplier.supplier_name} eventData={contract} />
+                                                        )}
+                                                    </>
+                                                )}
+                                            </div>
+
+                                        </div>
+                                    )
+                                })}
+
+                                {contractHistory.length === 0 && (
+                                    <p className="text-center text-gray-500 text-md pb-5 pt-3">No recent ended contracts</p>
+                                )}
+                            </div>
+                        </div>
+                    </div >
+
                 </>
             )}
         </>

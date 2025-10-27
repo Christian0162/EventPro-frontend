@@ -147,6 +147,7 @@ export const statusStyles = {
     approved: "bg-green-100 text-green-700",
     pending: "bg-yellow-100 text-yellow-700",
     reject: "bg-red-100 text-red-700",
+    cancelled: "bg-red-100 text-red-700",
     completed: "bg-emerald-100 text-emerald-700",
     failed: "bg-red-100 text-red-700",
     hold: "bg-amber-100 text-amber-700",

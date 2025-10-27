@@ -22,6 +22,7 @@ import { useFetchAllApplication } from "../../hooks/useApplication"
 import GenerateReport from "../../components/GeneraeReport"
 import { lazy, Suspense } from "react";
 import LoadingOverlay from "../../components/LoadingOverlay"
+import { statusStyles } from "../../constants/categories"
 
 export default function SupplierDashboard({ userData }) {
 
@@ -42,7 +43,7 @@ export default function SupplierDashboard({ userData }) {
     const [selectedContract, setSelectedContract] = useState(null)
 
     const applications = userApplications.filter(app => app.supplier_id === userData.id &&
-        contracts.some(cont => cont.supplier_id === app.supplier_id && cont.event_id === app.event_id && cont.status !== 'Completed'))
+        contracts.some(cont => cont.supplier_id === app.supplier_id && cont.event_id === app.event_id && (cont.status !== 'Completed' && cont.status !== 'Cancelled')))
 
     const isAllLoading = isSupplierLoading || isEventLoading || isDeliveriesLoading || isSuppliersLoading || isTransactionLoading || isApplicationLoading
 
@@ -109,6 +110,14 @@ export default function SupplierDashboard({ userData }) {
         contracts.filter(contract => contract?.status === "Completed" && contract.supplier_id === userData.id),
         [contracts, userData.id]);
 
+    const contractHistory = useMemo(() => contracts.filter(contract => contract?.status === "Completed" || contract?.status === "Cancelled" && contract.supplier_id === userData.id), [contracts, userData.id])
+
+    const contractHistoryEvents = useMemo(() =>
+        contractHistory.map(contract =>
+            events.find(event => event.id === contract.event_id)
+        ).filter(Boolean),
+        [contractHistory, events]);
+
     const contractEventsforPending = useMemo(() =>
         pendingContracts.map(contract =>
             events.find(event => event.id === contract.event_id)
@@ -159,6 +168,8 @@ export default function SupplierDashboard({ userData }) {
                     now.getFullYear() === eventDate.getFullYear() &&
                     now.getMonth() === eventDate.getMonth() &&
                     now.getDate() === eventDate.getDate();
+
+                    console.log('is sameday', isSameDay)
 
 
                 if (isSameDay) {
@@ -460,10 +471,10 @@ export default function SupplierDashboard({ userData }) {
 
                             {/* Offers Tab */}
                             < TabPanel >
-                                <div className="">
+                                <div className="space-y-3">
                                     {pendingContracts.map((offers, index) => (
                                         <div key={index}>
-                                            <div className={`flex flex-col sm:flex-row gap- sm:gap-2 justify-between ${AppliedColor(offers.status)} shadow-gray-200 shadow-lg items-start sm:items-center p-3 sm:py-4 rounded-lg sm:px-5`}>
+                                            <div className={`flex flex-col sm:flex-row sm:gap-2 justify-between ${AppliedColor(offers.status)} shadow-gray-200 shadow-lg items-start sm:items-center p-3 sm:py-4 rounded-lg sm:px-5`}>
                                                 <div className="flex items-start sm:items-center space-x-3 flex-1">
                                                     <Calendar size={20} className="sm:size-6 text-blue-600 bg-gray-200 rounded-full h-8 w-8 sm:h-9 sm:w-9 p-1.5 sm:p-2 flex-shrink-0 mt-0.5 sm:mt-0" />
                                                     <div className="flex flex-col min-w-0 flex-1">
@@ -490,14 +501,6 @@ export default function SupplierDashboard({ userData }) {
                                                 >
                                                     View Contract
                                                 </button>
-
-                                                {/* <ContractModal
-                                                    userData={userData}
-                                                    event_id={offers.event_id}
-                                                    supplier_id={offers.supplier_id}
-                                                    supplierData={supplier}
-                                                    eventData={contractEventsforPending[index]}
-                                                    user_id={userData.id} /> */}
 
                                             </div>
                                         </div>
@@ -569,17 +572,17 @@ export default function SupplierDashboard({ userData }) {
                     {/* Recent Contracts Sidebar */}
                     < div className="lg:col-span-1 mt-5" >
                         <div className="bg-white border border-gray-300 shadow-xl rounded-xl p-6 flex flex-col h-full">
-                            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2"><div className="p-2 bg-gradient-to-r from-blue-500 to-blue-700 text-white rounded-full"><ReceiptText size={20} /></div> Recent Ended Contracts</h3>
+                            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2"><div className="p-2 bg-gradient-to-r from-blue-500 to-blue-700 text-white rounded-full"><ReceiptText size={20} /></div> Recent Contract History</h3>
 
                             <div className="space-y-3 overflow-y-auto max-h-[400px] pr-2">
-                                {completeContracts.slice(0, 5).map((contract, index) => (
+                                {contractHistory.slice(0, 5).map((contract, index) => (
                                     <div
                                         key={contract.id}
                                         className="p-3 rounded-lg border flex justify-between items-center border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors shadow-sm"
                                     >
                                         <div>
                                             <p className="font-semibold text-gray-800 text-sm">
-                                                {contractEventsforComplete[index]?.event_name || "Untitled Event"}
+                                                {contractHistoryEvents[index]?.event_name || "Untitled Event"}
                                             </p>
                                             <p className="text-xs text-gray-500 mt-1">
                                                 {contract.created_at?.toDate().toLocaleDateString([], {
@@ -588,24 +591,16 @@ export default function SupplierDashboard({ userData }) {
                                                     day: 'numeric'
                                                 })}
                                             </p>
-                                            <span className={`inline-block mt-2 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700`}>
+                                            <span className={`inline-block mt-2 px-2 py-0.5 rounded-full text-xs font-medium ${statusStyles[contract.status.toLowerCase()]}`}>
                                                 {contract.status}
                                             </span>
                                         </div>
 
                                         <div className="flex gap-2">
-                                            {/* <ContractModal
-                                                userData={userData}
-                                                event_id={contract.event_id}
-                                                supplier_id={contract.supplier_id}
-                                                supplierData={supplier}
-                                                eventData={contractEventsforComplete[index]}
-                                                user_id={userData.id} /> */}
-
                                             <button
                                                 onClick={() => openContractModal({
                                                     supplierData: supplier,
-                                                    eventData: contractEventsforComplete[index],
+                                                    eventData: contractHistoryEvents[index],
                                                     supplier_id: contract.supplier_id,
                                                     user_id: userData.id,
                                                     userData: userData,
@@ -615,17 +610,21 @@ export default function SupplierDashboard({ userData }) {
                                             >
                                                 View Contract
                                             </button>
-                                            {reviewed.find(rev => rev.reviewed_id === contract.supplier_id && rev.user_id === contract.planner_id && contract.event_id === rev.event_id) ? (
-                                                <span className="text-white py-1 px-4 rounded-md text-sm flex items-center bg-gray-400">Reviewed</span>
-                                            ) : (
-                                                <Review reviewed_id={contract?.planner_id} reviewer_name={supplier.supplier_name} eventData={contract} />
+                                            {contract.status === "Completed" && (
+                                                <>
+                                                    {reviewed.find(rev => rev.reviewed_id === contract.supplier_id && rev.user_id === contract.planner_id && contract.event_id === rev.event_id) ? (
+                                                        <span className="text-white py-1 px-4 rounded-md text-sm flex items-center bg-gray-400">Reviewed</span>
+                                                    ) : (
+                                                        <Review reviewed_id={contract?.planner_id} reviewer_name={supplier.supplier_name} eventData={contract} />
+                                                    )}
+                                                </>
                                             )}
                                         </div>
 
                                     </div>
                                 ))}
 
-                                {completeContracts.length === 0 && (
+                                {contractHistory.length === 0 && (
                                     <p className="text-center text-gray-500 text-md pb-5 pt-3">No recent ended contracts</p>
                                 )}
                             </div>

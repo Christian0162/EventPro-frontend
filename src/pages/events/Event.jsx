@@ -35,6 +35,7 @@ export default function Event({ userData }) {
     const { transactions } = useFetchAllTransaction()
     const { services } = useFetchSupplierServices()
     const { suppliers, isLoading: isSupplierLoading } = useFetchSuppliers()
+    const [showCautionMessage, setShowCautionMessage] = useState(false)
     const navigate = useNavigate()
 
     const applications = supplierApplications.filter(app => app.supplier_id === userData.id)
@@ -332,11 +333,16 @@ export default function Event({ userData }) {
                                                     )}
 
                                                     {(status.value === 'completed' || status.value === 'payment_pending') && eventDate < now && (
-                                                        <div className="relative inline-block group">
-                                                            <AlertTriangle className="text-yellow-500 cursor-pointer" size={20} />
-                                                            <span className="absolute z-50 top-7 right-0 hidden w-50  text-sm text-white bg-gray-800 p-3 rounded shadow-md group-hover:block">
-                                                                This event is currently not visible anymore due to specific reasons — either the event time and date have already passed, or it is marked as payment pending or completed.
-                                                            </span>
+                                                        <div className="relative inline-block">
+                                                            <AlertTriangle className="text-yellow-500 cursor-pointer" size={20}
+                                                                onMouseEnter={() => setShowCautionMessage(true)}
+                                                                onMouseLeave={() => setShowCautionMessage(false)}
+                                                            />
+                                                            {showCautionMessage && (
+                                                                <span className="absolute z-50 top-7 right-0 hidden w-50  text-sm text-white bg-gray-800 p-3 rounded shadow-md group-hover:block">
+                                                                    This event is currently not visible anymore due to specific reasons — either the event time and date have already passed, or it is marked as payment pending or completed.
+                                                                </span>
+                                                            )}
                                                         </div>
                                                     )}
 

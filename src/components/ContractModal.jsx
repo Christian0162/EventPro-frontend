@@ -1,7 +1,7 @@
 import { Button, Dialog, DialogPanel, } from '@headlessui/react'
 import { useEffect, useState, useRef } from 'react'
 import { X, Check, ArrowLeftRight } from 'lucide-react'
-import { FileText, MapPin, Calendar, Building, User, TriangleAlert, CreditCard, PhilippinePeso, Package } from 'lucide-react'
+import { FileText, MapPin, Clock, Wallet, ChevronDown, Calendar, Building, User, TriangleAlert, CreditCard, PhilippinePeso, Package } from 'lucide-react'
 import { collection, doc, getDocs, query, where, addDoc, serverTimestamp, updateDoc } from 'firebase/firestore'
 import { db, auth } from '../firebase/firebase'
 import { paymentMethods, statusStyles } from '../constants/categories'
@@ -19,6 +19,7 @@ import { useFetchContract } from '../hooks/useContract'
 import DamagePenaltiesModal from './DamagePenaltiesModal'
 import ReportModal from './ReportModal'
 import { useFetchAllReports } from '../hooks/useReports'
+import PageLoading from './PageLoading'
 
 export default function ContractModal({ isOpen, onClose, userData, event_id, supplier_id, eventData, supplierData, user_id }) {
     const [payment_method, setPayment_method] = useState([])
@@ -31,13 +32,15 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
     const { transactions } = useFetchTransactionById(eventData?.user_id)
     const [contract, setContract] = useState([])
     const [eventUser, setEventUser] = useState([])
-    const { deliveries } = useFetchDeliveries()
+    const { deliveries, isLoading: isDeliveriesLoading } = useFetchDeliveries()
     const { contracts: AllContracts } = useFetchContract()
     const { users } = useFetchUsers()
     const paymentSectionRef = useRef(null);
     const { reports } = useFetchAllReports()
     const navigate = useNavigate()
     const [now, setNow] = useState(new Date())
+
+    const contractTransaction = transactions.filter(t => t.contract_id === contract?.id && t.event_id === eventData?.id)
 
     const isAlreadyReported = reports.find(r => r.contract_id === contract?.id && r.user_id === userData?.id)
 
@@ -46,16 +49,21 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
     const computeTotalDeductions = (delivery, servicePrice) => {
         let totalDeduction = 0;
 
+        if (!Array.isArray(delivery)) return 0; // safety check
+
         delivery.forEach((d) => {
-            if (!d.penalty_applied || d.penalty_applied.length === 0) return;
+            if (!Array.isArray(d.penalty_applied) || d.penalty_applied.length === 0) return;
 
             d.penalty_applied.forEach((penalty) => {
-                //  Late Delivery
                 if (penalty.includes("Late Delivery")) {
-                    const planned = new Date(d.planned_date);
-                    const delivered = d.delivered_date?.seconds
-                        ? new Date(d.delivered_date.seconds * 1000)
-                        : new Date(d.delivered_date);
+                    const planned = d.planned_date ? new Date(d.planned_date) : null;
+                    const delivered = d.delivered_at
+                        ? d.delivered_at.seconds
+                            ? new Date(d.delivered_at.seconds * 1000)
+                            : new Date(d.delivered_at)
+                        : null;
+
+                    if (!planned || !delivered || isNaN(planned) || isNaN(delivered)) return;
 
                     // Calculate days late (if any)
                     const diffDays = Math.max(
@@ -63,19 +71,19 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
                         Math.ceil((delivered - planned) / (1000 * 60 * 60 * 24))
                     );
 
-                    const perDay = servicePrice * 0.005; // 0.5% per day
-                    const maxDeduction = servicePrice * 0.2; // Max 20%
+                    const perDay = Number(servicePrice) * 0.005; // 0.5% per day
+                    const maxDeduction = Number(servicePrice) * 0.5; // Max 20%
                     const lateDeduction = Math.min(diffDays * perDay, maxDeduction);
 
                     totalDeduction += lateDeduction;
                 }
 
-                // ⚙️ Service Non-Conformity
+                // 🧾 Service Non-Conformity
                 if (penalty.includes("Service Non-Conformity")) {
                     if (penalty.includes("Slight Damage")) {
-                        totalDeduction += servicePrice * 0.05; // Example: 5% deduction
+                        totalDeduction += Number(servicePrice) * 0.05; // 5%
                     } else if (penalty.includes("Badly Damaged")) {
-                        totalDeduction += servicePrice * 0.5; // Example: 50% deduction
+                        totalDeduction += Number(servicePrice) * 0.5; // 50%
                     }
                 }
             });
@@ -83,6 +91,7 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
 
         return totalDeduction;
     };
+
     const isDownPayment = contract?.service_plan?.service_payment_notice?.label === "Down Payment required atleast 50 percent."
     const platformFee = Number(contract?.service_plan?.service_price) > 5000 ? Number(contract?.service_plan?.service_price) * 0.10 : Number(contract?.service_plan?.service_price) * 0.05
     const service_price = Number(contract?.service_plan?.service_price) || 0;
@@ -90,6 +99,8 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
     const processFee = isDownPayment ? (service_price / 2) * process_fee : service_price * process_fee;
 
     const totalDeductions = computeTotalDeductions(contractDeliveries, service_price);
+
+    console.log(service_price)
 
     const fullAmount = Number(contract?.service_plan?.service_price) + processFee
     const netAmount = Number(service_price - platformFee);
@@ -146,7 +157,7 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
         return () => clearInterval(interval);
     }, []);
 
-    const showSubmitButton = userData?.role === "Supplier" && today.getDate() >= eventDay.getDate();
+    const showSubmitButton = userData?.role === "Supplier" && today.getDate() <= eventDay.getDate();
 
     const handleDeliveryStatus = async (deliveryId) => {
         Swal.fire({
@@ -154,7 +165,7 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
             text: 'Are you sure you want to confirm that this delivery has been received?',
             icon: 'question',
             showCancelButton: true,
-            confirmButtonText: 'Yes, Mark as Received',
+            confirmButtonText: 'Yes',
             cancelButtonText: 'Cancel',
             confirmButtonColor: '#16a34a',
             cancelButtonColor: '#d33',
@@ -164,20 +175,134 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
                 // proceed to mark as received
                 const deliveryRef = doc(db, "deliveries", deliveryId);
                 await updateDoc(deliveryRef, {
-                    status: "Confirmed",
+                    status: "Received",
                     confirmed_at: serverTimestamp(),
                     updated_at: serverTimestamp()
                 });
 
+                await addDoc(collection(db, "notifications"), {
+                    avatar: eventData?.event_name?.charAt(0).toUpperCase(),
+                    message: `The event planner has confirmed receipt of the delivery for the event "${eventData?.event_name}" under Contract ID: "${contract?.id}".`,
+                    createdAt: serverTimestamp(),
+                    sender_id: eventData?.user_id,
+                    referenced_type: 'contract',
+                    referenced_id: contract?.id,
+                    title: "Delivery Received",
+                    unread: true,
+                    receiver_id: supplier_id
+                });
+
+
                 Swal.fire({
                     title: 'Delivery Received!',
-                    text: 'The delivery has been successfully marked as received.',
+                    text: 'The delivery has been successfully received. You can now release the payment.',
                     icon: 'success',
                     timer: 2000,
                     showConfirmButton: false
                 });
             }
         });
+    }
+
+    const handleDeliveryReport = async (reportId, status, deliveryId, reportDetails) => {
+        console.log(reportId, status)
+        if (status === "Accept") {
+            Swal.fire({
+                title: "Are you sure?",
+                text: "Once you accept this, the penalty will be applied to your payment.",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                confirmButtonText: "Accept",
+                cancelButtonText: "Cancel"
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    try {
+                        Swal.fire(
+                            "Approved!",
+                            "The report has been accept successfully.",
+                            "success"
+                        );
+
+                        await updateDoc(doc(db, "reports", reportId), {
+                            status: "solved",
+                            updated_at: serverTimestamp(),
+                        })
+
+                        await updateDoc(doc(db, "deliveries", deliveryId), {
+                            penalty_applied: reportDetails.penalty_applied,
+                        });
+
+                        await addDoc(collection(db, "notifications"), {
+                            avatar: supplierData?.supplier_name.charAt(0).toUpperCase(),
+                            message: `The supplier "${supplierData?.supplier_name}" has accepted the report terms on the Contract ID: ${contract?.id}.`,
+                            createdAt: serverTimestamp(),
+                            sender_id: supplierData.id,
+                            referenced_type: 'contract',
+                            referenced_id: contract?.id,
+                            title: "Delivery Report",
+                            unread: true,
+                            receiver_id: eventData?.user_id
+                        });
+
+                    }
+                    catch (e) {
+                        console.error(e)
+                        setIsSubmitting(false)
+                    }
+                    finally {
+                        setIsSubmitting(false)
+                    }
+                }
+            });
+        }
+
+        if (status === "Reject") {
+            Swal.fire({
+                title: "Are you sure?",
+                text: "If you reject this, the report will be forwarded to the admin for review and final decision.",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                confirmButtonText: "Reject",
+                cancelButtonText: "Cancel"
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    try {
+                        Swal.fire(
+                            "Submitted!",
+                            "The report has been sent to the admin for review.",
+                            "success"
+                        );
+
+                        await updateDoc(doc(db, "reports", reportId), {
+                            status: "under_review"
+                        });
+
+                        await addDoc(collection(db, "notifications"), {
+                            avatar: supplierData?.supplier_name.charAt(0).toUpperCase(),
+                            message: `The supplier "${supplierData?.supplier_name}" has rejected the delivery report for Contract ID: ${contract?.id}. The admin will now review and decide on the case.`,
+                            createdAt: serverTimestamp(),
+                            sender_id: supplierData.id,
+                            referenced_type: 'contract',
+                            referenced_id: contract?.id,
+                            title: "Delivery Report Under Review",
+                            unread: true,
+                            receiver_id: eventData?.user_id
+                        });
+
+                    } catch (e) {
+                        console.error(e);
+                        setIsSubmitting(false);
+                    } finally {
+                        setIsSubmitting(false);
+                    }
+                }
+            });
+        }
+
     }
 
     const handleApprove = async (contract_id) => {
@@ -318,7 +443,6 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
 
         }
     }
-
 
     const handlePayment = async (downpayment, nextpayment, processingFee) => {
         if (payment_method.length === 0) {
@@ -488,113 +612,319 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
                                             </div>
 
                                             {/* No Deliveries */}
-                                            {(contractDeliveries.length === 0) && (
+                                            {(contractDeliveries.length === 0) && !isDeliveriesLoading && (
                                                 <div className='flex justify-center py-12'>
                                                     <span className='text-gray-500 text-sm'>No deliveries have been submitted yet.</span>
                                                 </div>
                                             )}
 
+                                            {isDeliveriesLoading && (
+                                                <div className='max-h-[350px] relative -top-40'>
+                                                    <PageLoading />
+                                                </div>
+                                            )}
+
                                             {/* Deliveries */}
-                                            {contractDeliveries.length > 0 && (
+                                            {contractDeliveries.length > 0 && !isDeliveriesLoading && (
                                                 <div className="space-y-5 max-h-[350px] overflow-y-auto">
-                                                    {contractDeliveries.map((delivery, index) => (
-                                                        <div
-                                                            key={index}
-                                                            className="border border-gray-300 rounded-lg p-5 shadow-md bg-white hover:shadow-lg transition"
-                                                        >
-                                                            {/* Header */}
-                                                            <div className="flex justify-between items-center mb-4">
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="text-sm text-gray-600">
-                                                                        <strong>Status:</strong>{" "}
-                                                                        <span
-                                                                            className={`px-2 py-1 rounded-full text-xs font-medium ${delivery.status === "Pending"
-                                                                                ? "bg-yellow-100 text-yellow-600"
-                                                                                : delivery.status === "Confirmed"
-                                                                                    ? "bg-green-100 text-green-600"
-                                                                                    : delivery.status === "Damaged"
-                                                                                        ? "bg-red-100 text-red-600"
-                                                                                        : "bg-gray-100 text-gray-600"
-                                                                                }`}
+                                                    {contractDeliveries.map((delivery, index) => {
+                                                        const deliveryReports = reports.find(r => r.delivery_id === delivery.id)
+
+                                                        return (
+                                                            <div
+                                                                key={index}
+                                                                className="border border-gray-300 rounded-lg p-5 shadow-md bg-white hover:shadow-lg transition"
+                                                            >
+                                                                {deliveryReports && (
+                                                                    <div className="bg-white rounded-2xl shadow-md border border-gray-200 p-6 mb-6 transition-all hover:shadow-lg">
+                                                                        {/* Header */}
+                                                                        <div className="flex items-center justify-between mb-5">
+                                                                            <div>
+                                                                                <h2 className="text-base font-semibold text-red-500 tracking-wide uppercase">
+                                                                                    Delivery Issue
+                                                                                </h2>
+                                                                                <p className="text-sm text-gray-500">
+                                                                                    Detailed report of the issue encountered during delivery.
+                                                                                </p>
+                                                                            </div>
+                                                                            <div className="text-right">
+                                                                                <span className="text-sm font-semibold text-gray-700 mr-2">Status:</span>
+                                                                                <span
+                                                                                    className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize shadow-sm
+                                                                                        ${deliveryReports.status === "pending" || deliveryReports.status === "under_review"
+                                                                                            ? "bg-yellow-100 text-yellow-700"
+                                                                                            : deliveryReports.status === "solved"
+                                                                                                ? "bg-green-100 text-green-700"
+                                                                                                : deliveryReports.status === "rejected" || deliveryReports.status === "Issued"
+                                                                                                    ? "bg-red-100 text-red-700"
+                                                                                                    : deliveryReports.status === "Picked Up" || deliveryReports.status === "On Going"
+                                                                                                        ? "bg-blue-100 text-blue-700"
+                                                                                                        : "bg-gray-100 text-gray-700"
+                                                                                        }`}
+                                                                                >
+                                                                                    {deliveryReports.status}
+                                                                                </span>
+                                                                            </div>
+                                                                        </div>
+
+                                                                        {/* Body */}
+                                                                        <div className="space-y-4">
+                                                                            <div>
+                                                                                <p className="text-sm font-medium text-gray-900">
+                                                                                    Event Name: <span className="font-semibold">{eventData.event_name}</span>
+                                                                                </p>
+                                                                            </div>
+
+                                                                            {deliveryReports.admin_feedback?.length > 0 && (
+                                                                                <div className="bg-gray-50 rounded-xl p-3 border border-gray-200">
+                                                                                    <h3 className="text-sm font-semibold text-gray-700 mb-1">Admin Feedback</h3>
+                                                                                    <p className="text-sm text-gray-800">{deliveryReports.admin_feedback}</p>
+                                                                                </div>
+                                                                            )}
+
+                                                                            <div>
+                                                                                <h3 className="text-sm font-semibold text-gray-700 mb-1">Issue Applied</h3>
+                                                                                <ul className="ml-4 list-disc text-sm text-gray-800 space-y-1">
+                                                                                    {deliveryReports.penalty_applied.map((report, index) => (
+                                                                                        <li key={index}>{report}</li>
+                                                                                    ))}
+                                                                                </ul>
+                                                                            </div>
+
+                                                                            <div>
+                                                                                <p className="text-sm text-gray-900 italic border-l-4 border-gray-300 pl-3 mt-3">
+                                                                                    "{deliveryReports.reason}"
+                                                                                </p>
+                                                                            </div>
+
+                                                                            <div>
+                                                                                <h3 className="text-sm font-semibold text-gray-700 mb-1">Image Proof</h3>
+                                                                                <a href={deliveryReports.proof} target="_blank" rel="noopener noreferrer">
+                                                                                    <img
+                                                                                        src={deliveryReports.proof}
+                                                                                        alt="Proof"
+                                                                                        className="w-full max-w-sm rounded-xl border border-gray-200 object-cover hover:opacity-90 transition"
+                                                                                    />
+                                                                                </a>
+                                                                            </div>
+
+
+                                                                        </div>
+
+                                                                        {/* Action Buttons */}
+                                                                        {userData.role === "Supplier" &&
+                                                                            !["solved", "under_review", "rejected"].includes(deliveryReports.status) && (
+                                                                                <div className="flex justify-end gap-3 mt-5 border-t border-gray-100 pt-4">
+                                                                                    <button
+                                                                                        onClick={() => handleDeliveryReport(deliveryReports.id, "Reject")}
+                                                                                        className="px-4 py-2 text-sm font-medium rounded-lg text-white bg-red-500 hover:bg-red-600 transition-all shadow-sm"
+                                                                                    >
+                                                                                        Reject
+                                                                                    </button>
+                                                                                    <button
+                                                                                        onClick={() =>
+                                                                                            handleDeliveryReport(deliveryReports.id, "Accept", delivery.id, deliveryReports)
+                                                                                        }
+                                                                                        className="px-4 py-2 text-sm font-medium rounded-lg text-white bg-green-500 hover:bg-green-600 transition-all shadow-sm"
+                                                                                    >
+                                                                                        Accept
+                                                                                    </button>
+                                                                                </div>
+                                                                            )}
+                                                                    </div>
+                                                                )}
+
+                                                                {delivery?.delivery_type?.value === "lalamove" && (
+                                                                    <>
+                                                                        <div className="bg-white shadow-lg border border-gray-300 rounded-lg">
+                                                                            <div className="px-4 py-4">
+                                                                                <div className='flex items-center justify-between'>
+                                                                                    <span className="text-sm mb-4 block text-gray-600">
+                                                                                        <strong>Status:</strong>{" "}
+                                                                                        <span
+                                                                                            className={`px-2 py-1 rounded-full text-xs font-medium ${delivery.status === "Pending" || delivery.status === "Driver Assigned"
+                                                                                                ? "bg-yellow-100 text-yellow-600"
+                                                                                                : delivery.status === "Delivered" || delivery.status === "Received"
+                                                                                                    ? "bg-green-100 text-green-600"
+                                                                                                    : delivery.status === "Damaged" || delivery.status === "Issued"
+                                                                                                        ? "bg-red-100 text-red-600"
+                                                                                                        : delivery.status === "Picked Up" || delivery.status === "On Going"
+                                                                                                            ? "bg-blue-100 text-blue-600"
+                                                                                                            : "bg-gray-100 text-gray-600"
+                                                                                                }`}
+                                                                                        >
+                                                                                            {delivery.status}
+                                                                                        </span>
+                                                                                    </span>
+
+                                                                                    <div className="flex justify-between items-center mb-4">
+                                                                                        <div className="flex items-center gap-2">
+                                                                                        </div>
+                                                                                        <span className="text-xs text-gray-400">
+                                                                                            Submitted:{" "}
+                                                                                            {delivery.submitted_at?.toDate
+                                                                                                ? delivery.submitted_at.toDate().toLocaleString()
+                                                                                                : "N/A"}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div className="flex items-center gap-3">
+                                                                                    <div className="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center">
+                                                                                        {/* <div className="text-white text-2xl">🏍️</div> */}
+                                                                                        <img src="delivery-man.png" alt="" className='w-8 h-8' />
+                                                                                    </div>
+                                                                                    <div className="flex-1">
+                                                                                        <div className="flex items-center gap-2">
+                                                                                            <span className="text-sm font-medium text-gray-700">{delivery.delivery_service_type}</span>
+                                                                                        </div>
+                                                                                        <div className="flex flex-col">
+                                                                                            <span className='text-sm font-semibold text-gray-900'>{delivery?.courier?.name || "Unknown"}</span>
+                                                                                            <span className='text-xs text-gray-600'>{delivery?.courier?.phone || "Unknown"}</span>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+
+                                                                        {/* Main Content */}
+                                                                        <div className="py-6 space-y-6">
+                                                                            {/* Route Section */}
+                                                                            <div className="bg-white rounded-lg shadow-lg border border-gray-300 p-4">
+                                                                                <div className="flex items-center justify-between mb-4">
+                                                                                    <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Route</h2>
+                                                                                </div>
+
+                                                                                <div className="flex gap-3">
+                                                                                    {/* Pickup Location */}
+                                                                                    <div className='flex flex-col py-3 gap-2 items-center'>
+                                                                                        <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                                                                                        <div className="w-0.5 h-full bg-gray-300"></div>
+                                                                                        <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                                                                                    </div>
+
+                                                                                    <div>
+                                                                                        <div className="flex gap-3">
+                                                                                            <div className="flex-1 pb-4">
+                                                                                                <div className="font-medium text-gray-900">
+                                                                                                    {delivery?.pickup_location?.pickup.address}
+                                                                                                </div>
+                                                                                                <div className="text-xs text-gray-500 mt-1">
+                                                                                                    {delivery.pickup_location.sender.name} | {delivery.pickup_location.sender.phone}
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                        {/* Dropoff Location */}
+                                                                                        <div className="flex gap-3">
+
+                                                                                            <div className="flex-1">
+                                                                                                <div className="font-medium text-gray-900">
+                                                                                                    {delivery?.dropoff_location?.dropoff.address}
+                                                                                                </div>
+                                                                                                <div className="text-xs text-gray-500 mt-1">
+                                                                                                    {delivery.dropoff_location.recipients.name} | {delivery.dropoff_location.recipients.phone}
+
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    </div>
+
+                                                                                </div>
+                                                                                <a href={delivery.delivery_link} target='_blank' className='transition-all w-33 bg-orange-600 text-sm hover:bg-orange-700 flex p-2 px-3 rounded-lg text-white ml-auto'>
+                                                                                    View more details
+                                                                                </a>
+                                                                            </div>
+
+                                                                            {/* Price Section */}
+                                                                            <div className="bg-white rounded-lg shadow-lg border border-gray-300 p-4">
+                                                                                <div className="flex items-center justify-between mb-4">
+                                                                                    <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Price</h2>
+                                                                                </div>
+
+                                                                                <div className="space-y-3">
+                                                                                    <div className="flex justify-between items-center">
+                                                                                        <div>
+                                                                                            <div className="font-medium text-gray-900">Delivery Fee</div>
+                                                                                            <div className="text-xs text-gray-500">lalamove</div>
+                                                                                        </div>
+                                                                                        <div className="text-lg font-semibold text-gray-900">₱38</div>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </>
+                                                                )}
+
+                                                                {delivery?.delivery_type?.value === "personal" && (
+                                                                    <>
+
+                                                                        <div className='flex justify-between'>
+                                                                            <div>
+                                                                                <div className='text-sm text-gray-700'>
+                                                                                    Submitted Time:{" "}
+                                                                                    {delivery?.submitted_at
+                                                                                        ? new Date(delivery.submitted_at.seconds * 1000).toLocaleString()
+                                                                                        : "No timestamp available"}
+                                                                                </div>
+
+                                                                                <p className="text-sm text-gray-700 mb-4">
+                                                                                    <span>Note:</span> {delivery.notes || "No notes provided"}
+                                                                                </p>
+                                                                            </div>
+                                                                            <div className="flex gap-2">
+                                                                                <span className="text-sm text-gray-600">
+                                                                                    <strong>Status:</strong>{" "}
+                                                                                    <span
+                                                                                        className={`px-2 py-1 rounded-full text-xs font-medium ${delivery.status === "Pending"
+                                                                                            ? "bg-yellow-100 text-yellow-600"
+                                                                                            : delivery.status === "Confirmed" || delivery.status === "Received"
+                                                                                                ? "bg-green-100 text-green-600"
+                                                                                                : delivery.status === "Damaged"
+                                                                                                    ? "bg-red-100 text-red-600"
+                                                                                                    : "bg-gray-100 text-gray-600"
+                                                                                            }`}
+                                                                                    >
+                                                                                        {delivery.status}
+                                                                                    </span>
+                                                                                </span>
+                                                                            </div>
+                                                                        </div>
+
+                                                                        {/* Proofs */}
+                                                                        {delivery.proof?.length > 0 && (
+                                                                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-4">
+                                                                                <a
+                                                                                    key={index}
+                                                                                    href={delivery.proof}
+                                                                                    target="_blank"
+                                                                                    rel="noopener noreferrer"
+                                                                                    className="block rounded-lg overflow-hidden hover:ring hover:ring-blue-400 transition"
+                                                                                >
+                                                                                    <img
+                                                                                        src={delivery.proof}
+                                                                                        alt={`Proof ${index + 1}`}
+                                                                                        className="w-full h-32 object-cover"
+                                                                                    />
+                                                                                </a>
+                                                                            </div>
+                                                                        )}
+                                                                    </>
+                                                                )}
+                                                                {/* Action Buttons - Only show if user is event planner and delivery is pending */}
+                                                                {userData?.role !== "Supplier" && (delivery.status === "Pending" || delivery.status === "Delivered") && (
+                                                                    <div className="flex justify-end gap-2">
+                                                                        <DamagePenaltiesModal contractData={contract} userData={userData} delivery={delivery} deliveryId={delivery.id} eventData={eventData} />
+
+                                                                        <button
+                                                                            onClick={() => handleDeliveryStatus(delivery.id, "Confirmed")}
+                                                                            className="px-3 py-1.5 bg-green-500 text-white text-sm rounded hover:bg-green-600 transition-colors"
                                                                         >
-                                                                            {delivery.status}
-                                                                        </span>
-                                                                    </span>
-                                                                </div>
-                                                                <span className="text-xs text-gray-400">
-                                                                    Submitted:{" "}
-                                                                    {delivery.submitted_at?.toDate
-                                                                        ? delivery.submitted_at.toDate().toLocaleString()
-                                                                        : "N/A"}
-                                                                </span>
+                                                                            Received
+                                                                        </button>
+                                                                    </div>
+                                                                )}
                                                             </div>
-
-                                                            {/* Notes */}
-                                                            {delivery.notes && (
-                                                                <p className="text-sm text-gray-700 mb-4">
-                                                                    <strong>Note:</strong> {delivery.notes}
-                                                                </p>
-                                                            )}
-
-                                                            {delivery.issue_reason && (
-                                                                <p className="text-sm text-red-700 mb-4">
-                                                                    <strong>Issue:</strong> {delivery.issue_reason}
-                                                                </p>
-                                                            )}
-
-                                                            {/* Proofs */}
-                                                            {delivery.proof?.length > 0 && (
-                                                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-4">
-                                                                    <a
-                                                                        key={index}
-                                                                        href={delivery.proof}
-                                                                        target="_blank"
-                                                                        rel="noopener noreferrer"
-                                                                        className="block rounded-lg overflow-hidden border hover:ring hover:ring-blue-400 transition"
-                                                                    >
-                                                                        <img
-                                                                            src={delivery.proof}
-                                                                            alt={`Proof ${index + 1}`}
-                                                                            className="w-full h-32 object-cover"
-                                                                        />
-                                                                    </a>
-                                                                </div>
-                                                            )}
-
-                                                            {/* Action Buttons - Only show if user is event planner and delivery is pending */}
-                                                            {userData?.role !== "Supplier" && delivery.status === "Pending" && (
-                                                                <div className="flex justify-end gap-2 mt-4">
-                                                                    <DamagePenaltiesModal delivery={delivery} deliveryId={delivery.id} eventData={eventData} />
-
-                                                                    <button
-                                                                        onClick={() => handleDeliveryStatus(delivery.id, "Confirmed")}
-                                                                        className="px-3 py-1.5 bg-green-500 text-white text-sm rounded hover:bg-green-600 transition-colors"
-                                                                    >
-                                                                        Received
-                                                                    </button>
-                                                                </div>
-                                                            )}
-
-                                                            {/* Status message for non-pending deliveries */}
-                                                            {delivery.status !== "Pending" && userData?.role !== "Supplier" && (
-                                                                <div className="mt-3 text-sm">
-                                                                    <span className="text-gray-600">
-                                                                        You marked this delivery as:{" "}
-                                                                        <span
-                                                                            className={`font-medium ${delivery.status === "Confirmed"
-                                                                                ? "text-green-600"
-                                                                                : delivery.status === "Damaged"
-                                                                                    ? "text-orange-600"
-                                                                                    : "text-red-600"
-                                                                                }`}
-                                                                        >
-                                                                            {delivery.status}
-                                                                        </span>
-                                                                    </span>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    ))}
+                                                        )
+                                                    })}
                                                 </div>
                                             )}
 
@@ -757,7 +1087,7 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
 
                                                                             <div className="border-t border-gray-300 pt-3">
                                                                                 <div className="flex justify-between items-center">
-                                                                                    <span className="text-md font-semibold text-gray-800">Amount To Recieve</span>
+                                                                                    <span className="text-md font-semibold text-gray-800">Amount To Receive</span>
                                                                                     <span className="text-lg font-semibold text-gray-800">₱{userData?.role === "Supplier" ? finalAmount.toLocaleString() : service_price}</span>
                                                                                 </div>
                                                                             </div>
@@ -831,8 +1161,8 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
                                                         <p className="font-bold text-lg">Recent Transactions</p>
                                                     </div>
 
-                                                    <div className={`flex flex-col mt-5 gap-3 overflow-y-auto ${transactions.length > 2 && 'h-[200px]'}`}>
-                                                        {transactions.map((t, i) => (
+                                                    <div className={`flex flex-col mt-5 gap-3 overflow-y-auto ${contractTransaction.length > 2 && 'h-[200px]'}`}>
+                                                        {contractTransaction.map((t, i) => (
                                                             <div key={i} className='bg-gray-50 border border-gray-200 shadow-lg rounded-lg py-5 px-6 flex items-center justify-between'>
                                                                 <div className='flex flex-col space-y-2'>
                                                                     <div className='flex items-baseline gap-2'>
@@ -846,7 +1176,7 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
                                                             </div>
                                                         ))}
 
-                                                        {transactions.length === 0 && (
+                                                        {contractTransaction.length === 0 && (
                                                             <div className='block text-center py-2 pb-5 text-gray-600 font-semibold'>No transactions made yet.</div>
                                                         )}
                                                     </div>
@@ -878,7 +1208,7 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
                                         </div>
                                         {userData?.role != "Supplier" && contract?.status !== "Completed" && (
                                             <>
-                                                {(total_paid - total_fees) === service_price && deliveries?.length > 0 && (
+                                                {(total_paid - total_fees) === service_price && deliveries[0]?.status === "Received" && (
                                                     <div className='flex justify-end ml-auto gap-3 '>
                                                         {/* <button className='transition-all duration-50 text-sm items-center hover:bg-gray-700 py-2 px-5 rounded-md bg-gray-600 text-white'>Contact Supplier</button> */}
 

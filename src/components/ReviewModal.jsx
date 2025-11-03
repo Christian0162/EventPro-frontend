@@ -7,14 +7,13 @@ import { auth, db } from '../firebase/firebase'
 import Swal from 'sweetalert2'
 import LoadingOverlay from './LoadingOverlay'
 import { statusStyles } from '../constants/categories'
-import { useFetchAllReports } from '../hooks/useReports'
 import { useFetchAllTransaction } from '../hooks/useTransaction'
 import { useCreateRefund } from '../hooks/useRefund'
 import { useFetchContract } from '../hooks/useContract'
 import { useFetchUsers } from '../hooks/useUsers'
 import { useFetchEvents } from '../hooks/useEvents'
-import { useFetchSuppliers } from '../hooks/useSupplier'
-export const Review = ({ reviewed_id, reviewer_name, eventData }) => {
+
+export const Review = ({ reviewed_id, reviewer_name, eventData, contractData }) => {
     const [isOpen, setIsOpen] = useState(false)
     const [rating, setRating] = useState(0)
     const [hoverRating, setHoverRating] = useState(0)
@@ -70,7 +69,7 @@ export const Review = ({ reviewed_id, reviewer_name, eventData }) => {
                         user_id: auth.currentUser.uid,
                         reviewer_name: reviewerName,
                         reviewed_id: reviewed_id,
-                        event_id: eventData.id || eventData.event_id,
+                        event_id: eventData?.id || contractData.event_id,
                         rating: rating,
                         comment: reviewText,
                         createdAt: serverTimestamp()
@@ -495,74 +494,14 @@ export const ReportReview = ({ report, userData }) => {
 
     const handleReject = async () => {
         setIsRejectSubmitting(true);
-        try {
-
-            await addDoc(collection(db, "notifications"), {
-                avatar: 'A',
-                title: "Issue Reported",
-                message: `Your report has been reviewed and unfortunately, it has been rejected by the admin. Please check the details and, if necessary, submit a revised report.`,
-                feedback: rejectReason,
-                createdAt: serverTimestamp(),
-                referenced_type: "report",
-                referenced_id: report?.id,
-                unread: true,
-                receiver_id: report?.user_id,
-            });
-
-
-            await updateDoc(doc(db, 'reports', report.id), {
-                status: 'rejected',
-                admin_feedback: rejectReason
-            })
-
-            Swal.fire({
-                icon: 'success',
-                title: 'Action Completed',
-                text: 'The action has been successfully completed.',
-                confirmButtonText: 'OK'
-            });
-
-        } catch (err) {
-            console.error(err);
-            setIsRejectSubmitting(false);
-        }
-        finally {
-            setIsRejectSubmitting(false);
-            setIsRejectOpen(false);
-            setIsOpen(isLoading);
-        }
-    };
-
-    const handleApprove = async () => {
-        const result = await Swal.fire({
-            icon: 'warning',
-            title: 'Approve Report?',
-            html: `
-            Approving this report will have the following consequences:
-            <ul class="mb-5 mt-5" style="text-center: left;">
-                <li>The reported account may be banned or terminated.</li>
-                <li>If the planner has an active escrow for the contract, it will be refunded within 2-3 days.</li>
-            </ul>
-            Are you sure you want to proceed?
-        `,
-            showCancelButton: true,
-            confirmButtonText: 'Yes, approve',
-            cancelButtonText: 'Cancel',
-        });
-
-        if (result.isConfirmed) {
-            setIsApproveSubmitting(true);
+        if (report.report_type === "contract") {
             try {
-
-
-                if (data && report.reporter_role === "Event Planner") {
-                    await createRefund(data, report.contract_id)
-                }
 
                 await addDoc(collection(db, "notifications"), {
                     avatar: 'A',
-                    title: "Report Approved",
-                    message: `The reported ${report?.reporter_role === "Event Planner" ? 'supplier' : 'event planner'} account will be terminated or banned. Any escrow or contracts affected will be refunded within 2-3 days.`,
+                    title: "Issue Reported",
+                    message: `Your report has been reviewed and unfortunately, it has been rejected by the admin. Please check the details and, if necessary, submit a revised report.`,
+                    feedback: rejectReason,
                     createdAt: serverTimestamp(),
                     referenced_type: "report",
                     referenced_id: report?.id,
@@ -570,73 +509,242 @@ export const ReportReview = ({ report, userData }) => {
                     receiver_id: report?.user_id,
                 });
 
-                await updateDoc(doc(db, 'reports', report?.id), {
-                    status: 'approved',
+
+                await updateDoc(doc(db, 'reports', report.id), {
+                    status: 'rejected',
+                    admin_feedback: rejectReason
+                })
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Action Completed',
+                    text: 'The action has been successfully completed.',
+                    confirmButtonText: 'OK'
                 });
 
-                await updateDoc(doc(db, "contracts", report.contract_id), {
-                    status: 'Cancelled'
-                })
+            } catch (err) {
+                console.error(err);
+                setIsRejectSubmitting(false);
+            }
+            finally {
+                setIsRejectSubmitting(false);
+                setIsRejectOpen(false);
+                setIsOpen(isLoading);
+            }
+        }
 
-                await updateDoc(doc(db, 'users', id), {
-                    reported_history: arrayUnion({
-                        reason: report.penalty_applied,
-                        date: new Date()
-                    }),
-                    reportedAttempts: selectedUser?.reportedAttempts + 1,
-                })
+        if (report.report_type === "delivery") {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Reject Report?',
+                html: `
+                Rejecting this report means no penalties will be applied to the supplier.
+                <br><br>
+                Are you sure you want to reject this report?
+            `,
+                showCancelButton: true,
+                confirmButtonText: 'Yes, reject',
+                cancelButtonText: 'Cancel',
+            }).then(async (r) => {
+                if (r.isConfirmed) {
+                    try {
+                        await updateDoc(doc(db, "reports", report.id), {
+                            status: "rejected",
+                            admin_feedback: rejectReason,
+                            updated_at: serverTimestamp(),
+                        });
 
-                if (selectedUser.reportedAttempts === 3) {
-                    await updateDoc(doc(db, 'users', id), {
-                        status: 'banned'
+                        await updateDoc(doc(db, "deliveries", report.delivery_id), {
+                            penalty_applied: [],
+                        });
+                    } catch (e) {
+                        console.error(e);
+                    } finally {
+                        setIsRejectSubmitting(false);
+                        Swal.fire({
+                            icon: "success",
+                            title: "Report Processed",
+                            text: "The report has been processed successfully.",
+                            confirmButtonText: "OK",
+                        });
+                    }
+                }
+            });
+        }
+
+    };
+
+    const handleApprove = async () => {
+        if (report.report_type === "contract") {
+            const result = await Swal.fire({
+                icon: 'warning',
+                title: 'Approve Report?',
+                html: `
+            Approving this report will have the following consequences:
+            <ul class="mb-5 mt-5" style="text-center: left;">
+                <li>The reported account may be banned or terminated.</li>
+                <li>If the planner has an active escrow for the contract, it will be refunded within 2-3 days.</li>
+            </ul>
+            Are you sure you want to proceed?
+        `,
+                showCancelButton: true,
+                confirmButtonText: 'Yes, approve',
+                cancelButtonText: 'Cancel',
+            });
+
+            if (result.isConfirmed) {
+                setIsApproveSubmitting(true);
+                try {
+
+
+                    if (data && report.reporter_role === "Event Planner") {
+                        await createRefund(data, report.contract_id)
+                    }
+
+                    await addDoc(collection(db, "notifications"), {
+                        avatar: 'A',
+                        title: "Report Approved",
+                        message: `The reported ${report?.reporter_role === "Event Planner" ? 'supplier' : 'event planner'} account will be terminated or banned. Any escrow or contracts affected will be refunded within 2-3 days.`,
+                        createdAt: serverTimestamp(),
+                        referenced_type: "report",
+                        referenced_id: report?.id,
+                        unread: true,
+                        receiver_id: report?.user_id,
+                    });
+
+                    await updateDoc(doc(db, 'reports', report?.id), {
+                        status: 'approved',
+                    });
+
+                    await updateDoc(doc(db, "contracts", report.contract_id), {
+                        status: 'Cancelled'
                     })
 
-                    if (selectedUser.role === 'Event Planner') {
-                        for (const e of userEvents) {
-                            await updateDoc(doc(db, 'events', e.id), {
+                    await updateDoc(doc(db, 'users', id), {
+                        reported_history: arrayUnion({
+                            reason: report.penalty_applied,
+                            date: new Date()
+                        }),
+                        reportedAttempts: selectedUser?.reportedAttempts + 1,
+                    })
+
+                    if (selectedUser.reportedAttempts === 3) {
+                        await updateDoc(doc(db, 'users', id), {
+                            status: 'banned'
+                        })
+
+                        if (selectedUser.role === 'Event Planner') {
+                            for (const e of userEvents) {
+                                await updateDoc(doc(db, 'events', e.id), {
+                                    status: "banned"
+                                })
+                            }
+                        }
+
+                        if (selectedUser.role === 'Supplier') {
+                            await updateDoc(doc(db, 'shops', id), {
                                 status: "banned"
                             })
                         }
                     }
 
-                    if (selectedUser.role === 'Supplier') {
-                        await updateDoc(doc(db, 'shops', id), {
-                            status: "banned"
-                        })
+                    if (selectedUser.reportedAttempts === 2) {
+                        await addDoc(collection(db, "notifications"), {
+                            avatar: 'A',
+                            title: "Warning Issued",
+                            message: `Your account has received a warning due to a reported incident. If similar behavior occurs again, your account may be suspended or permanently banned.`,
+                            createdAt: serverTimestamp(),
+                            referenced_type: "report",
+                            referenced_id: report?.id,
+                            unread: true,
+                            receiver_id: id,
+                        });
                     }
-                }
 
-                if (selectedUser.reportedAttempts === 2) {
-                    await addDoc(collection(db, "notifications"), {
-                        avatar: 'A',
-                        title: "Warning Issued",
-                        message: `Your account has received a warning due to a reported incident. If similar behavior occurs again, your account may be suspended or permanently banned.`,
-                        createdAt: serverTimestamp(),
-                        referenced_type: "report",
-                        referenced_id: report?.id,
-                        unread: true,
-                        receiver_id: id,
-                    });
+                    if (report.reporter_role === "Supplier") {
+                        Swal.fire({
+                            icon: "success",
+                            title: "Report Processed",
+                            text: "The report has been processed successfully.",
+                            confirmButtonText: "OK",
+                        });
+                    }
+                } catch (err) {
+                    console.error(err);
+                    setIsApproveSubmitting(false);
+                } finally {
+                    setIsApproveSubmitting(isLoading);
                 }
-
-                if (report.reporter_role === "Supplier") {
-                    Swal.fire({
-                        icon: "success",
-                        title: "Report Processed",
-                        text: "The report has been processed successfully.",
-                        confirmButtonText: "OK",
-                    });
-                }
-            } catch (err) {
-                console.error(err);
-                setIsApproveSubmitting(false);
-            } finally {
-                setIsApproveSubmitting(isLoading);
             }
         }
+
+        if (report.report_type === "delivery") {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Approve Report?',
+                html: `
+        Approving this report will apply the corresponding penalties to the supplier involved.
+        <ul class="mb-5 mt-5" style="text-align: left;">
+            <li>The supplier’s account may receive deductions or penalty points based on the report.</li>
+            <li>Any applicable contract deductions will be reflected in the final payment summary.</li>
+            <li>This action cannot be undone once confirmed.</li>
+        </ul>
+        Are you sure you want to proceed?
+    `,
+                showCancelButton: true,
+                confirmButtonText: 'Yes, approve',
+                cancelButtonText: 'Cancel',
+            }).then(async (r) => {
+                if (r.isConfirmed) {
+                    setIsApproveSubmitting(true);
+                    try {
+                        await updateDoc(doc(db, "reports", report.id), {
+                            status: "solved",
+                            updated_at: serverTimestamp(),
+                        })
+
+                        await updateDoc(doc(db, "deliveries", report.delivery_id), {
+                            penalty_applied: report.penalty_applied,
+                        });
+
+                        await addDoc(collection(db, "notifications"), {
+                            avatar: 'A',
+                            title: "Report Approved",
+                            message: `The report for this delivery has been approved. Penalties have been applied to the supplier based on the reported issue and will be reflected in their payment summary.`,
+                            createdAt: serverTimestamp(),
+                            referenced_type: "contract",
+                            referenced_id: report?.contract_id,
+                            unread: true,
+                            receiver_id: report?.user_id,
+                        });
+
+                        await addDoc(collection(db, "notifications"), {
+                            avatar: 'A',
+                            title: "Report Approved",
+                            message: `The report for this delivery has been approved. Penalties have been applied to the supplier based on the reported issue and will be reflected in their payment summary.`,
+                            createdAt: serverTimestamp(),
+                            referenced_type: "contract",
+                            referenced_id: report?.contract_id,
+                            unread: true,
+                            receiver_id: report?.recipient_id,
+                        });
+                    }
+                    catch (e) {
+                        console.error(e)
+                    }
+                    finally {
+                        setIsApproveSubmitting(false);
+                        Swal.fire({
+                            icon: "success",
+                            title: "Report Processed",
+                            text: "The report has been processed successfully.",
+                            confirmButtonText: "OK",
+                        });
+                    }
+                }
+            });
+        }
     };
-
-
 
     return (
         <>
@@ -671,7 +779,7 @@ export const ReportReview = ({ report, userData }) => {
                                 </p>
                             </div>
 
-                            <LoadingOverlay isLoading={isLoading || isApprovedSubmitting} message='Do not refresh until it’s done...' />
+                            <LoadingOverlay isLoading={isLoading || isApprovedSubmitting || isRejectSubmitting} message='Do not refresh until it’s done...' />
 
                             {/* Penalty */}
                             <div className="mb-6">
@@ -681,7 +789,7 @@ export const ReportReview = ({ report, userData }) => {
                                     </h3>
 
                                     <div className="text-md font-semibold text-gray-800 flex items-center mb-2 gap-1">
-                                        Status: <span className={`rounded-full py-1 px-4 ${statusStyles[report?.status]}`}>{report?.status.charAt(0).toUpperCase() + report?.status.slice(1)}</span>
+                                        Status: <span className={`rounded-full py-1 px-3 ${statusStyles[report?.status]}`}>{report?.status.charAt(0).toUpperCase() + report?.status.slice(1)}</span>
                                     </div>
                                 </div>
                                 {report?.penalty_applied ? (
@@ -742,18 +850,20 @@ export const ReportReview = ({ report, userData }) => {
                                     <p className="text-gray-500 italic">No attachments provided.</p>
                                 )}
 
-                                <div className="mt-8 mb-3">
-                                    <h3 className="text-md font-semibold text-gray-800 mb-2">
-                                        Admin Feedback
-                                    </h3>
-                                    {report?.admin_feedback ? (
-                                        <div className="w-full p-5 bg-gray-100 border border-gray-200 shadow rounded-lg">
-                                            {report.admin_feedback}
-                                        </div>
-                                    ) : (
-                                        <p className="text-gray-500 italic">No admin feedback listed.</p>
-                                    )}
-                                </div>
+                                {report?.admin_feedback?.length > 0 && (
+                                    <div className="mt-8 mb-3">
+                                        <h3 className="text-md font-semibold text-gray-800 mb-2">
+                                            Admin Feedback
+                                        </h3>
+                                        {report?.admin_feedback ? (
+                                            <div className="w-full p-5 bg-gray-100 border border-gray-200 shadow rounded-lg">
+                                                {report.admin_feedback}
+                                            </div>
+                                        ) : (
+                                            <p className="text-gray-500 italic">No admin feedback listed.</p>
+                                        )}
+                                    </div>
+                                )}
 
                             </div>
 

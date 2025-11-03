@@ -110,7 +110,9 @@ export default function SupplierDashboard({ userData }) {
         contracts.filter(contract => contract?.status === "Completed" && contract.supplier_id === userData.id),
         [contracts, userData.id]);
 
-    const contractHistory = useMemo(() => contracts.filter(contract => contract?.status === "Completed" || contract?.status === "Cancelled" && contract.supplier_id === userData.id), [contracts, userData.id])
+    const contractHistory = useMemo(() => contracts.filter(contract => (contract?.status === "Completed" || contract?.status === "Cancelled") && contract.supplier_id === userData.id), [contracts, userData.id])
+
+    console.log(contractHistory)
 
     const contractHistoryEvents = useMemo(() =>
         contractHistory.map(contract =>
@@ -164,26 +166,67 @@ export default function SupplierDashboard({ userData }) {
 
                 const eventDate = new Date(eventData.event_date.date_value);
 
+                const twoDaysBeforeEvent = new Date(eventDate);
+                twoDaysBeforeEvent.setDate(eventDate.getDate() - 2);
+
+                console.log(twoDaysBeforeEvent)
+
+                const isTwoDaysBefore =
+                    now.getFullYear() === twoDaysBeforeEvent.getFullYear() &&
+                    now.getMonth() === twoDaysBeforeEvent.getMonth() &&
+                    now.getDate() === twoDaysBeforeEvent.getDate();
+
+                if (isTwoDaysBefore) {
+                    const notifQuery = query(
+                        collection(db, "notifications"),
+                        where("referenced_id", "==", contract.id),
+                        where("receiver_id", "==", supplier?.id),
+                        where("referenced_type", "==", "contract"),
+                        where("reminder_type", "==", "2days_before")
+                    );
+                    const notifSnap = await getDocs(notifQuery);
+                    if (notifSnap.empty) {
+                        Swal.fire({
+                            title: "Upcoming Delivery Reminder",
+                            text: `Your delivery for "${eventData.event_name}" is in 2 days!`,
+                            icon: "info",
+                            confirmButtonText: "Got it",
+                        });
+
+                        await addDoc(collection(db, "notifications"), {
+                            avatar: supplier.supplier_name.charAt(0).toUpperCase(),
+                            message: `Reminder: Delivery for contract ID: ${contract.id} ("${eventData.event_name}") is due in 2 days.`,
+                            createdAt: serverTimestamp(),
+                            title: "2-Day Delivery Reminder",
+                            referenced_type: 'contract',
+                            referenced_id: contract.id,
+                            unread: true,
+                            receiver_id: supplier?.id,
+                            reminder_type: '2days_before',
+                        });
+
+                        console.log("Notification created for 2-day reminder:", contract.id);
+                    } else {
+                        console.log("Notification already exists for this 2-day reminder.");
+                    }
+                }
+
                 const isSameDay =
                     now.getFullYear() === eventDate.getFullYear() &&
                     now.getMonth() === eventDate.getMonth() &&
                     now.getDate() === eventDate.getDate();
 
-                    console.log('is sameday', isSameDay)
-
+                console.log('is sameday', isSameDay)
 
                 if (isSameDay) {
-
                     const notifQuery = query(
                         collection(db, "notifications"),
                         where("referenced_id", "==", contract.id),
                         where("receiver_id", "==", supplier?.id),
-                        where("referenced_type", "==", "contract")
+                        where("referenced_type", "==", "contract"),
+                        where("reminder_type", "==", "same_day")
                     );
-
-
                     const notifSnap = await getDocs(notifQuery);
-
                     if (notifSnap.empty) {
                         Swal.fire({
                             title: "Delivery Reminder",
@@ -191,7 +234,6 @@ export default function SupplierDashboard({ userData }) {
                             icon: "info",
                             confirmButtonText: "Got it",
                         });
-
                         await addDoc(collection(db, "notifications"), {
                             avatar: supplier.supplier_name.charAt(0).toUpperCase(),
                             message: `Today is the delivery day for contract ID: ${contract.id} with supplier "${eventData.event_name}".`,
@@ -201,8 +243,8 @@ export default function SupplierDashboard({ userData }) {
                             referenced_id: contract.id,
                             unread: true,
                             receiver_id: supplier?.id,
+                            reminder_type: 'same_day'
                         });
-
                         console.log("Notification created for delivery day:", contract.id);
                     } else {
                         console.log("Notification already exists for this delivery day.");
@@ -237,7 +279,7 @@ export default function SupplierDashboard({ userData }) {
 
     return (
         <>
-            <Title>Supplier Dashboard</Title>
+            <Title>Dashboard</Title>
 
             {isContractModalOpen && selectedContract && (
                 <Suspense fallback={<LoadingOverlay isLoading={true} message="Pleasee waitt.." />}>
@@ -575,54 +617,57 @@ export default function SupplierDashboard({ userData }) {
                             <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2"><div className="p-2 bg-gradient-to-r from-blue-500 to-blue-700 text-white rounded-full"><ReceiptText size={20} /></div> Recent Contract History</h3>
 
                             <div className="space-y-3 overflow-y-auto max-h-[400px] pr-2">
-                                {contractHistory.slice(0, 5).map((contract, index) => (
-                                    <div
-                                        key={contract.id}
-                                        className="p-3 rounded-lg border flex justify-between items-center border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors shadow-sm"
-                                    >
-                                        <div>
-                                            <p className="font-semibold text-gray-800 text-sm">
-                                                {contractHistoryEvents[index]?.event_name || "Untitled Event"}
-                                            </p>
-                                            <p className="text-xs text-gray-500 mt-1">
-                                                {contract.created_at?.toDate().toLocaleDateString([], {
-                                                    year: 'numeric',
-                                                    month: 'short',
-                                                    day: 'numeric'
-                                                })}
-                                            </p>
-                                            <span className={`inline-block mt-2 px-2 py-0.5 rounded-full text-xs font-medium ${statusStyles[contract.status.toLowerCase()]}`}>
-                                                {contract.status}
-                                            </span>
-                                        </div>
+                                {contractHistory.slice(0, 5).map((contract, index) => {
+                                    const event = contractHistoryEvents.find(e => e.id === contract.event_id)
+                                    return (
+                                        <div
+                                            key={contract.id}
+                                            className="p-3 rounded-lg border flex justify-between items-center border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors shadow-sm"
+                                        >
+                                            <div>
+                                                <p className="font-semibold text-gray-800 text-sm">
+                                                    {event?.event_name || "Untitled Event"}
+                                                </p>
+                                                <p className="text-xs text-gray-500 mt-1">
+                                                    {contract.created_at?.toDate().toLocaleDateString([], {
+                                                        year: 'numeric',
+                                                        month: 'short',
+                                                        day: 'numeric'
+                                                    })}
+                                                </p>
+                                                <span className={`inline-block mt-2 px-2 py-0.5 rounded-full text-xs font-medium ${statusStyles[contract.status.toLowerCase()]}`}>
+                                                    {contract.status}
+                                                </span>
+                                            </div>
 
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={() => openContractModal({
-                                                    supplierData: supplier,
-                                                    eventData: contractHistoryEvents[index],
-                                                    supplier_id: contract.supplier_id,
-                                                    user_id: userData.id,
-                                                    userData: userData,
-                                                    event_id: contract.event_id,
-                                                })}
-                                                className={'transition-all duration-100 hover:bg-blue-700 self-center px-3 py-2 text-sm rounded-md bg-blue-600 text-white '}
-                                            >
-                                                View Contract
-                                            </button>
-                                            {contract.status === "Completed" && (
-                                                <>
-                                                    {reviewed.find(rev => rev.reviewed_id === contract.supplier_id && rev.user_id === contract.planner_id && contract.event_id === rev.event_id) ? (
-                                                        <span className="text-white py-1 px-4 rounded-md text-sm flex items-center bg-gray-400">Reviewed</span>
-                                                    ) : (
-                                                        <Review reviewed_id={contract?.planner_id} reviewer_name={supplier.supplier_name} eventData={contract} />
-                                                    )}
-                                                </>
-                                            )}
-                                        </div>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => openContractModal({
+                                                        supplierData: supplier,
+                                                        eventData: contractHistoryEvents[index],
+                                                        supplier_id: contract.supplier_id,
+                                                        user_id: userData.id,
+                                                        userData: userData,
+                                                        event_id: contract.event_id,
+                                                    })}
+                                                    className={'transition-all duration-100 hover:bg-blue-700 self-center px-3 py-2 text-sm rounded-md bg-blue-600 text-white '}
+                                                >
+                                                    View Contract
+                                                </button>
+                                                {contract.status === "Completed" && (
+                                                    <>
+                                                        {reviewed.find(rev => rev.reviewed_id === contract.planner_id && rev.user_id === contract.supplier_id && contract.event_id === rev.event_id) ? (
+                                                            <span className="text-white py-1 px-4 rounded-md text-sm flex items-center bg-gray-400">Reviewed</span>
+                                                        ) : (
+                                                            <Review reviewed_id={contract?.planner_id} reviewer_name={supplier.supplier_name} contractData={contract} />
+                                                        )}
+                                                    </>
+                                                )}
+                                            </div>
 
-                                    </div>
-                                ))}
+                                        </div>
+                                    )
+                                })}
 
                                 {contractHistory.length === 0 && (
                                     <p className="text-center text-gray-500 text-md pb-5 pt-3">No recent ended contracts</p>

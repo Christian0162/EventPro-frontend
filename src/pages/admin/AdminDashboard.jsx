@@ -24,7 +24,7 @@ export default function AdminDashboard({ userData }) {
     const { contracts } = useFetchContract()
     const { reports: pendingReports } = useFetchAllReports()
 
-    const reports = pendingReports.filter(r => r.status === "pending")
+    const reports = pendingReports.filter(r => r.status === "pending" || r.status === "under_review")
 
     const allLoading = isUsersLoading || isVerificationLoading
 

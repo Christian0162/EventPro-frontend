@@ -8,6 +8,7 @@ import { SupplierDetails } from "../../components/UpdateModal"
 import { useFetchSuppliers, useFetchSupplierServices } from "../../hooks/useSupplier"
 import { useFetchReviews } from "../../hooks/useReviews"
 import PageLoading from "../../components/PageLoading"
+import { Title } from "react-head"
 
 export default function SupplierShop({ userData }) {
     const [supplier, setSupplier] = useState([])
@@ -57,6 +58,8 @@ export default function SupplierShop({ userData }) {
             {!isAllLoading && (
 
                 <>
+                    <Title>Shop</Title>
+
                     <div className="px-4">
                         {/* Header */}
                         <div className="mb-8">

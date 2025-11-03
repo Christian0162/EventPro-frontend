@@ -8,6 +8,7 @@ import { useFetchUserProfiles } from "../../hooks/useProfile";
 import { useFetchSuppliers } from "../../hooks/useSupplier";
 import { useFetchAllContact } from "../../hooks/useContact";
 import PageLoading from "../../components/PageLoading";
+import { Title } from "react-head";
 
 
 export default function ChatWindow({ userData }) {
@@ -193,6 +194,7 @@ export default function ChatWindow({ userData }) {
 
             {!isAllLoading && (
                 <>
+                <Title>Chats</Title>
                     <h1 className="mb-5 text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Chat</h1>
                     <div className="flex h-[90vh] shadow-xl bg-white border border-gray-200 rounded-2xl overflow-hidden">
 

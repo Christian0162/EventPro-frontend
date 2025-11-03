@@ -5,6 +5,7 @@ import { db } from '../../firebase/firebase';
 import NotificationModal from '../../components/NotificationModal';
 import { useFetchNotificationsById } from '../../hooks/useNotifications';
 import PageLoading from '../../components/PageLoading';
+import { Title } from 'react-head';
 
 export default function Notification({ userData }) {
     const { notifications, isLoading } = useFetchNotificationsById(userData.id);
@@ -29,6 +30,8 @@ export default function Notification({ userData }) {
             {isLoading && (
                 <PageLoading />
             )}
+
+            <Title>Notification</Title>
 
             {!isLoading && (
                 <div>

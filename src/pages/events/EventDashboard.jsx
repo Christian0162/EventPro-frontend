@@ -18,6 +18,7 @@ import LoadingOverlay from "../../components/LoadingOverlay"
 import { addDoc, collection, getDocs, query, serverTimestamp, where } from "firebase/firestore"
 import { db } from "../../firebase/firebase"
 import { statusStyles } from "../../constants/categories"
+import { Review } from "../../components/ReviewModal"
 
 export default function EventDashboard({ userData }) {
 
@@ -58,7 +59,7 @@ export default function EventDashboard({ userData }) {
     };
 
     const createdEvents = useMemo(() => events.filter(e => e.user_id === userData.id), [events, userData])
-    const contractHistory = useMemo(() => contracts.filter(contract => contract?.status === "Completed" || contract?.status === "Cancelled" && contract.planner_id === userData.id), [contracts, userData.id])
+    const contractHistory = useMemo(() => contracts.filter(contract => (contract?.status === "Completed" || contract?.status === "Cancelled") && contract.planner_id === userData.id), [contracts, userData.id])
 
     const contractHistoryEvents = useMemo(() =>
         contractHistory.map(contract =>
@@ -89,12 +90,12 @@ export default function EventDashboard({ userData }) {
                 console.log(isEventVisible)
 
                 if (isEventVisible) {
-
                     const notifQuery = query(
                         collection(db, "notifications"),
                         where("referenced_id", "==", event.id),
                         where("receiver_id", "==", userData?.id),
-                        where("referenced_type", "==", "event")
+                        where("referenced_type", "==", "event"),
+                        where("reminder_type", "==", "not_visible")
                     );
 
                     const notifSnap = await getDocs(notifQuery);
@@ -109,6 +110,7 @@ export default function EventDashboard({ userData }) {
                             referenced_id: event.id,
                             unread: true,
                             receiver_id: userData?.id,
+                            reminder_type: 'not_visible'
                         });
                     }
                 }
@@ -276,11 +278,32 @@ export default function EventDashboard({ userData }) {
         setSelectedContract(null)
     };
 
+    async function testDelivery() {
+        const response = await fetch("http://localhost:5000/create-delivery", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                serviceType: "MOTORCYCLE",
+                stops: [
+                    { lat: 14.5995, lng: 120.9842, address: "Intramuros, Manila" },
+                    { lat: 14.5547, lng: 121.0244, address: "Makati City" }
+                ],
+                remarks: "Test delivery in sandbox"
+            })
+        });
+
+        const result = await response.json();
+        console.log(result);
+    }
+
+
     return (
         <>
             {isAllLoading && (
                 <PageLoading />
             )}
+
+            <Title>Dashboard</Title>
 
             {isContractModalOpen && selectedContract && (
                 <Suspense fallback={<LoadingOverlay isLoading={true} message="Pleasee waitt.." />}>
@@ -593,7 +616,7 @@ export default function EventDashboard({ userData }) {
                                                         {reviews.find(rev => rev.reviewed_id === contract.supplier_id && rev.user_id === contract.planner_id && contract.event_id === rev.event_id) ? (
                                                             <span className="text-white py-1 px-4 rounded-md text-sm flex items-center bg-gray-400">Reviewed</span>
                                                         ) : (
-                                                            <Review reviewed_id={contract?.planner_id} reviewer_name={supplier.supplier_name} eventData={contract} />
+                                                            <Review reviewed_id={contract?.supplier_id} reviewer_name={supplier.supplier_name} contractData={contract} />
                                                         )}
                                                     </>
                                                 )}

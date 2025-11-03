@@ -113,9 +113,6 @@ export const EventSupplierMap = {
 };
 
 
-
-
-
 export const statusOptions = [
     { label: 'Planning', value: 'planning' },
     { label: 'Upcoming', value: 'upcoming' },
@@ -143,6 +140,11 @@ export const eventStatusStyles = {
     completed: "bg-green-100 text-green-700",
 };
 
+export const serviceType = [
+    { label: 'Motorcycle', value: 'MOTORCYCLE' },
+    { label: 'Aluminum 2,000kg', value: '2000KG_ALUMINUM' },
+]
+
 export const statusStyles = {
     approved: "bg-green-100 text-green-700",
     pending: "bg-yellow-100 text-yellow-700",
@@ -153,6 +155,8 @@ export const statusStyles = {
     hold: "bg-amber-100 text-amber-700",
     refunded: "bg-blue-100 text-blue-700",
     succeeded: "bg-green-100 text-green-700",
+    under_review: "bg-yellow-100 text-yellow-700",
+    
 };
 
 

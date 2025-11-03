@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import OutsideClickHandler from 'react-outside-click-handler';
 
-export default function AddressAutocomplete({ setLocation, default_location = "", disabled, className }) {
+export default function AddressAutocomplete({ setLocation, setCoords, default_location = "", disabled, className }) {
     const [query, setQuery] = useState(default_location);
     const [suggestions, setSuggestions] = useState([]);
     const [isTyping, setIsTyping] = useState(false);
@@ -42,7 +42,6 @@ export default function AddressAutocomplete({ setLocation, default_location = ""
                 setIsLoading(true);
                 const response = await fetch(`https://us1.locationiq.com/v1/autocomplete.php?key=${import.meta.env.VITE_LOCATIONIQ_API}&q=${encodeURIComponent(value)}&limit=5&viewbox=123.93,10.26,124.10,10.33&bounded=1&countrycodes=ph`);
                 const data = await response.json();
-
                 setSuggestions(data || []);
             } catch (e) {
                 console.error(e);
@@ -59,6 +58,7 @@ export default function AddressAutocomplete({ setLocation, default_location = ""
             item.address.city,
             item.address.country,
         ].filter(Boolean).join(", ");
+        setCoords({ lat: item.lat, lon: item.lon })
         setSuggestions([]);
         setLocation(location);
         setQuery(location);
@@ -72,7 +72,7 @@ export default function AddressAutocomplete({ setLocation, default_location = ""
                     <input
                         type="text"
                         disabled={disabled}
-                        className={`focus:ring-2 focus:outline-none px-2 focus:ring-blue-500 w-full ${className}`}
+                        className={`${className}`}
                         value={query}
                         required
                         placeholder="e.g University of Cebu Lapu-Lapu and Mandaue"
@@ -80,7 +80,7 @@ export default function AddressAutocomplete({ setLocation, default_location = ""
                     />
 
                     {(isLoading || suggestions.length > 0) && (
-                        <ul className={`bg-white border ${query.length > 0 ? "block" : "hidden"} border-gray-300 rounded-lg mt-2 max-h-60 overflow-y-auto z-10 absolute w-full`}>
+                        <ul className={`bg-white border ${query.length > 0 ? "block" : "hidden"} border-gray-300 rounded-lg mt-2 max-h-60 overflow-y-auto z-1000 absolute w-full`}>
                             {isLoading ? (
                                 <li className="px-4 py-2 text-sm text-gray-500">Loading...</li>
                             ) : (

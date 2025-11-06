@@ -4,8 +4,9 @@ import { useState } from "react";
 import { doc, updateDoc, serverTimestamp, addDoc, collection } from "firebase/firestore";
 import { db } from "../firebase/firebase";
 import Swal from "sweetalert2";
+import UploadWidget from "./UploadWidgen";
 
-export default function DamagePenaltiesModal({ delivery, deliveryId, onSuccess, eventData }) {
+export default function DamagePenaltiesModal({ delivery, contractData, userData, deliveryId, onSuccess, eventData }) {
     const [isOpen, setIsOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [penalties, setPenalties] = useState({
@@ -15,6 +16,7 @@ export default function DamagePenaltiesModal({ delivery, deliveryId, onSuccess, 
     });
     const [error, setError] = useState("");
     const [reason, setReason] = useState(""); // ✅ Added reason state
+    const [proofFiles, setProofFiles] = useState([]);
 
     const open = () => {
         setIsOpen(true);
@@ -98,10 +100,23 @@ export default function DamagePenaltiesModal({ delivery, deliveryId, onSuccess, 
                 try {
                     setLoading(true);
                     const deliveryRef = doc(db, "deliveries", deliveryId);
-                    await updateDoc(deliveryRef, {
-                        status: "Damaged",
+
+                    await addDoc(collection(db, "reports"), {
+                        user_id: userData.id,
+                        contract_id: contractData.id,
+                        delivery_id: deliveryId,
+                        reporter_role: userData?.role,
                         penalty_applied: penaltyDetails,
-                        issue_reason: reason, // ✅ save the reason
+                        status: 'pending',
+                        reason: reason,
+                        report_type: 'delivery',
+                        recipient_id: contractData.supplier_id,
+                        proof: proofFiles,
+                        created_at: serverTimestamp(),
+                    });
+
+                    await updateDoc(deliveryRef, {
+                        status: "Issued",
                         updated_at: serverTimestamp(),
                     });
 
@@ -263,6 +278,12 @@ export default function DamagePenaltiesModal({ delivery, deliveryId, onSuccess, 
                                 </div>
 
                                 {error && <p className="text-red-600 font-medium text-sm">{error}</p>}
+
+                                {/* ✅ Proof Upload */}
+                                <div className="p-3 border rounded-md">
+                                    <label className="font-medium text-gray-800 mb-1 block">Upload Proofs (images or documents)</label>
+                                    <UploadWidget type={`proof`} setPicture={setProofFiles} />
+                                </div>
                             </div>
 
                             <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">

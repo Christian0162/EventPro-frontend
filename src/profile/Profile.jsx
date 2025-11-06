@@ -8,6 +8,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { useFetchUsers } from '../hooks/useUsers';
 import ProfileHover from '../components/ProfileHover';
 import PageLoading from '../components/PageLoading';
+import { Title } from 'react-head';
 
 export default function Profile({ userData }) {
 
@@ -80,6 +81,7 @@ export default function Profile({ userData }) {
             )}
             {!isAllLoading && (
                 <>
+                <Title>Profile</Title>
                     <div className="max-w-7xl mx-auto bg-white border border-gray-200 shadow-xl rounded-md p-5">
                         {/* Header */}
                         <div className="flex items-center justify-between p-4 border-b border-gray-200">

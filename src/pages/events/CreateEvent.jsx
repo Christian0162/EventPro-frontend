@@ -8,6 +8,7 @@ import AddressAutoComplete from "../../components/AddressAutoComplete";
 import { useAddEvent } from "../../hooks/useEvents";
 import { EventSupplierMap, EventTypeOptions, SupplierOptions } from "../../constants/categories";
 import LoadingOverlay from "../../components/LoadingOverlay";
+import { Title } from "react-head";
 
 export default function CreateEvent({ userData }) {
 
@@ -100,6 +101,8 @@ export default function CreateEvent({ userData }) {
 
     return (
         <>
+            <Title>Create Event</Title>
+            
             <div className="flex flex-col mb-3">
                 <h1 className="text-3xl font-bold text-blue-600">Create Events</h1>
                 <span className="mt-2 text-gray-600">Add the details for your new event</span>
@@ -130,7 +133,7 @@ export default function CreateEvent({ userData }) {
                             <AddressAutoComplete
                                 setLocation={setEvent_location}
                                 default_location={event_location || ""}
-                                className={'py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'}
+                                className={'w-full px-3 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'}
                             />
                         </div>
                     </div>

@@ -16,6 +16,7 @@ import LoadingOverlay from '../components/LoadingOverlay';
 import { UpdateProfile } from '../components/UpdateModal';
 import { useFetchUserProfileById } from '../hooks/useProfile';
 import PageLoading from '../components/PageLoading';
+import { Title } from 'react-head';
 
 export default function Settings({ userData, user }) {
 
@@ -292,7 +293,7 @@ export default function Settings({ userData, user }) {
     console.log(credentials)
     return (
         <>
-
+            <Title>Settings</Title>
             <LoadingOverlay
                 isLoading={isCreatePayoutLoading}
                 message="Do not refresh until it’s done..."

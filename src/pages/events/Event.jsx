@@ -226,7 +226,7 @@ export default function Event({ userData }) {
 
     return (
         <>
-            <Title>Event</Title>
+            <Title>Events</Title>
 
             {isAllLoading && (
                 <PageLoading />

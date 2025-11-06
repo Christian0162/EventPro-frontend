@@ -24,6 +24,7 @@ import { useFetchAllTransaction } from "../../hooks/useTransaction";
 import { EventSupplierMap } from "../../constants/categories";
 import { lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
+import { Title } from "react-head";
 
 export default function EditEvent({ userData }) {
 
@@ -283,6 +284,8 @@ export default function EditEvent({ userData }) {
                 <PageLoading />
             )}
 
+            <Title>Edit Event</Title>
+
             {isSupplierModalOpen && selectedShop && (
                 <Suspense fallback={<LoadingOverlay isLoading={true} message="Pleasee waitt.." />}>
                     <SupplierModal
@@ -391,7 +394,7 @@ export default function EditEvent({ userData }) {
                                     <AddressAutoComplete
                                         setLocation={setEvent_location}
                                         default_location={event_location || ""}
-                                        className={'py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'}
+                                        className={'w-full px-3 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'}
                                     />
                                 </div>
                             </div>
@@ -725,7 +728,9 @@ export default function EditEvent({ userData }) {
                                             profile => profile.id === supplier.id
                                         )
 
-                                        const isCancelled = contracts.filter(c => c.supplier_id === supplier.id && c.event_id === id)
+                                        const isCancelled = contracts.find(c => c.supplier_id === supplier.id && c.event_id === id)
+
+                                        console.log('asdasd', isCancelled)
                                         const userDetail = users.find(user => user.id === supplier.id)
                                         const userServices = services.filter(serv => serv.supplier_id === supplier.id)
 

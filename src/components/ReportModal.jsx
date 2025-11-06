@@ -1,7 +1,7 @@
 import { Button, Dialog, DialogPanel } from "@headlessui/react";
 import { X } from "lucide-react";
 import { useState } from "react";
-import { doc, updateDoc, serverTimestamp, addDoc, collection } from "firebase/firestore";
+import { serverTimestamp, addDoc, collection } from "firebase/firestore";
 import { db } from "../firebase/firebase";
 import Swal from "sweetalert2";
 import { termsOfCondition } from "../constants/categories";
@@ -114,6 +114,7 @@ export default function ReportModal({ contractData, userData, eventData, supplie
                         contract_id: contractData.id,
                         reporter_role: userData?.role,
                         penalty_applied: penaltyDetails,
+                        report_type: 'contract',
                         status: 'pending',
                         reason: reason,
                         issue: feedback, // ✅

@@ -6,7 +6,7 @@ import { X, Calendar, Tag, Send } from "lucide-react";
 import Loading from "../../components/Loading";
 import AddressAutoComplete from "../../components/AddressAutoComplete";
 import { useAddEvent } from "../../hooks/useEvents";
-import { EventSupplierMap, EventTypeOptions, SupplierOptions } from "../../constants/categories";
+import { EventTypeOptions, SupplierOptions } from "../../constants/categories";
 import LoadingOverlay from "../../components/LoadingOverlay";
 import { Title } from "react-head";
 
@@ -23,6 +23,7 @@ export default function CreateEvent({ userData }) {
     const [event_time, setEvent_time] = useState([])
     const [startTime, setStartTime] = useState('');
     const [endTime, setEndTime] = useState('');
+    const [coords, setCoords] = useState([])
     const { addEvent, isLoading } = useAddEvent()
 
     useEffect(() => {
@@ -102,7 +103,7 @@ export default function CreateEvent({ userData }) {
     return (
         <>
             <Title>Create Event</Title>
-            
+
             <div className="flex flex-col mb-3">
                 <h1 className="text-3xl font-bold text-blue-600">Create Events</h1>
                 <span className="mt-2 text-gray-600">Add the details for your new event</span>
@@ -132,6 +133,7 @@ export default function CreateEvent({ userData }) {
                             <label htmlFor="location" className="text-sm font-medium text-gray-700 mb-2">Location</label>
                             <AddressAutoComplete
                                 setLocation={setEvent_location}
+                                setCoords={setCoords}
                                 default_location={event_location || ""}
                                 className={'w-full px-3 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'}
                             />
@@ -289,7 +291,7 @@ export default function CreateEvent({ userData }) {
                         <div className="flex flex-col md:flex-row gap-3 items-end">
                             <div className="flex-grow">
                                 <Select
-                                    options={matchedSuppliers}
+                                    options={SupplierOptions}
                                     value={categories}
                                     onChange={setCategories}
                                     placeholder="Select supplier category"

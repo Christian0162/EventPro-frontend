@@ -297,9 +297,9 @@ export default function Event({ userData }) {
 
                                 if (events.event_categories.length === 0) {
                                     status = { label: 'Planning', value: 'planning' };
-                                } else if (events.event_categories.length > 0 && eventContracts.length === 0) {
+                                } else if (events.event_categories.length > 0 && eventContracts.length === 0 && now !== eventDate) {
                                     status = { label: 'Open', value: 'open' };
-                                } else if (eventContracts.length > 0 && now.getDate() <= eventDate.getDate()) {
+                                } else if (eventContracts.length > 0 && now <= eventDate) {
                                     status = { label: 'In Progress', value: 'in_progress' };
                                 } else if (!isAllContractPaid) {
                                     status = { label: 'Payment Pending', value: 'payment_pending' };

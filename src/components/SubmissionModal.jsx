@@ -110,7 +110,7 @@ export default function SubmissionModal({ contract, supplierData, eventData }) {
     const handleBookDelivery = async () => {
         setIsDeliveryBookingLoading(true)
         try {
-            const res = await fetch("http://localhost:5001/create-delivery", {
+            const res = await fetch("https://eventpro-backend-nodejs.onrender.com/create-delivery", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -165,11 +165,23 @@ export default function SubmissionModal({ contract, supplierData, eventData }) {
                     updated_at: null,
                 })
 
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Delivery Booking Successful',
+                    text: 'Your delivery booking has been submitted successfully.'
+                });
+
                 close()
             }
         }
         catch (e) {
             console.error(e)
+            Swal.fire({
+                icon: 'error',
+                title: 'Delivery Booking Failed',
+                text: 'Something went wrong. Please try again.'
+            });
+            setIsSubmitting(false)
         }
     }
 
@@ -184,7 +196,7 @@ export default function SubmissionModal({ contract, supplierData, eventData }) {
 
             timeoutRef.current = setTimeout(async () => {
                 try {
-                    const res = await fetch('http://localhost:5001/delivery-quotation', {
+                    const res = await fetch('https://eventpro-backend-nodejs.onrender.com/delivery-quotation', {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
@@ -368,7 +380,6 @@ export default function SubmissionModal({ contract, supplierData, eventData }) {
                                             <button
                                                 onClick={handleBookDelivery}
                                                 className={`transition-all flex ml-auto py-2 px-5 rounded-md text-white w-full sm:w-auto ${isSubmitting ||
-                                                    picture.length === 0 ||
                                                     !pickup.address ||
                                                     !dropoff.address
                                                     ? "bg-blue-400"

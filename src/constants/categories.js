@@ -59,59 +59,6 @@ export const EventTypeOptions = [
     { label: "Others", value: "others" },
 ];
 
-export const EventSupplierMap = {
-    birthday_celebration: [
-        "catering", "photo_video", "cake_pastry", "floral_balloon",
-        "souvenirs", "entertainment", "venue", "stylist_decorator"
-    ],
-
-    wedding_ceremony: [
-        "catering", "photo_video", "stylist_decorator", "floral_balloon",
-        "cake_pastry", "venue", "entertainment", "transportation"
-    ],
-
-    corporate_event: [
-        "venue", "lighting_sound", "catering", "stage_equipment",
-        "photo_video", "printing", "security_logistics", "technical"
-    ],
-
-    concert_live_performance: [
-        "lighting_sound", "stage_equipment", "technical",
-        "security_logistics", "event_production", "entertainment"
-    ],
-
-    formal_gala: [
-        "venue", "stylist_decorator", "catering", "photo_video",
-        "lighting_sound", "bar_beverage", "security_logistics"
-    ],
-
-    anniversary_celebration: [
-        "catering", "floral_balloon", "photo_video", "cake_pastry",
-        "stylist_decorator", "venue", "entertainment"
-    ],
-
-    family_reunion: [
-        "catering", "photo_video", "venue", "souvenirs", "floral_balloon"
-    ],
-
-    festival_fair: [
-        "tent_booth", "lighting_sound", "stage_equipment",
-        "security_logistics", "event_production", "technical"
-    ],
-
-    christening_baptism: [
-        "catering", "photo_video", "cake_pastry", "floral_balloon",
-        "souvenirs", "stylist_decorator"
-    ],
-
-    entertainment_events: [
-        "entertainment", "lighting_sound", "stage_equipment",
-        "technical", "event_production"
-    ],
-
-    others: SupplierOptions.map(supplier => supplier.value),
-};
-
 
 export const statusOptions = [
     { label: 'Planning', value: 'planning' },

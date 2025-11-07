@@ -32,8 +32,9 @@ const Error404 = lazy(() => import("./components/Error404"));
 
 function App() {
     const [user, setUser] = useState(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
     const [userData, setUserData] = useState(null);
+    const [authChecked, setAuthChecked] = useState(false);
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -65,12 +66,14 @@ function App() {
                 setUser(null);
                 setUserData(null);
 
+            } finally {
+                setAuthChecked(true);
             }
         });
         return () => unsubscribe();
     }, [])
 
-    if (isLoading) {
+    if (!authChecked || isLoading) {
         return <Loading />
     }
 

@@ -67,6 +67,13 @@ export default function Login({ user }) {
                                 onChange={(e) => setPassword(e.target.value)}
                             />
                             <span className={`mt-1 ml-1 ${errorLogin ? 'block text-red-500' : 'hidden'}`}>{errorLogin}</span>
+
+                            {/* Forgot password link */}
+                            <div className="mt-2 text-right">
+                                <Link to="/forgot-password" className="text-blue-500 hover:text-blue-700 text-sm">
+                                    Forgot Password?
+                                </Link>
+                            </div>
                         </div>
 
                         <button className={`w-full py-2 rounded-md text-white text-md mt-4 ${isLoading ? 'bg-blue-300' : 'bg-blue-600'}`} disabled={isLoading}>{isLoading ? 'Logging in..' : 'Login'}</button>

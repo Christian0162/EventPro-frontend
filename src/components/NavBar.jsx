@@ -3,12 +3,17 @@ import { Heart, MessageCircleMore, Calendar, Menu, X, BellDot } from "lucide-rea
 import UserDropDown from "./UserDropdown";
 import UserNotification from "./UserNotification";
 import React, { useState } from "react";
+import { useFetchAllContact } from "../hooks/useContact";
 
 const NavBar = React.memo(function NavBar({ user, userData }) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const { contacts } = useFetchAllContact()
 
     const toggleMenu = () => setIsMenuOpen((prev) => !prev);
     const closeMenu = () => setIsMenuOpen(false);
+
+    const userContacts = contacts.filter(c => c.user_id === userData?.id)
+    const unreadCount = userContacts.filter(c => c.unread).length
 
     const mainLinks = ["dashboard", "suppliers", "events", ...(userData?.role === "Supplier" ? ["shop"] : []), "profile"];
     const guestLinks = ["login", "register"];
@@ -68,7 +73,14 @@ const NavBar = React.memo(function NavBar({ user, userData }) {
                                     : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                                 }`
                             }>
-                                <MessageCircleMore size={20} />
+                                <div className="relative">
+                                    {unreadCount > 0 && (
+                                        <div className="absolute -top-3 -right-5 h-5 w-5 bg-red-500 text-white text-xs font-medium rounded-full flex items-center justify-center">
+                                            {unreadCount > 9 ? '9+' : unreadCount}
+                                        </div>
+                                    )}
+                                    <MessageCircleMore size={20} />
+                                </div>
                             </NavLink>
 
                             <UserNotification userData={userData} />
@@ -136,7 +148,7 @@ const NavBar = React.memo(function NavBar({ user, userData }) {
                                     className="relative transition-all duration-200 focus:outline-none focus:bg-blue-50 focus:text-blue-700 focus:shadow-sm focus:ring-2 focus:ring-blue-200 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-full text-sm flex items-center justify-center group"
 
                                 >
-                                    <BellDot size={20}/>
+                                    <BellDot size={20} />
                                 </a>
                             </div>
                         )}

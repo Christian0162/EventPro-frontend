@@ -127,6 +127,7 @@ export default function SupplierModal({ isOpen, onClose, supplierData, applicati
                     name: supplierData.supplier_name,
                     avatar: supplierData.supplier_name.slice(0, 1).toUpperCase(),
                     last_message: "",
+                    unread: false,
                     isActive: false,
                     createdAt: serverTimestamp()
 
@@ -271,9 +272,11 @@ export default function SupplierModal({ isOpen, onClose, supplierData, applicati
                                         </div>
 
                                         <div className="relative space-x-2">
-                                            <button onClick={handleChat} className='group'>
-                                                <MessageCircleMore className="trasition-all duration-200 text-gray-400 group-hover:text-blue-600" size={21} />
-                                            </button>
+                                            {supplierData.id !== userData.id && (
+                                                <button onClick={handleChat} className='group'>
+                                                    <MessageCircleMore className="trasition-all duration-200 text-gray-400 group-hover:text-blue-600" size={21} />
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

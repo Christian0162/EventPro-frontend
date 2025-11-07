@@ -13,6 +13,7 @@ import { useFetchEvents } from "../../hooks/useEvents"
 import { useFetchSupplierById, useFetchSuppliers, useFetchSupplierServices } from "../../hooks/useSupplier"
 import { useMemo } from "react";
 import Swal from "sweetalert2"
+import { auth } from "../../firebase/firebase"
 import { Review } from "../../components/ReviewModal"
 import { useFetchUserProfiles } from "../../hooks/useProfile"
 import PageLoading from "../../components/PageLoading"
@@ -23,6 +24,7 @@ import GenerateReport from "../../components/GeneraeReport"
 import { lazy, Suspense } from "react";
 import LoadingOverlay from "../../components/LoadingOverlay"
 import { statusStyles } from "../../constants/categories"
+import { sendPasswordResetEmail } from "firebase/auth"
 
 export default function SupplierDashboard({ userData }) {
 
@@ -51,14 +53,16 @@ export default function SupplierDashboard({ userData }) {
 
 
     // price competitive 
-    const suppleirsWithSameType = suppliers.filter(sup => sup.supplier_type?.value === supplier.supplier_type?.value && sup.id != userData.id)
-    const supplierSameTypeServices = services.filter(serv => suppleirsWithSameType.some(supp => serv.supplier_id === supp.id))
+    const suppliersWithSameType = suppliers.filter(sup => sup.supplier_type?.value === supplier.supplier_type?.value && sup.id != userData.id)
+    const supplierSameTypeServices = services.filter(serv => suppliersWithSameType.some(supp => serv.supplier_id === supp.id))
     const avgPrice = supplierSameTypeServices.length
         ? supplierSameTypeServices.reduce((sum, s) => sum + parseFloat(s.service_price || 0), 0) /
         supplierSameTypeServices.length
         : 0;
 
     const price = parseFloat(supplier?.service_price || 0);
+
+    console.log("price:", price)
     const competitiveness = avgPrice
         ? ((avgPrice - price) / avgPrice) * 100
         : 0;
@@ -79,16 +83,65 @@ export default function SupplierDashboard({ userData }) {
     const totalDeliveries = userDeliveries.length;
     const onTimeRate = totalDeliveries ? (onTimeDeliveries / totalDeliveries) * 100 : 0;
 
+    // Group competitor services by plan
+    const competitorServicesByPlan = suppliersWithSameType.flatMap(sup =>
+        supplierSameTypeServices.filter(serv => serv.supplier_id === sup.id)
+    ).reduce((acc, service) => {
+        const plan = service.service_plan?.value || 'unknown';
+        if (!acc[plan]) acc[plan] = [];
+        acc[plan].push(parseFloat(service.service_price || 0));
+        return acc;
+    }, {});
+
+    console.log("compiasd:", competitorServicesByPlan)
+
+
+    // Assuming your supplier has multiple plans
+    const supplierPlans = services.filter(s => s.supplier_id === userData.id) || []; // e.g., [{ label: "Basic", value: "basic", price: 2500 }, { label: "Premium", value: "premium", price: 5000 }]
+
+    const competitivenessPerPlan = supplierPlans.map(plan => {
+        const competitorPrices = competitorServicesByPlan[plan.service_plan?.value] || [];
+        const avgCompetitorPrice = competitorPrices.length
+            ? competitorPrices.reduce((sum, price) => sum + price, 0) / competitorPrices.length
+            : 0;
+
+        const competitiveness = avgCompetitorPrice
+            ? ((avgCompetitorPrice - plan.service_price) / avgCompetitorPrice) * 100
+            : 0;
+
+
+        return {
+            plan: plan.service_plan.label,
+            myPrice: plan.service_price,
+            avgCompetitorPrice,
+            competitiveness: competitiveness.toFixed(1) // as percentage
+        };
+    });
+
+    console.log("peste", competitivenessPerPlan)
+
+    const labels = [
+        ...competitivenessPerPlan.map(p => `${p.plan} Competitiveness`), // "Basic Price Competitiveness", "Premium Price Competitiveness"
+        "On-Time Delivery"
+    ];
+
     // barchar data
-    const labels = ["Price Competitiveness", "On-Time Delivery"];
     const datasets = [
         {
             label: "Performance (%)",
-            data: [competitiveness, onTimeRate],
-            backgroundColor: ["#60a5fa", "#34d399"],
-            borderRadius: [10, 10],
-        },
+            data: [
+                ...competitivenessPerPlan.map(p => parseFloat(p.competitiveness)), // competitiveness per plan
+                onTimeRate // append on-time delivery rate
+            ],
+            backgroundColor: [
+                "#60a5fa", // Basic plan
+                "#3b82f6", // Premium plan (different blue shade)
+                "#34d399"  // On-time delivery
+            ],
+            borderRadius: Array(labels.length).fill(10)
+        }
     ];
+
 
     const totalAppliedEvents = applications.filter(app => app.status === 'Pending').length
 
@@ -301,7 +354,6 @@ export default function SupplierDashboard({ userData }) {
             ) : (
                 <div className="bg-gradient-to-br ">
                     {/* Header */}
-
                     <div className="flex justify-between items-baseline">
                         <div className="flex flex-col lg:flex-row justify-between items-start gap-4 mb-10">
                             <div>
@@ -340,9 +392,12 @@ export default function SupplierDashboard({ userData }) {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                         {[
                             { title: "On-Time Delivery", value: onTimeRate.toFixed(0) + "%", icon: Package, color: "from-blue-500 to-blue-600" },
-                            {
-                                title: "Price Competitiveness", value: competitiveness >= 0 ? competitiveness.toFixed(1) + "%" : competitiveness.toFixed(1) + "%", icon: ChartNoAxesCombined, color: "from-yellow-500 to-yellow-600"
-                            },
+                            ...competitivenessPerPlan.map(p => ({
+                                title: `${p.plan} Price Competitiveness`,
+                                value: p.competitiveness >= 0 ? p.competitiveness + "%" : p.competitiveness + "%",
+                                icon: ChartNoAxesCombined,
+                                color: "from-yellow-500 to-yellow-600"
+                            })),
                             { title: "Total Earnings", value: `₱${totalEarning}`, icon: PhilippinePeso, color: "from-green-500 to-green-600" },
                             { title: "Applied Events", value: totalAppliedEvents, icon: CalendarPlus, color: "from-violet-500 to-violet-600" },
                         ].map(({ title, value, icon: Icon, color }, i) => (

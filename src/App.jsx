@@ -10,6 +10,8 @@ import Profile from "./profile/Profile";
 import PaymentSuccess from "./components/SuccessPayment.jsx";
 import { setupUserPresence } from "./firebase/presence.js";
 
+const ForgotPassword = lazy(() => import("./pages/auth/ForgotPassword.jsx"))
+const ResetPassword = lazy(() => import("./pages/auth/ResetPassword.jsx"))
 const GuestLayout = lazy(() => import("./layouts/GuestLayout"))
 const EventContract = lazy(() => import("./pages/events/EventContract"))
 const AuthLayout = lazy(() => import("./layouts/AuthLayout"))
@@ -91,6 +93,18 @@ function App() {
                             <Route path="/register" element={
                                 <GuestLayout user={user} userData={userData}>
                                     <Register user={user} />
+                                </GuestLayout>
+                            }></Route>
+
+                            <Route path="/forgot-password" element={
+                                <GuestLayout user={user} userData={userData}>
+                                    <ForgotPassword user={user} />
+                                </GuestLayout>
+                            }></Route>
+
+                            <Route path="/reset-password" element={
+                                <GuestLayout user={user} userData={userData}>
+                                    <ResetPassword user={user} />
                                 </GuestLayout>
                             }></Route>
 

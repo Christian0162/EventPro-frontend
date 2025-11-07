@@ -208,6 +208,7 @@ export default function Event({ userData }) {
                     avatar: event_name.slice(0, 1).toUpperCase(),
                     last_message: "",
                     isActive: false,
+                    unread: false,
                     createdAt: serverTimestamp()
                 })
                 navigate(`/chats/${supplierData?.id}`)
@@ -323,7 +324,7 @@ export default function Event({ userData }) {
                                                             <button onClick={(e) => handleChat(e, events.user_id, events.event_name)} className='p-2 rounded-full hover:bg-slate-100 text-slate-500 hover:text-blue-600 transition-colors'>
                                                                 <MessageCircleMore size={20} />
                                                             </button>
-                                                            <button onClick={(e) => handleFavorites(e, events)} className='p-2 rounded-full hover:bg-slate-100 transition-colors'>
+                                                            <button onClick={(e) => handleFavorites(e, events)} className=' rounded-full hover:bg-slate-100 transition-colors'>
                                                                 <Heart
                                                                     className={`transition-all duration-200 ${likedEvents[events.id] ? 'fill-red-500 text-red-500' : 'text-slate-500 group-hover:text-red-500'}`}
                                                                     size={20}

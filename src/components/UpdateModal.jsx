@@ -191,6 +191,7 @@ export const SupplierDetails = ({ supplierData }) => {
     const [supplier_type, setSupplier_type] = useState(null)
     const [store_name, setStore_name] = useState('')
     const [supplier_location, setSupplier_location] = useState('')
+    const [coords, setCoords] = useState([])
 
     useEffect(() => {
         setSupplier_location(supplierData?.supplier_location)
@@ -280,7 +281,7 @@ export const SupplierDetails = ({ supplierData }) => {
                                             <MapPin size={20} className='text-blue-600' />
                                             <label htmlFor="">Location</label>
                                         </div>
-                                        <AddressAutocomplete setLocation={setSupplier_location} default_location={supplier_location} className={'px-3 py-2 mt-3 rounded-md border border-gray-400'} />
+                                        <AddressAutocomplete setCoords={setCoords} setLocation={setSupplier_location} default_location={supplier_location} className={'w-full px-3 py-2 mt-3 rounded-md border border-gray-400'} />
                                     </div>
 
                                     <div className='relative flex flex-col'>

@@ -48,6 +48,7 @@ export default function ChatWindow({ userData }) {
     }
 
 
+    // console.log(selectedContact)
     useEffect(() => {
         if (!selectedContact) return;
 
@@ -56,6 +57,9 @@ export default function ChatWindow({ userData }) {
                 const userDoc = await getDoc(doc(db, "users", selectedContact.contact_id));
                 if (userDoc.exists()) {
                     setContactUserStatus({ id: userDoc.id, ...userDoc.data() }); // or whatever field indicates status
+                    await updateDoc(doc(db, "contacts", selectedContact.id), {
+                        unread: false
+                    })
                 }
             } catch (error) {
                 console.error("Error fetching contact status:", error);
@@ -125,7 +129,7 @@ export default function ChatWindow({ userData }) {
                 (msg.sender_id === selectedContact.contact_id && msg.recipient_id === userData.id))
 
             setMessages(filterMsgs)
-            setTimeout(() => setIsMessagesLoading(false), 800);
+            setIsMessagesLoading(false)
         }, (error) => {
             console.error("Error fetching messages:", error);
             setIsMessagesLoading(false);
@@ -161,18 +165,24 @@ export default function ChatWindow({ userData }) {
         const snapshot = await getDocs(q);
 
         if (snapshot.empty) {
-            await setDoc(doc(contactsRef), {
+            const contact = await setDoc(doc(contactsRef), {
                 user_id: selectedContact.contact_id,
                 contact_id: userData.id,
                 name: userData?.role === "Event Planner" ? userData.first_name : shop.supplier_name,
                 last_message: message,
+                unread: true,
                 created_at: serverTimestamp()
             });
+
+            console.log(contact)
         };
 
-        await updateDoc(doc(db, "contacts", bothContacts?.id), {
-            last_message: message,
-        });
+        if (bothContacts?.id) {
+            await updateDoc(doc(db, "contacts", bothContacts.id), {
+                last_message: message,
+                unread: true
+            });
+        }
 
         await addDoc(collection(db, "messages"), {
             sender_id: userData.id,
@@ -285,7 +295,7 @@ export default function ChatWindow({ userData }) {
                                                     </div>
 
                                                     {/* Last message */}
-                                                    <div className="text-sm text-gray-500 truncate">
+                                                    <div className={`text-sm  ${contact.unread ? 'font-semibold' : 'text-gray-500'} truncate`}>
                                                         {contact?.last_message || "No message yet"}
                                                     </div>
                                                 </div>

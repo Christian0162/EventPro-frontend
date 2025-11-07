@@ -15,6 +15,7 @@ export default function SupplierRegistration() {
 
     const [supplier_type, setSupplier_type] = useState(null)
     const [expertise, setExpertise] = useState([]);
+    const [coords, setCoords] = useState([])
     const [supplier_name, setSupplier_name] = useState('')
     const [location, setLocation] = useState('')
     const [supplier_description, setSupplier_description] = useState('')
@@ -161,7 +162,7 @@ export default function SupplierRegistration() {
                                             <MapPin className="inline w-4 h-4 mr-1" />
                                             Location *
                                         </label>
-                                        <AddressAutocomplete className={'py-3 rounded-md ring-1 ring-black'} setLocation={setLocation} />
+                                        <AddressAutocomplete className={'w-full px-3 py-3 rounded-md ring-1 ring-black'} setLocation={setLocation} setCoords={setCoords} />
                                     </div>
                                 </div>
 

@@ -1,7 +1,6 @@
 import NavBar from "../components/NavBar"
 import Loading from "../components/Loading"
 import Footer from "../components/Footer"
-import { useAuthLogout } from "../hooks/useAuth"
 import { auth } from "../firebase/firebase"
 import { useEffect } from "react"
 import Swal from "sweetalert2"
@@ -27,7 +26,7 @@ export default function AuthLayout({ children, user, userData }) {
     }, [userData]);
 
 
-    if (!userData) {
+    if (!userData || !user) {
         return <Loading />
     }
 

@@ -157,7 +157,7 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
         return () => clearInterval(interval);
     }, []);
 
-    const showSubmitButton = userData?.role === "Supplier" && today.getDate() <= eventDay.getDate();
+    const showSubmitButton = userData?.role === "Supplier";
 
     const handleDeliveryStatus = async (deliveryId) => {
         Swal.fire({

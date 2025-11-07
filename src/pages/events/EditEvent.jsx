@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react"
 import AddressAutoComplete from "../../components/AddressAutoComplete";
 import Select from "react-select"
-import { X, Calendar, Clock, MapPin, Tag, Users, FileText, Send, Check, CircleCheck } from "lucide-react";
+import { X, Calendar, MapPin, Tag, Users, FileText, Send, Check, CircleCheck } from "lucide-react";
 import PrimaryButton from "../../components/PrimaryButton";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "../../firebase/firebase";
@@ -21,7 +21,6 @@ import ProfileHover from "../../components/ProfileHover";
 import PageLoading from "../../components/PageLoading";
 import { UpdateEventBackground } from "../../components/UpdateModal";
 import { useFetchAllTransaction } from "../../hooks/useTransaction";
-import { EventSupplierMap } from "../../constants/categories";
 import { lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { Title } from "react-head";
@@ -46,6 +45,7 @@ export default function EditEvent({ userData }) {
     const [tags, setTags] = useState([])
     const [applications, setApplications] = useState([])
     const [eventData, setEventData] = useState([])
+    const [coords, setCoords] = useState([])
     const { contracts, isLoading: isContractsLoading } = useFetchContract()
     const { reviews, isLoading: isReviewsLoading } = useFetchReviews()
     const { services, isLoading: isServiceLoading } = useFetchSupplierServices()
@@ -239,9 +239,9 @@ export default function EditEvent({ userData }) {
 
     if (tags.length === 0) {
         status = { label: 'Planning', value: 'planning' };
-    } else if (tags.length > 0 && eventContracts.length === 0 && now.getDate() <= eventDay.getDate()) {
+    } else if (tags.length > 0 && eventContracts.length === 0 && now <= eventDay) {
         status = { label: 'Open', value: 'open' };
-    } else if (eventContracts.length > 0 && now.getDate() <= eventDay.getDate()) {
+    } else if (eventContracts.length > 0 && now <= eventDay) {
         status = { label: 'In Progress', value: 'in_progress' };
     } else if (!isAllContractPaid && eventContracts.length > 0) {
         status = { label: 'Payment Pending', value: 'payment_pending' };
@@ -269,10 +269,6 @@ export default function EditEvent({ userData }) {
         setIsContractModalOpen(false)
         setSelectedContract(null)
     };
-
-    const matchedSuppliers = SupplierOptions.filter(s =>
-        EventSupplierMap[event_type?.value]?.includes(s.value)
-    );
 
     if (userData?.role === "Supplier") {
         return navigate('/')
@@ -393,6 +389,7 @@ export default function EditEvent({ userData }) {
                                     <label htmlFor="location" className="text-sm font-medium text-gray-700 mb-2">Location</label>
                                     <AddressAutoComplete
                                         setLocation={setEvent_location}
+                                        setCoords={setCoords}
                                         default_location={event_location || ""}
                                         className={'w-full px-3 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'}
                                     />
@@ -556,7 +553,7 @@ export default function EditEvent({ userData }) {
                                 <div className="flex flex-col md:flex-row gap-3 items-end">
                                     <div className="flex-grow items-center">
                                         <Select
-                                            options={matchedSuppliers}
+                                            options={SupplierOptions}
                                             value={categories}
                                             onChange={(value) => {
                                                 setCategories(value);

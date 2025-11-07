@@ -275,6 +275,16 @@ export default function Settings({ userData, user }) {
 
         } catch (e) {
             console.error(e);
+        } finally {
+            setSelectedPayment([])
+            setCredentials({
+                user_id: userData?.id,
+                amount: '',
+                account_holder_name: '',
+                account_number: '',
+                channel_code: '',
+                user_email: emailAddress
+            })
         }
     };
 
@@ -627,7 +637,7 @@ export default function Settings({ userData, user }) {
                                     <div className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-2xl p-6 mb-6">
                                         <div className="text-center">
                                             <p className="text-black/70 mb-2">Available Balance</p>
-                                            <p className="text-4xl font-bold text-gray-800">₱{userData.balance}</p>
+                                            <p className="text-4xl font-bold text-gray-800">₱{userData.balance.toFixed(2)}</p>
                                             <p className="text-gray-700 text-sm mt-2">+₱{totalEarningsThisMonth} this month</p>
                                         </div>
                                     </div>

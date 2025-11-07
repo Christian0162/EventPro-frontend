@@ -194,7 +194,7 @@ export default function ChatWindow({ userData }) {
 
             {!isAllLoading && (
                 <>
-                <Title>Chats</Title>
+                    <Title>Chats</Title>
                     <h1 className="mb-5 text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Chat</h1>
                     <div className="flex h-[90vh] shadow-xl bg-white border border-gray-200 rounded-2xl overflow-hidden">
 
@@ -222,7 +222,6 @@ export default function ChatWindow({ userData }) {
                                     </div>
                                 ) : (
                                     filteredContacts.map((contact) => {
-
                                         const selectedUser = users?.find(u => u.id === contact.contact_id)
 
                                         let contactData = []
@@ -296,9 +295,6 @@ export default function ChatWindow({ userData }) {
                                     })
                                 )}
 
-                                {contacts.length === 0 && (
-                                    <div className="text-gray-500 flex justify-center mt-56">No contacts</div>
-                                )}
                             </div>
                         </div>
 

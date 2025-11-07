@@ -194,15 +194,15 @@ export default function Profile({ userData }) {
                                                 return (
                                                     < div key={review.id} >
                                                         <div className="flex items-start gap-3">
-                                                            {reviewerProfile.profile_pic ? (
+                                                            {reviewerProfile?.profile_pic ? (
                                                                 <img
-                                                                    src={reviewerProfile.profile_pic}
+                                                                    src={reviewerProfile?.profile_pic}
                                                                     alt=""
                                                                     className="h-10 w-10 rounded-full object-cover"
                                                                 />
                                                             ) : (
                                                                 <div className="text-5xl h-10 w-10 rounded-full bg-gradient-to-r from-blue-600 to-pink-600 text-white flex items-center justify-center">
-                                                                    <span>{reviewerDetail?.first_name.charAt(0).toUpperCase()}</span>
+                                                                    <span className='block text-2xl'>{reviewerDetail?.first_name.charAt(0).toUpperCase()}</span>
                                                                 </div>
                                                             )}
 

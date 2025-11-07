@@ -20,7 +20,7 @@ export const useCreatePayout = () => {
         }).then(async (result) => {
             if (result.isConfirmed) {
                 setIsLoading(true)
-                const response = await fetch("https://eventpro-backend.onrender.com/api/v1/payout", {
+                const response = await fetch("https://eventpro-backend-python.onrender.com/api/v1/payout", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({

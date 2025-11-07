@@ -96,10 +96,6 @@ export default function CreateEvent({ userData }) {
         }
     };
 
-    const matchedSuppliers = SupplierOptions.filter(s =>
-        EventSupplierMap[eventType?.value]?.includes(s.value)
-    );
-
     return (
         <>
             <Title>Create Event</Title>

@@ -223,7 +223,7 @@ export default function EditEvent({ userData }) {
 
     console.log(eventDay <= today)
 
-    const eventContracts = contracts.filter(cont => cont.event_id === id && cont.status === "Approved")
+    const eventContracts = contracts.filter(cont => cont.event_id === id)
 
     const isAllContractPaid = eventContracts.some(cont => {
         const contractTransaction = transactions?.filter(t => t.contract_id === cont.id)
@@ -270,7 +270,7 @@ export default function EditEvent({ userData }) {
         setSelectedContract(null)
     };
 
-    if (userData?.role === "Supplier") {
+    if (userData?.role === "Supplier" || !id) {
         return navigate('/')
     }
 

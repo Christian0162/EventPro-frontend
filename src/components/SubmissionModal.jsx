@@ -43,18 +43,20 @@ export default function SubmissionModal({ contract, supplierData, eventData }) {
     console.log("+63" + supplierData.supplier_number.slice(1))
 
     function open() { setIsOpen(true) }
+
     function close() {
-        setIsOpen(false)
         setIsOpen(false)
         setNote('')
         setPicture([])
-        setPickup('')
-        setDropoff('')
+        setPickup({ coordinates: { lat: null, lng: null }, address: "" })
+        setDropoff({ coordinates: { lat: null, lng: null }, address: "" })
         setQuotation(null)
         setDeliveryType({
-            value: "lalamove", label: "Lalamove"
+            value: "lalamove",
+            label: "Lalamove"
         })
     }
+
 
     const handleSubmit = async () => {
         if (!picture.length) return

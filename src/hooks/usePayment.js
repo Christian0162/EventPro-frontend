@@ -66,7 +66,7 @@ export const useCreatePayment = () => {
 
         if (payment_terms.isConfirmed) {
             try {
-                const response = await fetch("https://eventpro-backend.onrender.com/api/v1/create-checkout-session", {
+                const response = await fetch("https://eventpro-backend-python.onrender.com/api/v1/create-checkout-session", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({

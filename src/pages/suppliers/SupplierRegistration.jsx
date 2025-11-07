@@ -132,7 +132,7 @@ export default function SupplierRegistration() {
                     {/* Header */}
                     <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-8 text-white">
                         <h1 className="text-3xl font-bold mb-2">Supplier Registration</h1>
-                        <p className="text-pink-100">Join our network of trusted floral suppliers</p>
+                        <p className="text-pink-100">Join our network of trusted suppliers</p>
                     </div>
 
                     <form onSubmit={handleSubmit}>

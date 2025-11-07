@@ -46,9 +46,9 @@ export default function EventModal({ eventData, event_purpose, userData }) {
         value: ''
     };
 
-    if (eventData.event_categories.length === 0) {
+    if (eventData?.event_categories.length === 0) {
         status = { label: 'Planning', value: 'planning' };
-    } else if (eventData.event_categories.length > 0 && eventContracts.length === 0) {
+    } else if (eventData?.event_categories.length > 0 && eventContracts.length === 0) {
         status = { label: 'Open', value: 'open' };
     } else if (eventContracts.length > 0 && now.getDate() <= eventDate.getDate()) {
         status = { label: 'In Progress', value: 'in_progress' };

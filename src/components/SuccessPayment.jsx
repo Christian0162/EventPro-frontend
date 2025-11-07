@@ -24,18 +24,18 @@ export default function PaymentSuccess({ userData }) {
     const [selectedContract, setSelectedContract] = useState(null)
 
     const transaction_exist = useMemo(
-        () => transactions.filter(trans => trans.external_id === id),
+        () => transactions.find(trans => trans.external_id === id),
         [transactions, id]
     );
-    const selectedContracts = contracts.find(c => c.id === transactions[0].contract_id)
-    const contractEvents = events.find(e => e.id === selectedContracts.event_id)
-    const contractSupplier = suppliers.find(s => s.id === selectedContracts.supplier_id)
+    const selectedContracts = contracts.find(c => c.id === transactions[0]?.contract_id)
+    const contractEvents = events.find(e => e.id === selectedContracts?.event_id)
+    const contractSupplier = suppliers.find(s => s.id === selectedContracts?.supplier_id)
 
     console.log(contractSupplier)
 
     useEffect(() => {
         if (!isLoading) {
-            if (transaction_exist.length === 0) {
+            if (transaction_exist?.length === 0) {
                 navigate("/", { replace: true });
             }
         }

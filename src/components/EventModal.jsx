@@ -83,7 +83,7 @@ export default function EventModal({ eventData, event_purpose, userData }) {
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
                             transition
-                            className="w-full max-w-4xl mt-18 rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                            className="w-full max-w-4xl mt-18 rounded-2xl bg-white shadow-2xl duration-300"
                         >
                             {isAllLoading && (
                                 <PageLoading />
@@ -279,7 +279,7 @@ export default function EventModal({ eventData, event_purpose, userData }) {
                                                                                     <h2 className="font-medium text-gray-900 cursor-pointer">
                                                                                         {reviewerDetail?.first_name} {reviewerDetail?.last_name}
                                                                                     </h2>
-                                                                                    <p className="text-xs text-gray-500">{review?.createdAt ? formatDistanceToNow(new Date(review.createdAt.seconds * 1000), { addSuffix: true }) : 'Recent'}</p>
+                                                                                    <p className="text-xs text-gray-500">{review?.created_at ? formatDistanceToNow(new Date(review.created_at.seconds * 1000), { addSuffix: true }) : 'Recent'}</p>
                                                                                 </div>
                                                                                 <h2 className="font-medium text-xs text-gray-600 cursor-pointer">
                                                                                     {reviewerDetail?.role === "Event Planner" ? 'Event' : 'Shop'}: {review.reviewer_name}

@@ -207,7 +207,7 @@ export default function UserNotification({ userData }) {
                                                             </p>
                                                             <div className="flex items-center justify-between mt-2">
                                                                 <span className="text-xs text-gray-400">
-                                                                    {notification?.createdAt?.toDate()?.toLocaleTimeString([], {
+                                                                    {notification?.created_at?.toDate()?.toLocaleTimeString([], {
                                                                         hour: '2-digit',
                                                                         minute: '2-digit',
                                                                     })}
@@ -268,7 +268,7 @@ export default function UserNotification({ userData }) {
                                 {/* Title + Time */}
                                 <h2 className="text-lg font-semibold text-gray-900">{selectedNotif.title}</h2>
                                 <p className="text-xs text-gray-400 mt-1">
-                                    {formatDistanceToNow(new Date(selectedNotif.createdAt.seconds * 1000), { addSuffix: true })}
+                                    {formatDistanceToNow(new Date(selectedNotif.created_at.seconds * 1000), { addSuffix: true })}
                                 </p>
 
                                 {/* Message Section */}

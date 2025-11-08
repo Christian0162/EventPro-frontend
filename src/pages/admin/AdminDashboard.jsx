@@ -47,17 +47,22 @@ export default function AdminDashboard({ userData }) {
         transactions.forEach(t => {
             supplierEarnings[t.user_id] = (supplierEarnings[t.user_id] || 0) + t.amount;
         });
+
+
         const topSupplierId = Object.keys(supplierEarnings).reduce((a, b) => supplierEarnings[a] > supplierEarnings[b] ? a : b);
         const topSupplier = suppliers.find(s => s.id === topSupplierId);
-        return topSupplier ? topSupplier.name : "N/A";
+
+        return topSupplier ? topSupplier.supplier_name : "N/A";
     }, [transactions, suppliers]);
 
     const userCountsPerMonth = Array(12).fill(null).map((_, month) =>
         users.filter(u => {
-            const date = u.createdAt?.toDate ? u.createdAt.toDate() : null;
+            const date = u.created_at?.toDate ? u.created_at.toDate() : null;
             return date && date.getMonth() === month;
         }).length
     );
+        console.log("asd", userCountsPerMonth)
+
 
     const fields = [
         { label: "Total Platform Earnings", value: `PHP ${totalEarnings.toLocaleString()}` },
@@ -178,9 +183,9 @@ export default function AdminDashboard({ userData }) {
                         <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100">
                             <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2"><BarChart3 /> Supplier Distribution</h3>
                             <div className="flex justify-center">
-                                <div className="w-full max-w-[250px] mt-5">
+                                <div className="w-full max-w-[300px] h-[300px] mt-5"> {/* bigger container */}
                                     <PieChart
-                                        className="w-full h-64"
+                                        className="w-full h-full" // make chart fill container
                                         labels={supplierTypeData.labels}
                                         dataValues={supplierTypeData.dataValues}
                                         backgroundColors={supplierTypeData.backgroundColors}
@@ -188,6 +193,7 @@ export default function AdminDashboard({ userData }) {
                                     />
                                 </div>
                             </div>
+
                         </div>
 
                         <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-md hover:shadow-lg transition-all">
@@ -240,7 +246,7 @@ export default function AdminDashboard({ userData }) {
                                             <div className="flex flex-col min-w-0 flex-1">
                                                 <span className="font-medium text-gray-900">{v.supplier_name}</span>
                                                 <span className="text-gray-500 text-xs sm:text-sm">
-                                                    Requested: {v.createdAt?.toDate().toLocaleDateString()}
+                                                    Requested: {v.created_at?.toDate().toLocaleDateString()}
                                                 </span>
                                             </div>
                                         </div>
@@ -259,7 +265,7 @@ export default function AdminDashboard({ userData }) {
                                             <div className="flex flex-col min-w-0 flex-1">
                                                 <span className="font-medium text-gray-900">{v.first_name} {v.last_name}</span>
                                                 <span className="text-gray-500 text-xs sm:text-sm">
-                                                    Requested: {v.createdAt?.toDate().toLocaleDateString()}
+                                                    Requested: {v.created_at?.toDate().toLocaleDateString()}
                                                 </span>
                                             </div>
                                         </div>

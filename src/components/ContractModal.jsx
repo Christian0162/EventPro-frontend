@@ -183,7 +183,7 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
                 await addDoc(collection(db, "notifications"), {
                     avatar: eventData?.event_name?.charAt(0).toUpperCase(),
                     message: `The event planner has confirmed receipt of the delivery for the event "${eventData?.event_name}" under Contract ID: "${contract?.id}".`,
-                    createdAt: serverTimestamp(),
+                    created_at: serverTimestamp(),
                     sender_id: eventData?.user_id,
                     referenced_type: 'contract',
                     referenced_id: contract?.id,
@@ -237,7 +237,7 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
                         await addDoc(collection(db, "notifications"), {
                             avatar: supplierData?.supplier_name.charAt(0).toUpperCase(),
                             message: `The supplier "${supplierData?.supplier_name}" has accepted the report terms on the Contract ID: ${contract?.id}.`,
-                            createdAt: serverTimestamp(),
+                            created_at: serverTimestamp(),
                             sender_id: supplierData.id,
                             referenced_type: 'contract',
                             referenced_id: contract?.id,
@@ -284,7 +284,7 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
                         await addDoc(collection(db, "notifications"), {
                             avatar: supplierData?.supplier_name.charAt(0).toUpperCase(),
                             message: `The supplier "${supplierData?.supplier_name}" has rejected the delivery report for Contract ID: ${contract?.id}. The admin will now review and decide on the case.`,
-                            createdAt: serverTimestamp(),
+                            created_at: serverTimestamp(),
                             sender_id: supplierData.id,
                             referenced_type: 'contract',
                             referenced_id: contract?.id,
@@ -333,7 +333,7 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
                     await addDoc(collection(db, "notifications"), {
                         avatar: supplierData?.supplier_name.charAt(0).toUpperCase(),
                         message: `The supplier "${supplierData?.supplier_name}" has approved the contract with ID: ${contract?.id}.`,
-                        createdAt: serverTimestamp(),
+                        created_at: serverTimestamp(),
                         sender_id: supplierData.id,
                         referenced_type: 'contract',
                         referenced_id: contract?.id,
@@ -403,7 +403,7 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
                 await addDoc(collection(db, "notifications"), {
                     avatar: eventData?.event_name?.charAt(0).toUpperCase(),
                     message: `The Event ${eventData?.event_name} has been completed Contract ID: "${contract?.id}". Your balance will be updated accordingly.`,
-                    createdAt: serverTimestamp(),
+                    created_at: serverTimestamp(),
                     referenced_type: 'contract',
                     sender_id: eventData.id,
                     referenced_id: contract?.id,
@@ -504,7 +504,7 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
                     avatar: targetName.slice(0, 1).toUpperCase(),
                     last_message: "",
                     isActive: false,
-                    createdAt: serverTimestamp(),
+                    created_at: serverTimestamp(),
                 });
                 navigate(`/chats/`);
             } else {

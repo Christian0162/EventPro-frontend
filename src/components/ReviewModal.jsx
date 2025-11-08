@@ -72,7 +72,7 @@ export const Review = ({ reviewed_id, reviewer_name, eventData, contractData }) 
                         event_id: eventData?.id || contractData.event_id,
                         rating: rating,
                         comment: reviewText,
-                        createdAt: serverTimestamp()
+                        created_at: serverTimestamp()
                     })
 
                     await addDoc(collection(db, "notifications"), {
@@ -81,7 +81,7 @@ export const Review = ({ reviewed_id, reviewer_name, eventData, contractData }) 
                         message: `"${reviewer_name}" left a review for you — "${reviewText}"`,
                         sender_id: reviewed_id,
                         feedback: reviewText,
-                        createdAt: serverTimestamp(),
+                        created_at: serverTimestamp(),
                         referenced_id: reviewed_id,
                         unread: true,
                         receiver_id: reviewed_id
@@ -121,7 +121,7 @@ export const Review = ({ reviewed_id, reviewer_name, eventData, contractData }) 
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
                             transition
-                            className="w-full max-w-xl mt-18 rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                            className="w-full max-w-xl mt-18 rounded-2xl bg-white shadow-2xl duration-300"
                         >
                             <LoadingOverlay isLoading={isSubmitting} message='Processing..' />
                             <div className='relative'>
@@ -299,7 +299,7 @@ export const RejectReview = ({ id, event_id, supplier_id, userData, event_name, 
                             title: 'Verification Rejected',
                             message: "Unfortunately, your submission did not meet the required criteria. Please review the feedback and re-submit your application for verification.",
                             feedback: reviewText,
-                            createdAt: serverTimestamp(),
+                            created_at: serverTimestamp(),
                             unread: true
                         })
                     }
@@ -321,7 +321,7 @@ export const RejectReview = ({ id, event_id, supplier_id, userData, event_name, 
                                 sender_id: supplier.id,
                                 message: `Unfortunately, ${supplier.supplier_name} has rejected your offer for their event.`,
                                 feedback: reviewText,
-                                createdAt: serverTimestamp(),
+                                created_at: serverTimestamp(),
                                 unread: true
                             });
 
@@ -338,7 +338,7 @@ export const RejectReview = ({ id, event_id, supplier_id, userData, event_name, 
                                 sender_id: event.user_id,
                                 message: `We're sorry, your application for the event "${event_name}" has been rejected.`,
                                 feedback: reviewText,
-                                createdAt: serverTimestamp(),
+                                created_at: serverTimestamp(),
                                 unread: true
                             });
                         }
@@ -375,7 +375,7 @@ export const RejectReview = ({ id, event_id, supplier_id, userData, event_name, 
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
                             transition
-                            className="w-full max-w-3xl rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                            className="w-full max-w-3xl rounded-2xl bg-white shadow-2xl duration-300"
                         >
                             <LoadingOverlay isLoading={isSubmitting} message='Processing..' />
                             <div className='relative'>
@@ -502,7 +502,7 @@ export const ReportReview = ({ report, userData }) => {
                     title: "Issue Reported",
                     message: `Your report has been reviewed and unfortunately, it has been rejected by the admin. Please check the details and, if necessary, submit a revised report.`,
                     feedback: rejectReason,
-                    createdAt: serverTimestamp(),
+                    created_at: serverTimestamp(),
                     referenced_type: "report",
                     referenced_id: report?.id,
                     unread: true,
@@ -605,7 +605,7 @@ export const ReportReview = ({ report, userData }) => {
                         avatar: 'A',
                         title: "Report Approved",
                         message: `The reported ${report?.reporter_role === "Event Planner" ? 'supplier' : 'event planner'} account will be terminated or banned. Any escrow or contracts affected will be refunded within 2-3 days.`,
-                        createdAt: serverTimestamp(),
+                        created_at: serverTimestamp(),
                         referenced_type: "report",
                         referenced_id: report?.id,
                         unread: true,
@@ -653,7 +653,7 @@ export const ReportReview = ({ report, userData }) => {
                             avatar: 'A',
                             title: "Warning Issued",
                             message: `Your account has received a warning due to a reported incident. If similar behavior occurs again, your account may be suspended or permanently banned.`,
-                            createdAt: serverTimestamp(),
+                            created_at: serverTimestamp(),
                             referenced_type: "report",
                             referenced_id: report?.id,
                             unread: true,
@@ -711,7 +711,7 @@ export const ReportReview = ({ report, userData }) => {
                             avatar: 'A',
                             title: "Report Approved",
                             message: `The report for this delivery has been approved. Penalties have been applied to the supplier based on the reported issue and will be reflected in their payment summary.`,
-                            createdAt: serverTimestamp(),
+                            created_at: serverTimestamp(),
                             referenced_type: "contract",
                             referenced_id: report?.contract_id,
                             unread: true,
@@ -722,7 +722,7 @@ export const ReportReview = ({ report, userData }) => {
                             avatar: 'A',
                             title: "Report Approved",
                             message: `The report for this delivery has been approved. Penalties have been applied to the supplier based on the reported issue and will be reflected in their payment summary.`,
-                            createdAt: serverTimestamp(),
+                            created_at: serverTimestamp(),
                             referenced_type: "contract",
                             referenced_id: report?.contract_id,
                             unread: true,
@@ -760,7 +760,7 @@ export const ReportReview = ({ report, userData }) => {
                 <div className="fixed inset-0 bg-black/25" />
                 <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
                     <div className="flex min-h-full items-center justify-center p-4">
-                        <DialogPanel transition className="w-full max-w-2xl z-10 rounded-2xl bg-white shadow-2xl p-8 duration-200 relative ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0">
+                        <DialogPanel transition className="w-full max-w-2xl z-10 rounded-2xl bg-white shadow-2xl p-8 duration-200 relative">
                             {/* Close Button */}
                             <button
                                 onClick={close}

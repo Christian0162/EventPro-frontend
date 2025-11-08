@@ -83,7 +83,7 @@ export default function SubmissionModal({ contract, supplierData, eventData }) {
             await addDoc(collection(db, "notifications"), {
                 avatar: supplierData.supplier_name.charAt(0).toUpperCase(),
                 message: `The supplier "${supplierData.supplier_name}" submitted a delivery for contract ID: ${contract?.id}.`,
-                createdAt: serverTimestamp(),
+                created_at: serverTimestamp(),
                 sender_id: supplierData.id,
                 referenced_type: 'contract',
                 referenced_id: contract?.id,

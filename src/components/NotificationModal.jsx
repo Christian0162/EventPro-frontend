@@ -149,7 +149,7 @@ export default function NotificationModal({ notification, userData }) {
                         </p>
                         <p className="mt-2 text-xs text-gray-400 flex items-center gap-1">
                             <Clock className="w-3 h-3" />
-                            {notification.createdAt.toDate().toLocaleTimeString([], {
+                            {notification.created_at.toDate().toLocaleTimeString([], {
                                 hour: '2-digit',
                                 minute: '2-digit',
                             })}
@@ -199,9 +199,9 @@ export default function NotificationModal({ notification, userData }) {
                                     {notification.title}
                                 </h2>
                                 <p className="text-xs text-gray-500">
-                                    {notification.createdAt
+                                    {notification.created_at
                                         ? formatDistanceToNow(
-                                            new Date(notification.createdAt.seconds * 1000),
+                                            new Date(notification.created_at.seconds * 1000),
                                             { addSuffix: true }
                                         )
                                         : 'recent'}

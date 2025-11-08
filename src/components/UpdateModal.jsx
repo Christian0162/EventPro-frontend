@@ -87,7 +87,7 @@ export const AboutOurBusiessEdit = ({ supplierData }) => {
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
                             transition
-                            className="w-full max-w-3xl rounded-2xl bg-white shadow-2xl mt-18 duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                            className="w-full max-w-3xl rounded-2xl bg-white shadow-2xl mt-18 duration-300"
                         >
                             <div className='relative px-10 py-5 bg-gray-100 rounded-t-xl'>
                                 <button
@@ -245,7 +245,7 @@ export const SupplierDetails = ({ supplierData }) => {
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
                             transition
-                            className="w-full max-w-3xl mt-15 rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                            className="w-full max-w-3xl mt-15 rounded-2xl bg-white shadow-2xl duration-300 "
                         >
                             <div className='relative px-10 py-5 bg-gray-100 rounded-t-xl'>
                                 <button
@@ -464,7 +464,7 @@ export const ServiceEdit = ({ supplierData, service_id, services }) => {
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
                             transition
-                            className="w-full max-w-3xl mt-17 rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                            className="w-full max-w-3xl mt-17 rounded-2xl bg-white shadow-2xl duration-300"
                         >
                             <div className='relative px-10 py-7 bg-gray-100 rounded-t-xl'>
                                 <button
@@ -612,7 +612,7 @@ export const UpdateProfile = ({ userData }) => {
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
                             transition
-                            className="w-full max-w-xl mt-18 rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                            className="w-full max-w-xl mt-18 rounded-2xl bg-white shadow-2xl duration-300"
                         >
                             <div className='relative px-8 py-4 bg-gray-100 rounded-t-xl'>
                                 <button
@@ -696,7 +696,7 @@ export const UpdateEventBackground = ({ id, className }) => {
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
                             transition
-                            className="w-full max-w-xl mt-18 rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                            className="w-full max-w-xl mt-18 rounded-2xl bg-white shadow-2xl duration-300"
                         >
                             <div className='relative px-8 py-4 bg-gray-100 rounded-t-xl'>
                                 <button

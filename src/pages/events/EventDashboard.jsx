@@ -104,7 +104,7 @@ export default function EventDashboard({ userData }) {
                         await addDoc(collection(db, "notifications"), {
                             avatar: 'A',
                             message: `The event "${event.event_name}" is no longer visible to the supplier because the scheduled day and time have already passed.`,
-                            createdAt: serverTimestamp(),
+                            created_at: serverTimestamp(),
                             title: "Event Visibility Notice",
                             referenced_type: 'event',
                             referenced_id: event.id,
@@ -129,15 +129,25 @@ export default function EventDashboard({ userData }) {
         const eventDate = new Date(event.event_date?.date_value);
         const eventDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
 
-        if (now < eventDate) {
-            status.label = 'Upcoming';
-            status.value = 'upcoming';
-        } else if (now.getDate() === eventDate.getDate()) {
-            status.label = 'In Progress';
-            status.value = 'in_progress';
+        const eventContracts = contracts.filter(cont => cont.event_id === event.id && (cont.status !== "Cancelled" || cont.status !== "Rejected    "))
+
+        const isAllContractPaid = eventContracts.some(cont => {
+            const contractTransaction = transactions?.filter(t => t.contract_id === cont.id)
+            const eventTransactions = contractTransaction?.reduce((sum, trans) => sum + (trans.amount - trans.process_fee), 0)
+
+            return cont.service_plan.service_price === eventTransactions
+        })
+
+        if (event.event_categories.length === 0) {
+            status = { label: 'Planning', value: 'planning' };
+        } else if (event.event_categories.length > 0 && eventContracts.length === 0 && now !== eventDate) {
+            status = { label: 'Open', value: 'open' };
+        } else if (eventContracts.length > 0 && now <= eventDate) {
+            status = { label: 'In Progress', value: 'in_progress' };
+        } else if (!isAllContractPaid) {
+            status = { label: 'Payment Pending', value: 'payment_pending' };
         } else {
-            status.label = 'Completed';
-            status.value = 'completed';
+            status = { label: 'Completed', value: 'completed' };
         }
         return eventDay >= today;
     }).length;
@@ -277,25 +287,6 @@ export default function EventDashboard({ userData }) {
         setIsContractModalOpen(false)
         setSelectedContract(null)
     };
-
-    async function testDelivery() {
-        const response = await fetch("http://localhost:5000/create-delivery", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                serviceType: "MOTORCYCLE",
-                stops: [
-                    { lat: 14.5995, lng: 120.9842, address: "Intramuros, Manila" },
-                    { lat: 14.5547, lng: 121.0244, address: "Makati City" }
-                ],
-                remarks: "Test delivery in sandbox"
-            })
-        });
-
-        const result = await response.json();
-        console.log(result);
-    }
-
 
     return (
         <>

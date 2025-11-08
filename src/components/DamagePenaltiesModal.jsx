@@ -123,7 +123,7 @@ export default function DamagePenaltiesModal({ delivery, contractData, userData,
                     await addDoc(collection(db, "notifications"), {
                         avatar: eventData?.event_name.charAt(0).toUpperCase(),
                         message: `The planner has reported issues with your delivery for the event "${eventData?.event_name}". Reason: "${reason}" Please review the penalties applied.`,
-                        createdAt: serverTimestamp(),
+                        created_at: serverTimestamp(),
                         referenced_type: 'contract',
                         referenced_id: delivery?.contract_id,
                         title: "Delivery Issue Reported",

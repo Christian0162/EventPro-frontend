@@ -148,7 +148,7 @@ export default function Verification({ userData }) {
                     documents_information: uploadDocs,
                     additional_information: additional_information,
                     is_verified: false,
-                    createdAt: serverTimestamp(),
+                    created_at: serverTimestamp(),
                 })
             }
 
@@ -162,7 +162,7 @@ export default function Verification({ userData }) {
                     valid_id: validId,
                     documents_information: uploadDocs,
                     additional_information: additional_information,
-                    createdAt: serverTimestamp(),
+                    created_at: serverTimestamp(),
                     is_verified: false
                 })
             }

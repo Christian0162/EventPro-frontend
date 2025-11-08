@@ -193,14 +193,16 @@ export default function SupplierDashboard({ userData }) {
 
     const monthlyRatings = Array(12).fill(null).map((_, i) => {
         const monthlyReviews = reviews?.filter(rev => {
-            const date = rev.createdAt?.toDate ? rev.createdAt.toDate() : null;
+            const date = rev.created_at?.toDate ? rev.created_at.toDate() : null;
             return date && date.getMonth() === i;
         });
 
-        if (monthlyReviews.length === 0) return null;
+        if (monthlyReviews.length === 0) return 0;
         const avg = monthlyReviews.reduce((sum, rev) => sum + rev.rating, 0) / monthlyReviews.length;
         return avg;
     });
+
+    console.log(monthlyRatings)
 
 
 
@@ -249,7 +251,7 @@ export default function SupplierDashboard({ userData }) {
                         await addDoc(collection(db, "notifications"), {
                             avatar: supplier.supplier_name.charAt(0).toUpperCase(),
                             message: `Reminder: Delivery for contract ID: ${contract.id} ("${eventData.event_name}") is due in 2 days.`,
-                            createdAt: serverTimestamp(),
+                            created_at: serverTimestamp(),
                             title: "2-Day Delivery Reminder",
                             referenced_type: 'contract',
                             referenced_id: contract.id,
@@ -290,7 +292,7 @@ export default function SupplierDashboard({ userData }) {
                         await addDoc(collection(db, "notifications"), {
                             avatar: supplier.supplier_name.charAt(0).toUpperCase(),
                             message: `Today is the delivery day for contract ID: ${contract.id} with supplier "${eventData.event_name}".`,
-                            createdAt: serverTimestamp(),
+                            created_at: serverTimestamp(),
                             title: "Delivery Day Reminder",
                             referenced_type: 'contract',
                             referenced_id: contract.id,
@@ -470,7 +472,7 @@ export default function SupplierDashboard({ userData }) {
                                                         </p>
                                                         <p className="text-gray-500 text-xs">
                                                             Applied:{" "}
-                                                            {app.AppliedAt?.toDate().toLocaleDateString("en-US", {
+                                                            {app.applied_at?.toDate().toLocaleDateString("en-US", {
                                                                 month: "long",
                                                                 day: "numeric",
                                                                 year: "numeric",

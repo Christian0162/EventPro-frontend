@@ -320,6 +320,13 @@ export default function EditEvent({ userData }) {
                         </div>
                     )}
 
+                    {eventDay < today && !eventContracts && (
+                        <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg shadow-sm">
+                            ⚠️ This event is <b>no longer visible to the public</b> because its scheduled date and time have already passed.
+                            Since there are no assigned suppliers, the event will be <b>automatically deleted within 24 hours</b>.
+                        </div>
+                    )}
+
                     {tags.length === 0 && (
                         <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg shadow-sm">
                             ⚠️ This event is currently in <b>Planning</b> because no supplier has been specified. It will not be visible to the public until at least one supplier is added.

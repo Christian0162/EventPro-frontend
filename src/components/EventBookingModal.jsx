@@ -52,7 +52,7 @@ export default function EventBookingModal({ events = [], activeContracts = [], s
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
                             transition
-                            className="overflow-hidden w-full max-w-4xl mt-18 rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                            className="overflow-hidden w-full max-w-4xl mt-18 rounded-2xl bg-white shadow-2xl duration-300"
                         >
                             {/* Header */}
                             <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200 bg-gray-50">

@@ -66,7 +66,7 @@ export default function AIModal({ ai_response, ai_shops }) {
 
                 const latestReviewQuery = query(
                     collection(db, "reviews"),
-                    orderBy("createdAt", "desc"),
+                    orderBy("created_at", "desc"),
                     where("reviewed_id", "==", shopId),
                     limit(1)
                 );
@@ -213,7 +213,7 @@ export default function AIModal({ ai_response, ai_shops }) {
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
                             transition
-                            className="w-full max-w-3xl rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                            className="w-full max-w-3xl rounded-2xl bg-white shadow-2xl duration-300"
                         >
                             <div className='relative px-10 py-7 bg-gray-100 rounded-t-xl'>
                                 <button

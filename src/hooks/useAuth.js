@@ -155,7 +155,7 @@ export const useAuthRegister = () => {
                     reported_history: null,
                     balance: userData?.role === "Supplier" ? 0 : null,
                     deactivation_history: [],
-                    createdAt: serverTimestamp()
+                    created_at: serverTimestamp()
                 })
 
                 await setDoc(doc(db, "userProfiles", user.user.uid), {
@@ -165,7 +165,7 @@ export const useAuthRegister = () => {
                     description: '',
                     profile_pic: '',
                     contact_number: '',
-                    createdAt: serverTimestamp()
+                    created_at: serverTimestamp()
                 })
             }
 

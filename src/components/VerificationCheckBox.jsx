@@ -48,7 +48,7 @@ export default function VerificationCheckbox({ onChange, checked }) {
                             <div className="flex min-h-full items-center justify-center">
                                 <DialogPanel
                                     transition
-                                    className="w-full max-w-3xl rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                                    className="w-full max-w-3xl rounded-2xl bg-white shadow-2xl duration-300"
                                 >
                                     <div className='relative px-5 py-5 bg-gray-100  rounded-t-xl'>
                                         <button

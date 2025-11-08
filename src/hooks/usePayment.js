@@ -20,7 +20,7 @@ export const useCreatePayment = () => {
         <h4 class="text-lg font-semibold text-gray-700 mt-4">1. Payment Method</h4>
         <p class="text-gray-600 mb-3">
             Payments for event contracts must be made securely through the platform’s approved payment channels. 
-            Accepted methods include credit/debit cards, Gcash, Mayaand other supported digital payment services.
+            Accepted methods include credit/debit cards, Gcash, Maya and other supported digital payment services.
         </p>
 
         <h4 class="text-lg font-semibold text-gray-700 mt-4">2. Payment Schedule</h4>
@@ -29,13 +29,7 @@ export const useCreatePayment = () => {
             In some cases, a partial deposit may be required, followed by full payment before the event date.
         </p>
 
-        <h4 class="text-lg font-semibold text-gray-700 mt-4">3. Late or Missed Payments</h4>
-        <p class="text-gray-600 mb-3">
-            Failure to complete payment within the agreed timeframe may result in automatic cancellation of the contract, 
-            forfeiture of any deposits made, and potential penalties based on the supplier’s terms.
-        </p>
-
-        <h4 class="text-lg font-semibold text-gray-700 mt-4">4. Refund and Cancellation Policy</h4>
+        <h4 class="text-lg font-semibold text-gray-700 mt-4">3. Refund and Cancellation Policy</h4>
         <p class="text-gray-600 mb-3">
             If a contract is canceled by the planner before the supplier begins the service, the planner may request a refund. 
             However, any applicable transaction, processing, or platform fees will not be included in the refund amount.
@@ -113,7 +107,7 @@ export const useCreatePayment = () => {
                             await addDoc(collection(db, "notifications"), {
                                 avatar: payment_data.event_name.charAt(0).toUpperCase(),
                                 message: `The event "${payment_data.event_name}" has successfully completed the partial payment for Contract ID: ${payment_data.contract_id}.`,
-                                createdAt: serverTimestamp(),
+                                created_at: serverTimestamp(),
                                 reference_id: supplierData.id,
                                 title: 'Payment Received',
                                 unread: true,

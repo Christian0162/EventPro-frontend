@@ -9,6 +9,7 @@ import { useAddEvent } from "../../hooks/useEvents";
 import { EventTypeOptions, SupplierOptions } from "../../constants/categories";
 import LoadingOverlay from "../../components/LoadingOverlay";
 import { Title } from "react-head";
+import Swal from "sweetalert2";
 
 export default function CreateEvent({ userData }) {
 
@@ -59,6 +60,32 @@ export default function CreateEvent({ userData }) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        // Validation 1: Check if date/time is in the past
+        const eventDate = event_date.date_value;
+        const eventDateTime = new Date(`${eventDate}T${startTime}`);
+        const now = new Date();
+
+        if (eventDateTime < now) {
+            Swal.fire({
+                icon: "warning",
+                title: "Invalid Event Date",
+                text: "The event date and time have already passed. Please select a future date and time.",
+                confirmButtonColor: "#3085d6",
+            });
+            return;
+        }
+
+        // Validation 2: Check if end time is before start time
+        if (endTime <= startTime) {
+            Swal.fire({
+                icon: "error",
+                title: "Invalid Event Time",
+                text: "The end time must be after the start time.",
+                confirmButtonColor: "#d33",
+            });
+            return;
+        }
 
         const data = {
             event_name: event_name,

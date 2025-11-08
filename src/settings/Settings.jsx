@@ -81,7 +81,7 @@ export default function Settings({ userData, user }) {
 
     const monthlyEarnings = earnings.filter(earning => {
         if (!earning.created_at) return false
-        const date = earning.created_at.toDate ? earning.created_at.toDate() : new Date(earning.createdAt)
+        const date = earning.created_at.toDate ? earning.created_at.toDate() : new Date(earning.created_at)
         return date.getMonth() === currentMonth && date.getFullYear() === currentYear
     })
 

@@ -127,7 +127,7 @@ export default function Event({ userData }) {
                     user_id: userData.id,
                     event_id: events.id,
                     isActive: true,
-                    createdAt: serverTimestamp(),
+                    created_at: serverTimestamp(),
                 });
 
                 setLikedEvents(prev => ({ ...prev, [events.id]: true }));
@@ -158,7 +158,7 @@ export default function Event({ userData }) {
                     await addDoc(collection(db, "applications"), {
                         supplier_id: userData.id,
                         event_id: event_id,
-                        AppliedAt: serverTimestamp(),
+                        applied_at: serverTimestamp(),
                         status: 'Pending'
                     })
 
@@ -168,7 +168,7 @@ export default function Event({ userData }) {
                         sender_id: supplierData.id,
                         referenced_type: 'event',
                         referenced_id: event_id,
-                        createdAt: serverTimestamp(),
+                        created_at: serverTimestamp(),
                         title: 'You have a new application for your events.',
                         unread: true,
                         receiver_id: user_id
@@ -209,7 +209,7 @@ export default function Event({ userData }) {
                     last_message: "",
                     isActive: false,
                     unread: false,
-                    createdAt: serverTimestamp()
+                    created_at: serverTimestamp()
                 })
                 navigate(`/chats/${supplierData?.id}`)
             } else {
@@ -275,7 +275,7 @@ export default function Event({ userData }) {
 
                                 const now = new Date();
                                 const eventDate = new Date(events?.event_date?.date_value);
-                                const eventContracts = contracts.filter(cont => cont.event_id === events.id && cont.status === "Approved")
+                                const eventContracts = contracts.filter(cont => cont.event_id === events.id && (cont.status !== "Cancelled" || cont.status !== "Rejected    " ) )
 
                                 const eventEndTime = events?.event_time?.valueStartAndEnd[1] || "00:00"
                                 const [eventHour, eventMinute] = eventEndTime.split(":").map(Number)

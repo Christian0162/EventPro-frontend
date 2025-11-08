@@ -62,7 +62,7 @@ export default function Review({ userData }) {
                         referenced_type: 'application',
                         referenced_id: id,
                         message: "Congratulations! Your account is now verified. You can now post events and showcase your plans to suppliers!",
-                        createdAt: serverTimestamp(),
+                        created_at: serverTimestamp(),
                         unread: true
                     });
 
@@ -88,7 +88,7 @@ export default function Review({ userData }) {
                         referenced_type: 'application',
                         referenced_id: id,
                         message: "You're verified! Your business is now publicly visible to planners in the Suppliers directory!",
-                        createdAt: serverTimestamp(),
+                        created_at: serverTimestamp(),
                         unread: true
                     })
 

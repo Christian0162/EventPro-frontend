@@ -1,4 +1,4 @@
-import { collection, getDocs, doc, getDoc, onSnapshot } from "firebase/firestore"
+import { collection, doc, getDoc, onSnapshot } from "firebase/firestore"
 import { db } from "../firebase/firebase"
 import { useEffect, useState } from "react"
 
@@ -14,18 +14,14 @@ export const useFetchSuppliers = () => {
                 setIsLoading(false)
 
             })
-
             return () => unsubscribe()
-
         }
-
         catch (e) {
             console.error(e)
             setIsLoading(false)
         }
 
     }, [])
-
 
     return { suppliers, isLoading }
 

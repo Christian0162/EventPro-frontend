@@ -94,14 +94,14 @@ export default function Favorites({ userData }) {
                     await addDoc(collection(db, "applications"), {
                         supplier_id: userData.id,
                         event_id: event_id,
-                        AppliedAt: serverTimestamp(),
+                        applied_at: serverTimestamp(),
                         status: 'Pending'
                     })
 
                     await addDoc(collection(db, "notifications"), {
                         avatar: userData.id.charAt(0).toUpperCase(),
                         message: `The supplier "${supplier.supplier_name}" applied to your event.`,
-                        createdAt: serverTimestamp(),
+                        created_at: serverTimestamp(),
                         sender_id: supplier.id,
                         referenced_type: 'event',
                         referenced_id: event_id,
@@ -148,7 +148,7 @@ export default function Favorites({ userData }) {
                     user_id: userData.id,
                     event_id: event.id,
                     isActive: true,
-                    createdAt: serverTimestamp(),
+                    created_at: serverTimestamp(),
                 });
 
                 setLikedEvents(prev => ({ ...prev, [event.id]: true }));
@@ -189,7 +189,7 @@ export default function Favorites({ userData }) {
                     last_message: "",
                     isActive: false,
                     unread: false,
-                    createdAt: serverTimestamp()
+                    created_at: serverTimestamp()
                 })
                 navigate(`/chats/${supplier.id}`)
             } else {

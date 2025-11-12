@@ -24,6 +24,7 @@ export default function Verification({ userData }) {
     const [business_name, setBusiness_name] = useState('')
     const [contact_number, setContact_number] = useState('')
     const [additional_information, setAdditional_information] = useState('')
+    const [coords, setCoords] = useState([])
     const [first_name, setFirst_Name] = useState('')
     const [last_name, setLast_Name] = useState('')
     const [email_address, setEmail_Address] = useState('')
@@ -280,6 +281,7 @@ export default function Verification({ userData }) {
                                 className="w-full rounded-lg border border-gray-300 px-3 py-2 
                                             focus:outline-none focus:ring-2 focus:ring-blue-500 
                                             focus:border-blue-500 shadow-sm"
+                                setCoords={setCoords}
                             />
                         </div>
 

@@ -30,7 +30,7 @@ export default function AuthLayout({ children, user, userData }) {
         return <Loading />
     }
 
-
+    console.log(children)
 
     return (
         <div className="min-h-screen bg-blue-50">

@@ -221,8 +221,6 @@ export default function EditEvent({ userData }) {
     const eventDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate())
     eventDay.setHours(eventHour, eventMinute, 0, 0)
 
-    console.log(eventDay <= today)
-
     const eventContracts = contracts.filter(cont => cont.event_id === id)
 
     const isAllContractPaid = eventContracts.some(cont => {
@@ -385,6 +383,7 @@ export default function EditEvent({ userData }) {
                                         name="event_name"
                                         className="px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                                         required
+                                        disabled={eventContracts}
                                         placeholder="Enter event name"
                                         onChange={(e) => setEvent_name(e.target.value)}
                                         value={event_name || ""}
@@ -397,6 +396,7 @@ export default function EditEvent({ userData }) {
                                     <AddressAutoComplete
                                         setLocation={setEvent_location}
                                         setCoords={setCoords}
+                                        disabled={eventContracts}
                                         default_location={event_location || ""}
                                         className={'w-full px-3 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'}
                                     />
@@ -416,6 +416,7 @@ export default function EditEvent({ userData }) {
                                             name="event_date"
                                             className="pl-10 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                                             required
+                                            disabled={eventContracts}
                                             onChange={handleDate}
                                             value={event_date.date_value || ""}
                                         />
@@ -439,6 +440,7 @@ export default function EditEvent({ userData }) {
                                                 name="start_time"
                                                 className="pl-12 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                                                 required
+                                                disabled={eventContracts}
                                                 onChange={(e) => setStartTime(e.target.value)}
                                                 value={startTime || ""}
                                             />
@@ -453,6 +455,7 @@ export default function EditEvent({ userData }) {
                                                 type="time"
                                                 id="end_time"
                                                 name="end_time"
+                                                disabled={eventContracts}
                                                 className="pl-10 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                                                 required
                                                 onChange={(e) => setEndTime(e.target.value)}
@@ -474,6 +477,7 @@ export default function EditEvent({ userData }) {
                                         options={EventTypeOptions}
                                         value={event_type || ""}
                                         onChange={setEvent_type}
+                                        isDisabled={eventContracts}
                                         placeholder="Select event type"
                                         styles={{
                                             control: (base) => ({
@@ -607,12 +611,10 @@ export default function EditEvent({ userData }) {
                             )}
 
                             <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
-                                {eventContracts.length === 0 && (
-                                    <PrimaryButton className="w-full flex items-center justify-center">
-                                        <Send size={18} className="mr-2" />
-                                        Update Event
-                                    </PrimaryButton>
-                                )}
+                                <PrimaryButton className="w-full flex items-center justify-center">
+                                    <Send size={18} className="mr-2" />
+                                    Update Event
+                                </PrimaryButton>
                                 <Link
                                     to={'/events'}
                                     className="flex items-center justify-center py-3 w-full text-center border border-gray-300 rounded-lg hover:border-blue-500 hover:text-blue-600 transition-colors font-medium"
@@ -733,8 +735,6 @@ export default function EditEvent({ userData }) {
                                         )
 
                                         const isCancelled = contracts.find(c => c.supplier_id === supplier.id && c.event_id === id)
-
-                                        console.log('asdasd', isCancelled)
                                         const userDetail = users.find(user => user.id === supplier.id)
                                         const userServices = services.filter(serv => serv.supplier_id === supplier.id)
 

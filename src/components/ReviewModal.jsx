@@ -25,7 +25,6 @@ export const Review = ({ reviewed_id, reviewer_name, eventData, contractData }) 
         setReviewerName(reviewer_name)
     }, [reviewer_name])
 
-    console.log(reviewer_name)
 
     function open() {
         setIsOpen(true)

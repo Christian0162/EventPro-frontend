@@ -29,8 +29,6 @@ export default function SupplierRegistration() {
     const [isLoading, setIsLoading] = useState(false);
     const [expertiseOptions, setExpertiseOptions] = useState([])
 
-    console.log(expertiseOptions)
-
     useEffect(() => {
         if (supplier_type && supplier_type.value) {
             const suggestedExpertise = supplierTypeToExpertise[supplier_type.value] || [];
@@ -116,9 +114,6 @@ export default function SupplierRegistration() {
         }
     };
 
-    console.log(supplier_availability.length)
-
-    console.log(location)
     return (
         <>
             <LoadingOverlay isLoading={isLoading} message='Processing...' />

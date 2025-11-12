@@ -50,8 +50,6 @@ export default function Settings({ userData, user }) {
         setContactNumber(userProfile?.contact_number ?? '');
     }, [userData, userProfile])
 
-    console.log(userProfile)
-
     const [credentials, setCredentials] = useState({
         user_id: userData?.id,
         amount: '',
@@ -70,8 +68,6 @@ export default function Settings({ userData, user }) {
     const isAllLoading = isTransactionLoading || isUserProfileLoading
 
     const earnings = transactions.filter(transaction => transaction.type === "CREDIT")
-
-    console.log(contactNumber)
 
     const payoutPaymentMethod = paymentMethods.filter(payment => payment.name !== "Credit Card")
 
@@ -299,8 +295,6 @@ export default function Settings({ userData, user }) {
             setSelectedPayment([])
         }
     }
-
-    console.log(credentials)
     return (
         <>
             <Title>Settings</Title>

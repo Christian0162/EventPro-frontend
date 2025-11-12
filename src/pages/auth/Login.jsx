@@ -76,7 +76,7 @@ export default function Login({ user }) {
                             </div>
                         </div>
 
-                        <button className={`w-full py-2 rounded-md text-white text-md mt-4 ${isLoading ? 'bg-blue-300' : 'bg-blue-600'}`} disabled={isLoading}>{isLoading ? 'Logging in..' : 'Login'}</button>
+                        <button className={`w-full py-2 rounded-md text-white text-md mt-4 ${isLoginLoading ? 'bg-blue-300' : 'bg-blue-600'}`} disabled={isLoginLoading}>{isLoginLoading ? 'Logging in..' : 'Login'}</button>
 
                         <div className="text-center mt-8">
                             <span>Don't have an account? <Link to={'/register'} className="text-blue-500 hover:text-blue-700">Register</Link></span>

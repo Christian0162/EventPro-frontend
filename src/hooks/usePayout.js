@@ -37,7 +37,7 @@ export const useCreatePayout = () => {
 
                 const payout_id = data.id
                 const checkStatus = setInterval(async () => {
-                    const res = await fetch(`https://eventpro-backend.onrender.com/api/v1/payout/check-status/${payout_id}`)
+                    const res = await fetch(`https://eventpro-backend-python.onrender.com/api/v1/payout/check-status/${payout_id}`)
                     const status = await res.json()
 
                     console.log(status)

@@ -28,9 +28,8 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [isProcecssing, setIsProcessing] = useState(false)
     const [isReleasing, setIsReleasing] = useState(false)
-    const { createPayment, isProcessing } = useCreatePayment()
+    const { createPayment, isProcessing, invoiceUrl } = useCreatePayment()
     const { transactions } = useFetchTransactionById(eventData?.user_id)
-    const [contract, setContract] = useState([])
     const [eventUser, setEventUser] = useState([])
     const { deliveries, isLoading: isDeliveriesLoading } = useFetchDeliveries()
     const { contracts: AllContracts } = useFetchContract()
@@ -39,6 +38,8 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
     const { reports } = useFetchAllReports()
     const navigate = useNavigate()
     const [now, setNow] = useState(new Date())
+
+    const contract = AllContracts.find(contract => contract?.event_id === eventData?.id && contract?.supplier_id === supplierData?.id)
 
     const contractTransaction = transactions.filter(t => t.contract_id === contract?.id && t.event_id === eventData?.id)
 
@@ -100,8 +101,6 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
 
     const totalDeductions = computeTotalDeductions(contractDeliveries, service_price);
 
-    console.log(service_price)
-
     const fullAmount = Number(contract?.service_plan?.service_price) + processFee
     const netAmount = Number(service_price - platformFee);
     const finalAmount = netAmount - totalDeductions;
@@ -135,16 +134,11 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
 
     useEffect(() => {
         const eventUser = users.filter(user => user.id === eventData?.user_id)
-
-        const contract = AllContracts.filter(contract => contract?.event_id === eventData?.id && contract?.supplier_id === supplierData?.id)
         setEventUser(eventUser[0])
-        setContract(contract[0])
-
-    }, [AllContracts, users, eventData, supplierData])
+    }, [users, eventData, supplierData])
 
     useEffect(() => {
         const filteredTransaction = transactions.filter(trans => trans.contract_id === contract?.id && trans.status === "HOLD")
-
         setContract_Transaction(filteredTransaction)
     }, [user_id, transactions, contract])
 
@@ -205,7 +199,6 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
     }
 
     const handleDeliveryReport = async (reportId, status, deliveryId, reportDetails) => {
-        console.log(reportId, status)
         if (status === "Accept") {
             Swal.fire({
                 title: "Are you sure?",
@@ -523,8 +516,6 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
     if (contract && contract?.length === 0) {
         return <div className='h-6 w-6 rounded-full animate-spin border border-t-blue-600'></div>
     }
-
-    console.log(supplierData)
 
     return (
         <>
@@ -1234,18 +1225,16 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
                                                     <button
                                                         onClick={() => handlePayment(downpayment, nextpayment, processFee)}
                                                         disabled={(contractDeliveries.length === 0 && contract_transaction.length > 0) || isProcessing}
-                                                        className={`px-7 py-2 ${isProcessing
-                                                            ? 'bg-blue-300'
-                                                            : (contractDeliveries.length === 0 && contract_transaction.length > 0)
+                                                        className={`px-7 py-2 ${(contractDeliveries.length === 0 && contract_transaction.length > 0)
                                                                 ? 'bg-blue-300 cursor-not-allowed'
                                                                 : 'bg-blue-500 hover:bg-blue-600'
                                                             } text-white text-sm rounded flex justify-end items-end ml-auto `}
                                                     >
                                                         {isProcessing ? (
-                                                            <div className='flex items-center gap-3 '>
-                                                                Processing..
+                                                            <a href={invoiceUrl} target='_blank' className='flex items-center gap-3 '>
+                                                                View Invoice Link
                                                                 <div className='border-t-2 h-4 w-4 rounded-full animate-spin'></div>
-                                                            </div>
+                                                            </a>
                                                         ) : (contractDeliveries.length === 0 && contract_transaction.length > 0) ? (
                                                             'Must deliver before pay'
                                                         ) : (

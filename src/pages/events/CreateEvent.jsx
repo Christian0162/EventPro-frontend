@@ -3,11 +3,10 @@ import { useEffect, useState } from "react";
 import PrimaryButton from "../../components/PrimaryButton";
 import { Link, Navigate } from "react-router-dom";
 import { X, Calendar, Tag, Send } from "lucide-react";
-import Loading from "../../components/Loading";
+import LoadingOverlay from "../../components/LoadingOverlay";
 import AddressAutoComplete from "../../components/AddressAutoComplete";
 import { useAddEvent } from "../../hooks/useEvents";
 import { EventTypeOptions, SupplierOptions } from "../../constants/categories";
-import LoadingOverlay from "../../components/LoadingOverlay";
 import { Title } from "react-head";
 import Swal from "sweetalert2";
 
@@ -28,7 +27,6 @@ export default function CreateEvent({ userData }) {
     const { addEvent, isLoading } = useAddEvent()
 
     useEffect(() => {
-
         const previewStartAndEnd = [
             new Date(`1970-01-01T${startTime}`).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }),
             new Date(`1970-01-01T${endTime}`).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })
@@ -50,8 +48,6 @@ export default function CreateEvent({ userData }) {
 
         const previewDate = [years, months, days]
 
-        console.log("preview:", previewDate)
-
         setEvent_date({
             date_value: dateString,
             date_preview: previewDate
@@ -61,7 +57,6 @@ export default function CreateEvent({ userData }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // Validation 1: Check if date/time is in the past
         const eventDate = event_date.date_value;
         const eventDateTime = new Date(`${eventDate}T${startTime}`);
         const now = new Date();
@@ -76,7 +71,6 @@ export default function CreateEvent({ userData }) {
             return;
         }
 
-        // Validation 2: Check if end time is before start time
         if (endTime <= startTime) {
             Swal.fire({
                 icon: "error",
@@ -117,7 +111,6 @@ export default function CreateEvent({ userData }) {
 
     const addTag = () => {
         if (categories?.value.trim() && !tags.some(tag => tag.value === categories.value)) {
-            // setTagError('');
             setTags([...tags, categories]);
             setCategories(null);
         }
@@ -133,15 +126,15 @@ export default function CreateEvent({ userData }) {
             </div>
 
             <div className="bg-white rounded-xl p-10 border border-gray-100 shadow-lg">
-
                 <form onSubmit={handleSubmit} className="w-full h-full space-y-6">
-                    {/* event name and location */}
+
+                    {/* Event name and location */}
                     <div className="justify-between gap-6 grid grid-cols-1 md:grid-cols-2">
-                        {/* event name */}
                         <div className="flex flex-col w-full">
                             <label htmlFor="event_name" className="text-sm font-medium text-gray-700 mb-2">Event Name</label>
                             <input
                                 type="text"
+                                id="event_name"
                                 name="event_name"
                                 className="px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                                 required
@@ -151,28 +144,36 @@ export default function CreateEvent({ userData }) {
                             />
                         </div>
 
-                        {/* location */}
                         <div className="flex flex-col w-full">
                             <label htmlFor="location" className="text-sm font-medium text-gray-700 mb-2">Location</label>
-                            <AddressAutoComplete
+                            {/* <AddressAutoComplete
+                                id="location"
+                                name="location"
                                 setLocation={setEvent_location}
                                 setCoords={setCoords}
                                 default_location={event_location || ""}
                                 className={'w-full px-3 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'}
+                            /> */}
+
+                            <input
+                                id="location"
+                                name="location"
+                                placeholder="Location"
+                                onChange={(e) => setEvent_location(e.target.value)}
+                                data-testid="location-input"
                             />
                         </div>
                     </div>
 
-                    {/* date, time and status */}
+                    {/* Date and Time */}
                     <div className="gap-6 items-center grid grid-cols-1 md:grid-cols-2">
-
-                        {/* date */}
                         <div className="flex flex-col w-full">
-                            <label htmlFor="date" className="text-sm font-medium text-gray-700 mb-2">Date</label>
+                            <label htmlFor="event_date" className="text-sm font-medium text-gray-700 mb-2">Date</label>
                             <div className="relative">
                                 <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
                                 <input
                                     type="date"
+                                    id="event_date"
                                     name="event_date"
                                     className="pl-10 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                                     required
@@ -182,82 +183,56 @@ export default function CreateEvent({ userData }) {
                             </div>
                         </div>
 
-                        {/* Time Section */}
                         <div className="flex flex-col w-full">
-                            <label htmlFor="start_time" className="text-sm font-medium text-gray-700 mb-2">
-                                Event Time
-                            </label>
+                            <label htmlFor="start_time" className="text-sm font-medium text-gray-700 mb-2">Event Time</label>
                             <div className="gap-3 grid grid-cols-2">
-                                {/* Start Time */}
-                                <div className="relative">
-                                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm">
-                                        Start
-                                    </span>
-                                    <input
-                                        type="time"
-                                        id="start_time"
-                                        name="start_time"
-                                        className="pl-12 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                                        required
-                                        onChange={(e) => setStartTime(e.target.value)}
-                                        value={startTime || ""}
-                                    />
-                                </div>
-
-                                {/* End Time */}
-                                <div className="relative">
-                                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm">
-                                        End
-                                    </span>
-                                    <input
-                                        type="time"
-                                        id="end_time"
-                                        name="end_time"
-                                        className="pl-10 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                                        required
-                                        onChange={(e) => setEndTime(e.target.value)}
-                                        value={endTime || ""}
-                                    />
-                                </div>
+                                <input
+                                    type="time"
+                                    id="start_time"
+                                    name="start_time"
+                                    className="pl-12 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                                    required
+                                    data-testid="start_time"
+                                    onChange={(e) => setStartTime(e.target.value)}
+                                    value={startTime || ""}
+                                />
+                                <input
+                                    type="time"
+                                    id="end_time"
+                                    name="end_time"
+                                    className="pl-10 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                                    required
+                                    data-testid="end_time"
+                                    onChange={(e) => setEndTime(e.target.value)}
+                                    value={endTime || ""}
+                                />
                             </div>
                         </div>
-
                     </div>
 
-                    {/* type and budget */}
+                    {/* Event Type and Budget */}
                     <div className="gap-6 grid grid-cols-1 md:grid-cols-2">
-                        {/* type */}
                         <div className="flex flex-col w-full">
-                            <label htmlFor="type" className="text-sm font-medium text-gray-700 mb-2">Event Type</label>
+                            <label htmlFor="event_type" className="text-sm font-medium text-gray-700 mb-2">Event Type</label>
                             <Select
+                                id="event_type"
                                 name="event_type"
                                 options={EventTypeOptions}
                                 value={eventType || ""}
                                 onChange={setEventType}
                                 placeholder="Select event type"
-                                styles={{
-                                    control: (base) => ({
-                                        ...base,
-                                        padding: '4px 0',
-                                        borderRadius: '8px',
-                                        borderColor: '#d1d5db',
-                                        '&:hover': {
-                                            borderColor: '#d1d5db'
-                                        }
-                                    })
-                                }}
                             />
                         </div>
 
-                        {/* Budget */}
                         <div className="flex flex-col w-full">
-                            <label htmlFor="type" className="text-sm font-medium text-gray-700 mb-2">Budget</label>
+                            <label htmlFor="event_budget" className="text-sm font-medium text-gray-700 mb-2">Budget</label>
                             <div className="relative">
                                 <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₱</span>
                                 <input
-                                    placeholder="25,500"
                                     type="number"
+                                    id="event_budget"
                                     name="event_budget"
+                                    placeholder="25,500"
                                     className="pl-10 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                                     required
                                     onChange={(e) => setEvent_budget(e.target.value)}
@@ -267,12 +242,12 @@ export default function CreateEvent({ userData }) {
                         </div>
                     </div>
 
-                    {/* description */}
+                    {/* Description */}
                     <div className="flex flex-col w-full">
-                        <label htmlFor="description" className="text-sm font-medium text-gray-700 mb-2">Description</label>
+                        <label htmlFor="event_description" className="text-sm font-medium text-gray-700 mb-2">Description</label>
                         <textarea
+                            id="event_description"
                             name="event_description"
-                            id="description"
                             rows="4"
                             className="px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                             required
@@ -282,54 +257,34 @@ export default function CreateEvent({ userData }) {
                         ></textarea>
                     </div>
 
-                    {/* specify supplier */}
+                    {/* Supplier Tags */}
                     <div className="flex flex-col space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-100">
                         <div className="flex items-center">
                             <Tag className="mr-2 text-blue-600" size={20} />
                             <span className="font-medium text-gray-800">Specify the supplier you are looking for:</span>
                         </div>
-
-                        {/* Tags Display */}
                         {tags.length > 0 && (
                             <div className="flex flex-wrap gap-2">
                                 {tags.map((tag, index) => (
-                                    <span
-                                        key={index}
-                                        className="inline-flex items-center gap-2 py-2 px-3 bg-blue-100 border border-blue-300 rounded-lg text-sm text-blue-800 font-medium"
-                                    >
+                                    <span key={index} className="inline-flex items-center gap-2 py-2 px-3 bg-blue-100 border border-blue-300 rounded-lg text-sm text-blue-800 font-medium">
                                         {tag.label}
-                                        <button
-                                            type="button"
-                                            onClick={() => removeTag(index)}
-                                            className="hover:bg-blue-200 rounded-full p-1 transition-colors"
-                                        >
+                                        <button type="button" onClick={() => removeTag(index)} className="hover:bg-blue-200 rounded-full p-1">
                                             <X width={14} height={14} strokeWidth={2} />
                                         </button>
                                     </span>
                                 ))}
                             </div>
                         )}
-
-                        {/* Add Supplier Controls */}
                         <div className="flex flex-col md:flex-row gap-3 items-end">
                             <div className="flex-grow">
                                 <Select
+                                    id="supplier_select"
                                     options={SupplierOptions}
                                     value={categories}
                                     onChange={setCategories}
                                     placeholder="Select supplier category"
                                     isClearable
                                     className="w-full"
-                                    styles={{
-                                        control: (base) => ({
-                                            ...base,
-                                            borderRadius: '8px',
-                                            borderColor: '#d1d5db',
-                                            '&:hover': {
-                                                borderColor: '#d1d5db'
-                                            }
-                                        })
-                                    }}
                                 />
                             </div>
                             <button
@@ -344,15 +299,10 @@ export default function CreateEvent({ userData }) {
                         </div>
                     </div>
 
-                    {isLoading && (
-                        <LoadingOverlay isLoading={isLoading} message="Processing.." />
-                    )}
+                    {isLoading && <LoadingOverlay isLoading={isLoading} message="Processing.." />}
 
                     <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
-                        <Link
-                            to={'/events'}
-                            className="flex items-center justify-center py-3 w-full text-center border border-gray-300 rounded-lg hover:border-blue-500 hover:text-blue-600 transition-colors font-medium"
-                        >
+                        <Link to={'/events'} className="flex items-center justify-center py-3 w-full text-center border border-gray-300 rounded-lg hover:border-blue-500 hover:text-blue-600 transition-colors font-medium">
                             Cancel
                         </Link>
 
@@ -362,7 +312,7 @@ export default function CreateEvent({ userData }) {
                         </PrimaryButton>
                     </div>
                 </form>
-            </div >
+            </div>
         </>
     )
 }

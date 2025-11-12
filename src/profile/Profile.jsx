@@ -45,8 +45,6 @@ export default function Profile({ userData }) {
         );
     };
 
-    console.log(userProfile)
-
     useEffect(() => {
 
         setContact_number(userProfile?.contact_number)

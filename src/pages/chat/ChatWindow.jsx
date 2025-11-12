@@ -174,7 +174,6 @@ export default function ChatWindow({ userData }) {
                 created_at: serverTimestamp()
             });
 
-            console.log(contact)
         };
 
         if (bothContacts?.id) {

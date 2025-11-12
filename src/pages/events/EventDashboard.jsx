@@ -61,12 +61,6 @@ export default function EventDashboard({ userData }) {
     const createdEvents = useMemo(() => events.filter(e => e.user_id === userData.id), [events, userData])
     const contractHistory = useMemo(() => contracts.filter(contract => (contract?.status === "Completed" || contract?.status === "Cancelled") && contract.planner_id === userData.id), [contracts, userData.id])
 
-    const contractHistoryEvents = useMemo(() =>
-        contractHistory.map(contract =>
-            events.find(event => event.id === contract.event_id)
-        ).filter(Boolean),
-        [contractHistory, events]);
-
     useEffect(() => {
         const sendEventNotif = async () => {
 
@@ -566,6 +560,10 @@ export default function EventDashboard({ userData }) {
                             <div className="space-y-3 overflow-y-auto max-h-[400px] pr-2">
                                 {contractHistory.slice(0, 5).map((contract, index) => {
                                     const supplier = suppliers.find(s => s.id === contract.supplier_id)
+                                    const event = events.find(e => e.id === contract.event_id)
+
+                                    console.log(contract)
+                                    console.log(event)
 
                                     return (
                                         <div
@@ -592,7 +590,7 @@ export default function EventDashboard({ userData }) {
                                                 <button
                                                     onClick={() => openContractModal({
                                                         supplierData: supplier,
-                                                        eventData: contractHistoryEvents[index],
+                                                        eventData: event,
                                                         supplier_id: contract.supplier_id,
                                                         user_id: userData.id,
                                                         userData: userData,

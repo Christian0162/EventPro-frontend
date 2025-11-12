@@ -6,6 +6,7 @@ import Swal from "sweetalert2"
 export const useCreatePayment = () => {
     const [isProcessing, setIsProcessing] = useState(false)
     const payment_window_ref = useRef()
+    const [invoiceUrl, setInvoiceUrl] = useState('')
 
     const createPayment = async (payment_data, supplierData) => {
 
@@ -74,12 +75,14 @@ export const useCreatePayment = () => {
                 const data = await response.json()
 
                 console.log(data)
+
+                setInvoiceUrl(data.invoice_url)
                 const invoice_id = data?.data?.id
 
                 payment_window_ref.current = window.open(data.invoice_url, "_blank")
 
                 const checkStatus = setInterval(async () => {
-                    const res = await fetch(`https://eventpro-backend.onrender.com/api/v1/payment/check-status?id=${invoice_id}`)
+                    const res = await fetch(`https://eventpro-backend-python.onrender.com/api/v1/payment/check-status?id=${invoice_id}`)
                     const status = await res.json()
 
                     await setDoc(doc(db, "transactions", invoice_id), {
@@ -158,5 +161,5 @@ export const useCreatePayment = () => {
 
     }
 
-    return { createPayment, isProcessing }
+    return { createPayment, isProcessing, invoiceUrl }
 }

@@ -1,6 +1,6 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, setPersistence, browserSessionPersistence } from "firebase/auth";
 import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 import { getFirestore } from "firebase/firestore";
 import { getDatabase } from "firebase/database";
@@ -30,6 +30,9 @@ initializeAppCheck(app, {
 
 
 export const auth = getAuth(app);
+
+setPersistence(auth, browserSessionPersistence);
+
 export const db = getFirestore(app);
 export const rtdb = getDatabase(app)
 export default app;

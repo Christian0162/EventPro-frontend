@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import OutsideClickHandler from 'react-outside-click-handler';
 
-export default function AddressAutocomplete({ setLocation, setCoords, default_location = "", disabled, className }) {
+export default function AddressAutocomplete({ setLocation, setCoords, default_location = "", id, name, disabled, className }) {
     const [query, setQuery] = useState(default_location);
     const [suggestions, setSuggestions] = useState([]);
     const [isTyping, setIsTyping] = useState(false);
@@ -74,6 +74,8 @@ export default function AddressAutocomplete({ setLocation, setCoords, default_lo
                         disabled={disabled}
                         className={`${className}`}
                         value={query}
+                        name={name}
+                        id={id}
                         required
                         placeholder="e.g University of Cebu Lapu-Lapu and Mandaue"
                         onChange={handleChange}

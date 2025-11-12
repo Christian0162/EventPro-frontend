@@ -61,7 +61,6 @@ export default function AdminDashboard({ userData }) {
             return date && date.getMonth() === month;
         }).length
     );
-        console.log("asd", userCountsPerMonth)
 
 
     const fields = [
@@ -113,8 +112,6 @@ export default function AdminDashboard({ userData }) {
             ),
         },
     ], [supplierVerification, eventVerification, suppliers, users, contracts]);
-
-    console.log(transactions)
 
     return (
         <>
@@ -285,8 +282,6 @@ export default function AdminDashboard({ userData }) {
                                     } else {
                                         event = events.find(e => e.user_id === r.user_id)
                                     }
-
-                                    console.log(supplier, "asd")
 
                                     return (
                                         <div key={i} className={`flex flex-col sm:flex-row gap-2 justify-between ${statusStyles['reject']} shadow-lg items-start sm:items-center p-3 sm:py-4 rounded-lg sm:px-5`}>

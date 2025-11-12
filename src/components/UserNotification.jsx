@@ -245,7 +245,7 @@ export default function UserNotification({ userData }) {
 
             {/* Notification Modal */}
             <Dialog as="div" open={modalOpen} onClose={() => setModalOpen(false)} className="relative z-[50]">
-                <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" />
+                <div className="fixed inset-0 bg-black/30" />
                 <div className="fixed inset-0 flex items-center justify-center p-4">
                     <DialogPanel
                         className="w-full max-w-lg rounded-2xl bg-white shadow-2xl p-6 mt-15 relative transition-all"

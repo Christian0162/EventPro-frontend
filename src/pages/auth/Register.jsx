@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Calendar, Package, Check } from "lucide-react";
 import PrimaryButton from "../../components/PrimaryButton";
 import { auth } from "../../firebase/firebase";
@@ -19,13 +19,16 @@ export default function Register({ user }) {
 
     const { register, isLoading, error: registerError } = useAuthRegister()
 
-    console.log(isLoading)
-
     const handleSubmit = async (e) => {
         e.preventDefault();
 
         setError(null);
         setErrorPassword('');
+
+        if (!/\S+@\S+\.\S+/.test(email)) {
+            setError("Invalid email format.");
+            return;
+        }
 
         if (password.length < 5) {
             return setErrorPassword('Password must be at least 6 characters long.')
@@ -210,10 +213,13 @@ export default function Register({ user }) {
                                                 id="email"
                                                 className="w-full py-2 px-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
                                                 placeholder="email@example.com"
-                                                required
                                                 value={email}
                                                 onChange={(e) => setEmail(e.target.value)}
                                             />
+
+                                            {error && (
+                                                <p className="text-red-500 text-sm mt-1">{error}</p>
+                                            )}
                                             {registerError && (
                                                 <p className="text-red-500 text-sm mt-1">{registerError}</p>
                                             )}

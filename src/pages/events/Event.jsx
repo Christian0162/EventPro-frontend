@@ -308,8 +308,6 @@ export default function Event({ userData }) {
                                     status = { label: 'Completed', value: 'completed' };
                                 }
 
-                                console.log(status.value)
-
                                 return (
                                     <div key={index} className="group bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col h-full overflow-hidden">
                                         <div className="p-6 flex-grow">

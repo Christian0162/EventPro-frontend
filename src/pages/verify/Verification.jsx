@@ -78,7 +78,7 @@ export default function Verification({ userData }) {
                 }
             }
             catch (e) {
-                console.log(e)
+                console.error(e)
             }
 
             finally {
@@ -107,8 +107,6 @@ export default function Verification({ userData }) {
             console.error(e)
         }
     }, [userData])
-
-    console.log({ validId, documents })
 
     const handleSubmit = async (e) => {
         e.preventDefault()
@@ -178,7 +176,7 @@ export default function Verification({ userData }) {
             setRedirect(true)
         }
         catch (e) {
-            console.log(e)
+            console.error(e)
         }
         finally {
             setIsSubmitting(false)
@@ -188,8 +186,6 @@ export default function Verification({ userData }) {
     if (redirect) {
         return <Navigate to={'/dashboard'} />
     }
-
-    console.log(redirect)
 
     return (
         <>

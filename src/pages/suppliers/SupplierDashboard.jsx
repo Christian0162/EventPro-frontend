@@ -167,12 +167,6 @@ export default function SupplierDashboard({ userData }) {
 
     console.log(contractHistory)
 
-    const contractHistoryEvents = useMemo(() =>
-        contractHistory.map(contract =>
-            events.find(event => event.id === contract.event_id)
-        ).filter(Boolean),
-        [contractHistory, events]);
-
     const contractEventsforPending = useMemo(() =>
         pendingContracts.map(contract =>
             events.find(event => event.id === contract.event_id)
@@ -675,7 +669,9 @@ export default function SupplierDashboard({ userData }) {
 
                             <div className="space-y-3 overflow-y-auto max-h-[400px] pr-2">
                                 {contractHistory.slice(0, 5).map((contract, index) => {
-                                    const event = contractHistoryEvents.find(e => e.id === contract.event_id)
+                                    const event = events.find(e => e.id === contract.event_id)
+
+                                    console.log(contractHistory)
                                     return (
                                         <div
                                             key={contract.id}
@@ -701,7 +697,7 @@ export default function SupplierDashboard({ userData }) {
                                                 <button
                                                     onClick={() => openContractModal({
                                                         supplierData: supplier,
-                                                        eventData: contractHistoryEvents[index],
+                                                        eventData: event,
                                                         supplier_id: contract.supplier_id,
                                                         user_id: userData.id,
                                                         userData: userData,

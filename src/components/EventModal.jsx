@@ -22,17 +22,16 @@ export default function EventModal({ eventData, event_purpose, userData }) {
 
     const isAllLoading = isProfileLoading || isReviewLoading || isUserLoading
 
-    const userProfile = userProfiles.find(user => user.id === eventData.user_id)
+    const userProfile = userProfiles.find(user => user.id === eventData?.user_id)
 
-    const userReviews = reviews.filter(rev => rev.reviewed_id === eventData.user_id)
-    console.log(eventData)
+    const userReviews = reviews.filter(rev => rev.reviewed_id === eventData?.user_id)
 
     const open = () => setIsOpen(true);
     const close = () => setIsOpen(false);
 
     const now = new Date();
     const eventDate = new Date(eventData?.event_date?.date_value);
-    const eventContracts = contracts.filter(cont => cont.event_id === eventData.id && cont.status === "Approved")
+    const eventContracts = contracts.filter(cont => cont.event_id === eventData?.id && cont.status === "Approved")
 
     const isAllContractPaid = eventContracts.some(cont => {
         const contractTransaction = transactions?.filter(t => t.contract_id === cont.id)
@@ -78,7 +77,7 @@ export default function EventModal({ eventData, event_purpose, userData }) {
 
 
             <Dialog open={isOpen} as="div" className="relative z-100 focus:outline-none" onClose={close}>
-                <div className="fixed inset-0 bg-black/25 backdrop-blur-sm" />
+                <div className="fixed inset-0 bg-black/25" />
                 <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
@@ -216,11 +215,11 @@ export default function EventModal({ eventData, event_purpose, userData }) {
                                                 <div className="text-sm text-gray-600">
                                                     <div className="flex items-center gap-2">
                                                         <CalendarDays size={16} className="text-blue-500" />
-                                                        <span>{eventData.event_date.date_preview?.join(", ")}</span>
+                                                        <span>{eventData?.event_date.date_preview?.join(", ")}</span>
                                                     </div>
-                                                    {eventData.event_time && (
+                                                    {eventData?.event_time && (
                                                         <div className="ml-6 text-gray-500">
-                                                            {eventData.event_time.previewStartAndEnd}
+                                                            {eventData?.event_time.previewStartAndEnd}
                                                         </div>
                                                     )}
                                                 </div>
@@ -310,8 +309,8 @@ export default function EventModal({ eventData, event_purpose, userData }) {
                                             >
                                                 Close
                                             </button>
-                                            {userData?.role === "Event Planner" && eventData.user_id === userData?.id && (
-                                                <a href={`/events/edit/${eventData.id}`}
+                                            {userData?.role === "Event Planner" && eventData?.user_id === userData?.id && (
+                                                <a href={`/events/edit/${eventData?.id}`}
                                                     className="w-full bg-blue-600 text-center hover:bg-blue-800 hover:opacity-90 text-white font-medium py-3 rounded-lg transition-all duration-200"
                                                 >
                                                     Manage Event

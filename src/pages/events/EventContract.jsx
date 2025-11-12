@@ -65,7 +65,7 @@ export default function EventContract({ userData }) {
             confirmButtonText: 'Send Offer',
             showCancelButton: true,
         }).then(async (result) => {
-            if (!result.isConfirmed) return; 
+            if (!result.isConfirmed) return;
 
             if (result.isConfirmed) {
                 try {
@@ -222,7 +222,7 @@ export default function EventContract({ userData }) {
 
                                 {error && (
                                     <p className="text-red-600 text-sm mb-4">
-                                        You must choose a service plan to proceed
+                                        Please select a service plan first
                                     </p>
                                 )}
 

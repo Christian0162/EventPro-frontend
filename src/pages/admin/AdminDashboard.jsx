@@ -285,7 +285,7 @@ export default function AdminDashboard({ userData }) {
                                         event = events.find(e => e.user_id === r.user_id)
                                     }
                                     const contract = contracts.find(c => c.id === r.contract_id)
-                                    const selectedEvent = events.find(e => e.id === contract.event_id)
+                                    const selectedEvent = events.find(e => e.id === contract?.event_id)
                                     const reporterResponse = pendingReports.find(report => report.contract_id === r.contract_id && report.report_type === "delivery" && report.reporter_role === "Supplier")
 
                                     console.log('asd', reporterResponse)

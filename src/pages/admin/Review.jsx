@@ -256,12 +256,14 @@ export default function Review({ userData }) {
                             <div className="grid grid-cols-2 gap-4">
                                 {verification?.valid_id?.length ? (
                                     verification.valid_id.map((id, idx) => (
-                                        <img
-                                            key={idx}
-                                            src={id}
-                                            alt={`ID ${idx + 1}`}
-                                            className="rounded-lg border shadow-sm object-contain h-64 w-full"
-                                        />
+                                        <a href={id}>
+                                            <img
+                                                key={idx}
+                                                src={id}
+                                                alt={`ID ${idx + 1}`}
+                                                className="rounded-lg border shadow-sm object-contain h-64 w-full"
+                                            />
+                                        </a>
                                     ))
                                 ) : (
                                     <p className="text-gray-400 text-sm col-span-2">
@@ -279,11 +281,13 @@ export default function Review({ userData }) {
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 {verification?.documents_information ? (
-                                    <img
-                                        src={verification?.documents_information}
-                                        alt="Business Document"
-                                        className="rounded-lg border shadow-sm object-contain h-64 w-full"
-                                    />
+                                    <a href={verification?.documents_information}>
+                                        <img
+                                            src={verification?.documents_information}
+                                            alt="Business Document"
+                                            className="rounded-lg border shadow-sm object-contain h-64 w-full"
+                                        />
+                                    </a>
                                 ) : (
                                     <p className="text-gray-400 text-sm col-span-2">
                                         No documents uploaded by the user.

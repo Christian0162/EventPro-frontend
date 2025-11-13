@@ -471,7 +471,7 @@ export const ReportReview = ({ report, userData, response, eventData }) => {
 
     const id = report?.reporter_role === 'Event Planner' ? userContract?.supplier_id : userContract?.planner_id
 
-    const contract = contracts?.find(c => c.id === response.contract_id)
+    const contract = contracts?.find(c => c.id === response?.contract_id)
 
     const selectedUser = users.find(u => u.id === id)
 
@@ -577,13 +577,13 @@ export const ReportReview = ({ report, userData, response, eventData }) => {
 
                         const totalAmountPlusFee = totalAmount - totalFee
 
-                        const supplierCredentials = users.find(u => u.id === response.user_id)
+                        const supplierCredentials = users.find(u => u.id === response?.user_id)
 
                         if (totalAmount === totalContractPayment) {
                             await addDoc(collection(db, "transactions"), {
                                 contract_id: response?.contract_id || null,
                                 event_id: eventData.id,
-                                user_id: response.user_id,
+                                user_id: response?.user_id,
                                 payment_method: null,
                                 event_email: supplierCredentials.email_address,
                                 event_contact: supplierCredentials?.contact_number || null,

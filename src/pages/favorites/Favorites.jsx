@@ -1,6 +1,6 @@
 import { Title } from "react-head";
 import Cards from "../../components/Cards";
-import { MapPin, Clock, Star, DollarSign, MessageCircleMore, Heart, Trash, CalendarDays, CircleDollarSign, Users } from "lucide-react";
+import { MapPin, Clock, Star, DollarSign, MessageCircleMore, Heart, Trash, CalendarDays, CircleDollarSign, Users, CircleAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useFetchFavorites } from "../../hooks/useFavorites";
@@ -15,14 +15,15 @@ import LoadingOverlay from "../../components/LoadingOverlay";
 import { useFetchEvents } from "../../hooks/useEvents";
 import Swal from "sweetalert2";
 import { useFetchSupplierById } from "../../hooks/useSupplier";
-import EventModal from "../../components/EventModal";
 import ClipLoader from "react-spinners/ClipLoader";
 import PageLoading from "../../components/PageLoading";
 import { lazy, Suspense } from "react";
 import { eventStatusStyles } from "../../constants/categories";
+import { useMemo } from "react";
 
 export default function Favorites({ userData }) {
 
+    const EventModal = useMemo(() => lazy(() => import("../../components/EventModal")), [])
     const SupplierModal = lazy(() => import("../../components/SupplierModal"));
     const { favorites, isLoading: isFavoritesLoading } = useFetchFavorites()
     const { suppliers } = useFetchSuppliers()
@@ -39,6 +40,8 @@ export default function Favorites({ userData }) {
     const [isCreatingContact, setIsCreatingContact] = useState(false)
     const [likedEvents, setLikedEvents] = useState({});
     const [isModalOpen, setIsModalOpen] = useState(false)
+    const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+    const [selectedEvent, setSelectedEvent] = useState(null);
     const [selectedShop, setSelectedShop] = useState(null)
     const navigate = useNavigate()
 
@@ -240,7 +243,16 @@ export default function Favorites({ userData }) {
 
     const closeModal = () => {
         setIsModalOpen(false)
+    };
 
+    const openEventModal = (event) => {
+        setSelectedEvent(event);
+        setIsEventModalOpen(true);
+    };
+
+    const closeEventModal = () => {
+        setSelectedEvent(null);
+        setIsEventModalOpen(false);
     };
 
     return (
@@ -252,6 +264,19 @@ export default function Favorites({ userData }) {
 
             {(isCreatingContact || isCreatingFavorites) && (
                 <LoadingOverlay isLoading={isCreatingContact || isCreatingFavorites} message="Processing..." />
+            )}
+
+            {isEventModalOpen && selectedEvent && (
+                <Suspense fallback={<LoadingOverlay isLoading={true} message="Pleasee waitt.." />}>
+                    <EventModal
+                        isOpen={isEventModalOpen}
+                        onClose={closeEventModal}
+                        userData={userData}
+                        eventData={selectedEvent}
+                        event_purpose={'dashboard'}
+                    />
+
+                </Suspense>
             )}
 
             {!isAllLoading && (
@@ -443,7 +468,11 @@ export default function Favorites({ userData }) {
                                                         <div className="flex items-center gap-2 -mr-2">
                                                             {userData.role === "Supplier" && (
                                                                 <>
-                                                                    <EventModal eventData={events} />
+                                                                    <button
+                                                                        onClick={() => openEventModal(events)}
+                                                                    >
+                                                                        <CircleAlert size={24} className='transition-all duration-200 text-gray-400 hover:text-blue-600' />
+                                                                    </button>
                                                                     <button onClick={(e) => handleChat(e, events.user_id, events.event_name)} className='p-2 rounded-full hover:bg-slate-100 text-slate-500 hover:text-blue-600 transition-colors'>
                                                                         <MessageCircleMore size={20} />
                                                                     </button>

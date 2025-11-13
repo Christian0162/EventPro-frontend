@@ -1,4 +1,4 @@
-import { CalendarDays, Star, PhilippinePeso, ShieldCheck, Calendar, ReceiptText, BarChart3, ChartNoAxesCombined } from "lucide-react"
+import { CalendarDays, Star, PhilippinePeso, ShieldCheck, Calendar, ReceiptText, BarChart3, ChartNoAxesCombined, CircleAlert } from "lucide-react"
 import { TabGroup, TabPanel, TabPanels, TabList, Tab } from "@headlessui/react"
 import { PieChart, BarChart } from "../../components/Charts"
 import { Title } from "react-head"
@@ -11,7 +11,6 @@ import PageLoading from "../../components/PageLoading"
 import { useFetchReviews } from "../../hooks/useReviews"
 import dayGridPlugin from "@fullcalendar/daygrid";
 import FullCalendar from "@fullcalendar/react"
-import EventModal from "../../components/EventModal"
 import GenerateReport from "../../components/GeneraeReport"
 import { lazy, Suspense } from "react";
 import LoadingOverlay from "../../components/LoadingOverlay"
@@ -22,6 +21,7 @@ import { Review } from "../../components/ReviewModal"
 
 export default function EventDashboard({ userData }) {
 
+    const EventModal = useMemo(() => lazy(() => import("../../components/EventModal")), [])
     const ContractModal = useMemo(() => lazy(() => import("../../components/ContractModal")), []);
     const [isContractModalOpen, setIsContractModalOpen] = useState(false);
     const [selectedContract, setSelectedContract] = useState(null)
@@ -30,6 +30,8 @@ export default function EventDashboard({ userData }) {
     const { suppliers, isLoading: isSuppliersLoading } = useFetchSuppliers()
     const { transactions, isLoading: isTransactionsLoading } = useFetchTransactionById(userData?.id)
     const { reviews, isLoading: isReviewsLoading } = useFetchReviews()
+    const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+    const [selectedEvent, setSelectedEvent] = useState(null);
     const [barEventData, setBarEventData] = useState({
         labels: [],
         planned: [],
@@ -272,6 +274,16 @@ export default function EventDashboard({ userData }) {
         return colors[status]
     }
 
+    const openEventModal = (event) => {
+        setSelectedEvent(event);
+        setIsEventModalOpen(true);
+    };
+
+    const closeEventModal = () => {
+        setSelectedEvent(null);
+        setIsEventModalOpen(false);
+    };
+
     const openContractModal = (contract) => {
         setSelectedContract(contract)
         setIsContractModalOpen(true)
@@ -305,6 +317,19 @@ export default function EventDashboard({ userData }) {
                 </Suspense>
             )}
 
+            {isEventModalOpen && selectedEvent && (
+                <Suspense fallback={<LoadingOverlay isLoading={true} message="Pleasee waitt.." />}>
+                    <EventModal
+                        isOpen={isEventModalOpen}
+                        onClose={closeEventModal}
+                        userData={userData}
+                        eventData={selectedEvent}
+                        event_purpose={'dashboard'}
+                    />
+
+                </Suspense>
+            )}
+
             {!isAllLoading && (
                 <>
                     <Title>Dashboard</Title>
@@ -332,7 +357,7 @@ export default function EventDashboard({ userData }) {
                         </div>
 
                         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto mb-5">
-                            {userData.role !== 'Supplier' && userData.verification_status === 'unverified' && (
+                            {userData.role !== 'Supplier' && (userData.verification_status === 'unverified' || userData.verification_status === 'rejected') && (
                                 <a href='/verify' className="px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-colors text-center">
                                     Verify Account
                                 </a>
@@ -472,7 +497,12 @@ export default function EventDashboard({ userData }) {
                                                     </p>
                                                 </div>
 
-                                                <EventModal eventData={event} userData={userData} event_purpose={'dashboard'} />
+                                                <button
+                                                    onClick={() => openEventModal(event)}
+                                                    className={`"h-9 text-white hover:bg-blue-700 transition-all duration-100 rounded-md px-4 py-2 bg-blue-600 text-sm`}
+                                                >
+                                                    View Event
+                                                </button>
                                             </div>
                                         ))}
                                     </div>
@@ -542,8 +572,14 @@ export default function EventDashboard({ userData }) {
                                                     right: window.innerWidth < 640 ? '' : 'today'
                                                 }}
                                                 titleFormat={window.innerWidth < 640 ? { month: 'short', year: 'numeric' } : { month: 'long', year: 'numeric' }}
-                                                events={events.map(e => ({ title: e.event_name, date: e.event_date?.date_value }))}
-
+                                                events={events.map(e => ({
+                                                    title: e.event_name,
+                                                    date: e.event_date?.date_value,
+                                                    extendedProps: { ...e } // pass the full event data
+                                                }))}
+                                                eventClick={(info) => {
+                                                    openEventModal(info.event.extendedProps); // open your EventModal
+                                                }}
                                             />
                                         </div>
                                     </div>
@@ -561,9 +597,6 @@ export default function EventDashboard({ userData }) {
                                 {contractHistory.slice(0, 5).map((contract, index) => {
                                     const supplier = suppliers.find(s => s.id === contract.supplier_id)
                                     const event = events.find(e => e.id === contract.event_id)
-
-                                    console.log(contract)
-                                    console.log(event)
 
                                     return (
                                         <div

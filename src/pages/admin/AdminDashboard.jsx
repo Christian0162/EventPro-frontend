@@ -113,6 +113,8 @@ export default function AdminDashboard({ userData }) {
         },
     ], [supplierVerification, eventVerification, suppliers, users, contracts]);
 
+    console.log(userData)
+
     return (
         <>
             {allLoading && (
@@ -282,6 +284,11 @@ export default function AdminDashboard({ userData }) {
                                     } else {
                                         event = events.find(e => e.user_id === r.user_id)
                                     }
+                                    const contract = contracts.find(c => c.id === r.contract_id)
+                                    const selectedEvent = events.find(e => e.id === contract.event_id)
+                                    const reporterResponse = pendingReports.find(report => report.contract_id === r.contract_id && report.report_type === "delivery" && report.reporter_role === "Supplier")
+
+                                    console.log('asd', reporterResponse)
 
                                     return (
                                         <div key={i} className={`flex flex-col sm:flex-row gap-2 justify-between ${statusStyles['reject']} shadow-lg items-start sm:items-center p-3 sm:py-4 rounded-lg sm:px-5`}>
@@ -294,7 +301,7 @@ export default function AdminDashboard({ userData }) {
                                                     </span>
                                                 </div>
                                             </div>
-                                            <ReportReview report={r} userData={userData} />
+                                            <ReportReview report={r} userData={userData} response={reporterResponse} eventData={selectedEvent} />
                                         </div>
                                     )
                                 }) : (

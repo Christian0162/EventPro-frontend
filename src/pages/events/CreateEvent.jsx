@@ -146,21 +146,13 @@ export default function CreateEvent({ userData }) {
 
                         <div className="flex flex-col w-full">
                             <label htmlFor="location" className="text-sm font-medium text-gray-700 mb-2">Location</label>
-                            {/* <AddressAutoComplete
+                            <AddressAutoComplete
                                 id="location"
                                 name="location"
                                 setLocation={setEvent_location}
                                 setCoords={setCoords}
                                 default_location={event_location || ""}
                                 className={'w-full px-3 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'}
-                            /> */}
-
-                            <input
-                                id="location"
-                                name="location"
-                                placeholder="Location"
-                                onChange={(e) => setEvent_location(e.target.value)}
-                                data-testid="location-input"
                             />
                         </div>
                     </div>

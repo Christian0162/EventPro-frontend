@@ -1,15 +1,14 @@
 import { Link } from "react-router-dom";
 import { Title } from "react-head";
-import { CalendarDays, MapPin, CircleDollarSign, Trash, Users, MessageCircleMore, Heart, CircleCheck, AlertTriangle } from "lucide-react";
+import { CalendarDays, MapPin, CircleDollarSign, Trash, Users, MessageCircleMore, Heart, CircleCheck, AlertTriangle, CircleAlert } from "lucide-react";
 import { db } from "../../firebase/firebase";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { collection, onSnapshot, serverTimestamp, addDoc, query, where, doc, getDocs, deleteDoc } from "firebase/firestore";
 import { ClipLoader } from "react-spinners";
 import Swal from "sweetalert2";
 import { useFetchEvents } from "../../hooks/useEvents";
 import { useDeleteEvent } from "../../hooks/useEvents";
 import { useNavigate } from "react-router-dom";
-import EventModal from "../../components/EventModal";
 import LoadingOverlay from "../../components/LoadingOverlay";
 import { useFetchAllApplication } from "../../hooks/useApplication";
 import PageLoading from "../../components/PageLoading";
@@ -18,8 +17,9 @@ import { useFetchContract } from "../../hooks/useContract";
 import { useFetchAllTransaction } from "../../hooks/useTransaction";
 import { useFetchSuppliers, useFetchSupplierServices } from "../../hooks/useSupplier";
 
-export default function Event({ userData }) {
 
+export default function Event({ userData }) {
+    const EventModal = useMemo(() => lazy(() => import("../../components/EventModal")), [])
     const [isCreatingFavorites, setIsCreatingFavorites] = useState(false)
     const [isCreatingContact, setIsCreatingContact] = useState(false)
     const [likedEvents, setLikedEvents] = useState({});
@@ -36,6 +36,8 @@ export default function Event({ userData }) {
     const { services } = useFetchSupplierServices()
     const { suppliers, isLoading: isSupplierLoading } = useFetchSuppliers()
     const [showCautionMessage, setShowCautionMessage] = useState(false)
+    const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+    const [selectedEvent, setSelectedEvent] = useState(null);
     const navigate = useNavigate()
 
     const applications = supplierApplications.filter(app => app.supplier_id === userData.id)
@@ -225,6 +227,16 @@ export default function Event({ userData }) {
         }
     }
 
+    const openEventModal = (event) => {
+        setSelectedEvent(event);
+        setIsEventModalOpen(true);
+    };
+
+    const closeEventModal = () => {
+        setSelectedEvent(null);
+        setIsEventModalOpen(false);
+    };
+
     return (
         <>
             <Title>Events</Title>
@@ -235,6 +247,19 @@ export default function Event({ userData }) {
 
             {(isCreatingContact || isCreatingFavorites) && (
                 <LoadingOverlay isLoading={isCreatingContact || isCreatingFavorites} message="Processing..." />
+            )}
+
+            {isEventModalOpen && selectedEvent && (
+                <Suspense fallback={<LoadingOverlay isLoading={true} message="Pleasee waitt.." />}>
+                    <EventModal
+                        isOpen={isEventModalOpen}
+                        onClose={closeEventModal}
+                        userData={userData}
+                        eventData={selectedEvent}
+                        event_purpose={'dashboard'}
+                    />
+
+                </Suspense>
             )}
 
             {!isAllLoading && (
@@ -275,7 +300,7 @@ export default function Event({ userData }) {
 
                                 const now = new Date();
                                 const eventDate = new Date(events?.event_date?.date_value);
-                                const eventContracts = contracts.filter(cont => cont.event_id === events.id && (cont.status !== "Cancelled" || cont.status !== "Rejected    " ) )
+                                const eventContracts = contracts.filter(cont => cont.event_id === events.id && (cont.status !== "Cancelled" || cont.status !== "Rejected    "))
 
                                 const eventEndTime = events?.event_time?.valueStartAndEnd[1] || "00:00"
                                 const [eventHour, eventMinute] = eventEndTime.split(":").map(Number)
@@ -318,7 +343,11 @@ export default function Event({ userData }) {
                                                 <div className="flex items-center gap-2 -mr-2">
                                                     {userData.role === "Supplier" && (
                                                         <>
-                                                            <EventModal eventData={events} />
+                                                            <button
+                                                                onClick={() => openEventModal(events)}
+                                                            >
+                                                                <CircleAlert size={24} className='transition-all duration-200 text-gray-400 hover:text-blue-600' />
+                                                            </button>
                                                             <button onClick={(e) => handleChat(e, events.user_id, events.event_name)} className='p-2 rounded-full hover:bg-slate-100 text-slate-500 hover:text-blue-600 transition-colors'>
                                                                 <MessageCircleMore size={20} />
                                                             </button>
@@ -456,7 +485,7 @@ export default function Event({ userData }) {
                     {!isAllLoading && filteredEvents?.length === 0 && (
                         <div className="flex flex-col items-center justify-center py-[12rem] text-gray-500">
                             <span className="text-2xl mb-4">No events found.</span>
-                            {userData.verification_status === "unverified" && userData.role !== "Supplier" && (
+                            {(userData.verification_status === 'unverified' || userData.verification_status === 'rejected') && userData.role !== "Supplier" && (
                                 <a href="/verify"
                                     className="px-6 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-md transition-colors duration-200"
                                 >

@@ -11,8 +11,7 @@ import { useFetchContract } from '../hooks/useContract';
 import { useFetchAllTransaction } from '../hooks/useTransaction';
 import PageLoading from './PageLoading';
 
-export default function EventModal({ eventData, event_purpose, userData }) {
-    const [isOpen, setIsOpen] = useState(false);
+export default function EventModal({ isOpen, onClose, eventData, event_purpose, userData }) {
     const [hoveredReviewerId, setHoveredReviewerId] = useState(null)
     const { userProfiles, isLoading: isProfileLoading } = useFetchUserProfiles()
     const { reviews, isLoading: isReviewLoading } = useFetchReviews()
@@ -25,9 +24,6 @@ export default function EventModal({ eventData, event_purpose, userData }) {
     const userProfile = userProfiles.find(user => user.id === eventData?.user_id)
 
     const userReviews = reviews.filter(rev => rev.reviewed_id === eventData?.user_id)
-
-    const open = () => setIsOpen(true);
-    const close = () => setIsOpen(false);
 
     const now = new Date();
     const eventDate = new Date(eventData?.event_date?.date_value);
@@ -62,21 +58,8 @@ export default function EventModal({ eventData, event_purpose, userData }) {
 
     return (
         <>
-            <Button
-                onClick={open}
-                className={`${event_purpose === "dashboard"
-                    ? "h-9 text-white hover:bg-blue-700 transition-all duration-100 rounded-md px-4 bg-blue-600 text-sm"
-                    : ""}`}
-            >
-                {event_purpose === "dashboard" ? (
-                    "View Event"
-                ) : (
-                    <CircleAlert size={24} className='transition-all duration-200 text-gray-400 hover:text-blue-600' />
-                )}
-            </Button>
-
-
-            <Dialog open={isOpen} as="div" className="relative z-100 focus:outline-none" onClose={close}>
+        
+            <Dialog open={isOpen} as="div" className="relative z-100 focus:outline-none" onClose={onClose}>
                 <div className="fixed inset-0 bg-black/25" />
                 <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
                     <div className="flex min-h-full items-center justify-center p-4">
@@ -108,7 +91,7 @@ export default function EventModal({ eventData, event_purpose, userData }) {
 
                                         {/* Close Button */}
                                         <button
-                                            onClick={close}
+                                            onClick={onClose}
                                             className="absolute top-4 right-4 z-50 p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors duration-200"
                                         >
                                             <X size={20} className="text-white" />
@@ -304,7 +287,7 @@ export default function EventModal({ eventData, event_purpose, userData }) {
                                         {/* Footer Button */}
                                         <div className="pt-1 flex gap-2">
                                             <button
-                                                onClick={close}
+                                                onClick={onClose}
                                                 className="w-full bg-gray-300 hover:bg-gray-600 hover:opacity-90 text-white font-medium py-3 rounded-lg transition-all duration-200"
                                             >
                                                 Close

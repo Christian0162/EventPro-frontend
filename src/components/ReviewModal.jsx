@@ -1,7 +1,7 @@
 import { Button, Dialog, DialogPanel, } from '@headlessui/react'
 import { useEffect, useState } from 'react'
 import { X, Star, ThumbsUp, MessageSquare } from 'lucide-react'
-import { addDoc, updateDoc, collection, serverTimestamp, doc, query, where, deleteDoc, getDocs, arrayUnion } from 'firebase/firestore'
+import { addDoc, updateDoc, collection, serverTimestamp, doc, query, where, deleteDoc, getDocs, arrayUnion, increment } from 'firebase/firestore'
 import { useNavigate } from 'react-router-dom'
 import { auth, db } from '../firebase/firebase'
 import Swal from 'sweetalert2'
@@ -87,14 +87,13 @@ export const Review = ({ reviewed_id, reviewer_name, eventData, contractData }) 
                     });
 
                     Swal.fire('Success', 'Review has been submitted', 'success')
+                    setIsSubmitting(false)
+
                     close()
                 }
             }
             catch (e) {
                 console.error(e)
-            }
-            finally {
-                setIsSubmitting(false)
             }
         })
     }
@@ -318,7 +317,7 @@ export const RejectReview = ({ id, event_id, supplier_id, userData, event_name, 
                                 referenced_id: event_id,
                                 referenced_type: 'event',
                                 sender_id: supplier.id,
-                                message: `Unfortunately, ${supplier.supplier_name} has rejected your offer for their event.`,
+                                message: `Unfortunately, ${supplier.supplier_name} has rejected your offer for the event "${event_name}".`,
                                 feedback: reviewText,
                                 created_at: serverTimestamp(),
                                 unread: true
@@ -454,7 +453,7 @@ export const RejectReview = ({ id, event_id, supplier_id, userData, event_name, 
     )
 }
 
-export const ReportReview = ({ report, userData }) => {
+export const ReportReview = ({ report, userData, response, eventData }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [isRejectOpen, setIsRejectOpen] = useState(false);
     const [isApprovedSubmitting, setIsApproveSubmitting] = useState(false);
@@ -471,6 +470,8 @@ export const ReportReview = ({ report, userData }) => {
     const userContract = contracts.find(c => c.id === report?.contract_id)
 
     const id = report?.reporter_role === 'Event Planner' ? userContract?.supplier_id : userContract?.planner_id
+
+
 
     const selectedUser = users.find(u => u.id === id)
 
@@ -556,6 +557,77 @@ export const ReportReview = ({ report, userData }) => {
                         await updateDoc(doc(db, "deliveries", report.delivery_id), {
                             penalty_applied: [],
                         });
+
+                        await addDoc(collection(db, "notifications"), {
+                            avatar: 'A',
+                            title: "Issue Reported",
+                            message: `Your report has been rejected by the admin because it lacks sufficient proof.`,
+                            feedback: rejectReason,
+                            created_at: serverTimestamp(),
+                            referenced_type: "report",
+                            referenced_id: report?.id,
+                            unread: true,
+                            receiver_id: report?.user_id,
+                        });
+                        // const contract = contracts?.find(c => c.id === response.contract_id)
+
+                        // const totalContractPayment = contract.service_plan.service_price
+
+                        const totalAmount = data.reduce((sum, t) => sum + (Number(t.amount) - Number(t.process_fee)), 0);
+
+                        // const totalFee = contract?.service_plan.service_price * 0.03
+
+                        // const totalAmountPlusFee = totalAmount - totalFee
+
+                        const supplierCredentials = users.find(u => u.id === response.user_id)
+
+                        // if (totalAmount === totalContractPayment) {
+                        //     await addDoc(collection(db, "transactions"), {
+                        //         contract_id: response?.contract_id || null,
+                        //         event_id: eventData.id,
+                        //         user_id: response.user_id,
+                        //         payment_method: null,
+                        //         event_email: supplierCredentials.email_address,
+                        //         event_contact: supplierCredentials?.contact_number || null,
+                        //         amount: totalAmountPlusFee,
+                        //         platform_fee: 0,
+                        //         process_fee: 0,
+                        //         type: "CREDIT",
+                        //         status: "COMPLETED",
+                        //         created_at: serverTimestamp()
+                        //     })
+                        // } else {
+                        await addDoc(collection(db, "transactions"), {
+                            contract_id: response?.contract_id || null,
+                            event_id: eventData.id,
+                            user_id: response.user_id,
+                            payment_method: null,
+                            event_email: supplierCredentials.email_address,
+                            event_contact: supplierCredentials?.contact_number || null,
+                            amount: totalAmount,
+                            platform_fee: 0,
+                            process_fee: 0,
+                            type: "CREDIT",
+                            status: "COMPLETED",
+                            created_at: serverTimestamp()
+                        })
+                        // }
+
+                        await updateDoc(doc(db, "users", response.user_id), {
+                            balance: increment(totalAmount)
+                        })
+
+                        await addDoc(collection(db, "notifications"), {
+                            avatar: 'A',
+                            title: "Issue Resolved",
+                            message: `Your proof was valid. The down payment will now be released to your account and your balance will be updated.`,
+                            created_at: serverTimestamp(),
+                            referenced_type: "contract",
+                            referenced_id: report?.contract_id,
+                            unread: true,
+                            receiver_id: response?.user_id,
+                        });
+
                     } catch (e) {
                         console.error(e);
                     } finally {
@@ -759,7 +831,7 @@ export const ReportReview = ({ report, userData }) => {
                 <div className="fixed inset-0 bg-black/25" />
                 <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
                     <div className="flex min-h-full items-center justify-center p-4">
-                        <DialogPanel transition className="w-full max-w-2xl z-10 rounded-2xl bg-white shadow-2xl p-8 duration-200 relative">
+                        <DialogPanel transition className="w-full max-w-3xl z-10 rounded-2xl bg-white shadow-2xl p-8 duration-200 relative">
                             {/* Close Button */}
                             <button
                                 onClick={close}
@@ -805,9 +877,9 @@ export const ReportReview = ({ report, userData }) => {
                                 <h3 className="text-md font-semibold text-gray-800 mb-2">
                                     Issue
                                 </h3>
-                                {report?.issue ? (
+                                {(report?.issue || report?.reason) ? (
                                     <div className="w-full p-5 bg-gray-100 border border-gray-200 shadow rounded-lg">
-                                        {report.issue}
+                                        {report.issue || report.reason}
                                     </div>
                                 ) : (
                                     <p className="text-gray-500 italic">No issue listed.</p>
@@ -849,48 +921,103 @@ export const ReportReview = ({ report, userData }) => {
                                     <p className="text-gray-500 italic">No attachments provided.</p>
                                 )}
 
-                                {report?.admin_feedback?.length > 0 && (
-                                    <div className="mt-8 mb-3">
-                                        <h3 className="text-md font-semibold text-gray-800 mb-2">
-                                            Admin Feedback
-                                        </h3>
-                                        {report?.admin_feedback ? (
-                                            <div className="w-full p-5 bg-gray-100 border border-gray-200 shadow rounded-lg">
-                                                {report.admin_feedback}
-                                            </div>
-                                        ) : (
-                                            <p className="text-gray-500 italic">No admin feedback listed.</p>
-                                        )}
-                                    </div>
+                                {response && (
+                                    <>
+                                        {/* reported response */}
+                                        <div className="mb-6">
+                                            <h3 className="text-md font-semibold text-gray-800 mb-2 mt-9">
+                                                Supplier Response
+                                            </h3>
+                                            {(response?.issue || response?.reason) ? (
+                                                <div className="w-full p-5 bg-gray-100 border border-gray-200 shadow rounded-lg">
+                                                    {response.issue || response.reason}
+                                                </div>
+                                            ) : (
+                                                <p className="text-gray-500 italic">No issue listed.</p>
+                                            )}
+                                        </div>
+
+                                        {/* Proof Section */}
+                                        <div className="mt-8">
+                                            <h3 className="text-md font-semibold text-gray-800 mb-3">
+                                                Proofs
+                                            </h3>
+
+                                            {response?.proof && response.proof.length > 0 ? (
+                                                <div className="flex flex-wrap gap-4">
+                                                    {response.proof.map((fileUrl, index) => (
+                                                        <div
+                                                            key={index}
+                                                            className="w-48 h-32 border border-gray-200 rounded-xl bg-gray-50 overflow-hidden shadow-sm hover:shadow-md transition relative group"
+                                                        >
+                                                            <img
+                                                                src={fileUrl}
+                                                                alt={`Proof ${index + 1}`}
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                            <a
+                                                                href={fileUrl}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="absolute inset-0 flex items-end justify-center bg-black/0 hover:bg-black/30 transition group-hover:opacity-100"
+                                                            >
+                                                                <span className="text-white text-xs mb-2 bg-black/60 px-2 py-1 rounded">
+                                                                    View
+                                                                </span>
+                                                            </a>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <p className="text-gray-500 italic">No attachments provided.</p>
+                                            )}
+
+                                            {report?.admin_feedback?.length > 0 && (
+                                                <div className="mt-8 mb-3">
+                                                    <h3 className="text-md font-semibold text-gray-800 mb-2">
+                                                        Admin Feedback
+                                                    </h3>
+
+                                                </div>
+                                            )}
+                                        </div>
+                                    </>
                                 )}
 
-                            </div>
+                                {report?.admin_feedback ? (
+                                    <div className="w-full p-5 bg-gray-100 border border-gray-200 shadow rounded-lg mt-5">
+                                        {report.admin_feedback}
+                                    </div>
+                                ) : (
+                                    <p className="text-gray-500 italic mt-7">No admin feedback listed.</p>
+                                )}
 
-                            {userData.role === "Admin" && (report?.status !== "rejected" && report?.status !== "approved") && (
-                                < div className="flex space-x-4 pt-8">
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsRejectOpen(true)}
-                                        className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 hover:text-white rounded-lg hover:bg-red-600 transition-colors duration-200 font-medium"
-                                    >
-                                        Reject
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleApprove()}
-                                        disabled={isApprovedSubmitting}
-                                        className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
-                                    >
-                                        {isApprovedSubmitting ? (
-                                            <div className='flex justify-center items-center gap-2'>
-                                                <div className="w-5 h-5 border-2 border-white border-t-transparent self-center rounded-full animate-spin"></div> Processing..
-                                            </div>
-                                        ) : (
-                                            "Approve"
-                                        )}
-                                    </button>
-                                </div>
-                            )}
+                                {userData.role === "Admin" && (report?.status !== "rejected" && report?.status !== "approved") && (
+                                    < div className="flex space-x-4 pt-8">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsRejectOpen(true)}
+                                            className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 hover:text-white rounded-lg hover:bg-red-600 transition-colors duration-200 font-medium"
+                                        >
+                                            Reject
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleApprove()}
+                                            disabled={isApprovedSubmitting}
+                                            className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
+                                        >
+                                            {isApprovedSubmitting ? (
+                                                <div className='flex justify-center items-center gap-2'>
+                                                    <div className="w-5 h-5 border-2 border-white border-t-transparent self-center rounded-full animate-spin"></div> Processing..
+                                                </div>
+                                            ) : (
+                                                "Approve"
+                                            )}
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                         </DialogPanel>
                     </div>
                 </div >

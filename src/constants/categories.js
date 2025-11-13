@@ -96,6 +96,7 @@ export const statusStyles = {
     approved: "bg-green-100 text-green-700",
     pending: "bg-yellow-100 text-yellow-700",
     reject: "bg-red-100 text-red-700",
+    rejected: "bg-red-100 text-red-700",
     cancelled: "bg-red-100 text-red-700",
     completed: "bg-emerald-100 text-emerald-700",
     failed: "bg-red-100 text-red-700",
@@ -103,7 +104,7 @@ export const statusStyles = {
     refunded: "bg-blue-100 text-blue-700",
     succeeded: "bg-green-100 text-green-700",
     under_review: "bg-yellow-100 text-yellow-700",
-    
+
 };
 
 
@@ -142,9 +143,19 @@ export const termsOfCondition = {
                 "Repeated payment violations may also lead to platform-wide banning of the planner’s account.",
             ],
         },
+        {
+            title: "Delivery Acceptance and Dispute Resolution",
+            details: [
+                "After delivery, the planner must either accept the delivery or raise a delivery issue with reason and proof if applicable.",
+                "If an issue is raised, the supplier can submit a response with supporting evidence.",
+                "If both parties disagree, the admin will review all evidence and make a final decision:",
+                "• If the admin agrees with the planner, the appropriate penalty will be deducted from the supplier’s payment.",
+                "• If the admin disagrees with the planner, no deduction will occur and the remaining payment, including downpayment, will be released to the supplier.",
+            ],
+        },
     ],
-
 };
+
 
 export const paymentMethods = [
     {

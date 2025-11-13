@@ -5,7 +5,7 @@ import AddressAutocomplete from "../../components/AddressAutoComplete";
 import { FileText, IdCard } from "lucide-react";
 import VerificationCheckbox from "../../components/VerificationCheckBox";
 import { auth, db } from "../../firebase/firebase";
-import { setDoc, doc, getDoc, updateDoc, query, where, serverTimestamp } from "firebase/firestore";
+import { setDoc, doc, getDoc, updateDoc, query, where, serverTimestamp, addDoc, collection } from "firebase/firestore";
 import UploadWidget from "../../components/UploadWidgen";
 import { SupplierOptions, idOptions, documentOptions, exampleIds, exampleDocuments } from "../../constants/categories";
 import Swal from "sweetalert2";
@@ -137,7 +137,7 @@ export default function Verification({ userData }) {
             })
 
             if (userData.role === 'Supplier') {
-                await setDoc(doc(db, "verification", auth.currentUser.uid), {
+                const verification = await setDoc(doc(db, "verification", auth.currentUser.uid), {
                     supplier_name: business_name,
                     supplier_number: contact_number,
                     supplier_location: location,
@@ -149,6 +149,17 @@ export default function Verification({ userData }) {
                     is_verified: false,
                     created_at: serverTimestamp(),
                 })
+
+                await addDoc(collection(db, "notifications"), {
+                    avatar: "A",
+                    message: `Supplier has sent a verification request for his shop.`,
+                    created_at: serverTimestamp(),
+                    title: "Verification Request",
+                    referenced_type: 'verification',
+                    referenced_id: userData.id,
+                    unread: true,
+                    receiver_id: "hgV2ZGqRWOOdgKqnSBPWkaZPlss1",
+                });
             }
 
             else {
@@ -164,6 +175,18 @@ export default function Verification({ userData }) {
                     created_at: serverTimestamp(),
                     is_verified: false
                 })
+
+                await addDoc(collection(db, "notifications"), {
+                    avatar: "A",
+                    message: `The Event Planner has sent a verification request for his account.`,
+                    created_at: serverTimestamp(),
+                    title: "Verification Request",
+                    referenced_type: 'verification',
+                    referenced_id: userData.id,
+                    unread: true,
+                    receiver_id: "hgV2ZGqRWOOdgKqnSBPWkaZPlss1",
+                });
+
             }
 
             Swal.fire({

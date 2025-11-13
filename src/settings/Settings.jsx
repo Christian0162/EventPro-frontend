@@ -235,6 +235,13 @@ export default function Settings({ userData, user }) {
                 return;
             }
 
+            // 🧾 Check withdrawal amount
+            if (credentials.amount > 10000) {
+                setBalanceError("You can withdraw only amounts below 10,000.");
+                return;
+            }
+
+
             // 🧾 Check if withdrawal exceeds balance
             if (credentials.amount > userData?.balance) {
                 setBalanceError("Withdrawal amount cannot exceed your available balance.");

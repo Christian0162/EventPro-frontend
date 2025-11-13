@@ -1,12 +1,11 @@
 import { db } from "../../firebase/firebase";
-import { doc, updateDoc, collection, addDoc, serverTimestamp, deleteDoc } from "firebase/firestore";
+import { doc, updateDoc, collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { Navigate, useParams } from "react-router-dom";
 import { useState } from "react"
 import { IdCard } from "lucide-react";
 import AddressAutocomplete from "../../components/AddressAutoComplete";
 import Select from 'react-select'
 import { FileText } from "lucide-react";
-import Loading from "../../components/Loading";
 import Swal from "sweetalert2";
 import { RejectReview } from "../../components/ReviewModal";
 import LoadingOverlay from "../../components/LoadingOverlay";
@@ -56,7 +55,7 @@ export default function Review({ userData }) {
                     })
 
                     await addDoc(collection(db, "notifications"), {
-                        user_id: id,
+                        receiver_id: id,
                         avatar: 'A',
                         title: 'Verification Approved!',
                         referenced_type: 'application',
@@ -94,6 +93,8 @@ export default function Review({ userData }) {
 
                 }
 
+                setIsSubmitted(true)
+
                 await Swal.fire({
                     title: 'Success',
                     text: 'The request has been confirmed.',
@@ -117,7 +118,6 @@ export default function Review({ userData }) {
         finally {
             setIsLoading(false)
             setIsSubmitting(false)
-            setIsSubmitted(true)
         }
     }
 
@@ -126,8 +126,6 @@ export default function Review({ userData }) {
         return <Navigate to={'/dashboard'} />
     }
 
-
-    console.log(isSumitted)
     return (
         <>
             {isAllLoading && (

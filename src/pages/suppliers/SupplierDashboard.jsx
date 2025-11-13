@@ -13,7 +13,6 @@ import { useFetchEvents } from "../../hooks/useEvents"
 import { useFetchSupplierById, useFetchSuppliers, useFetchSupplierServices } from "../../hooks/useSupplier"
 import { useMemo } from "react";
 import Swal from "sweetalert2"
-import { auth } from "../../firebase/firebase"
 import { Review } from "../../components/ReviewModal"
 import { useFetchUserProfiles } from "../../hooks/useProfile"
 import PageLoading from "../../components/PageLoading"
@@ -24,10 +23,13 @@ import GenerateReport from "../../components/GeneraeReport"
 import { lazy, Suspense } from "react";
 import LoadingOverlay from "../../components/LoadingOverlay"
 import { statusStyles } from "../../constants/categories"
-import { sendPasswordResetEmail } from "firebase/auth"
+import { useFetchUsers } from "../../hooks/useUsers"
+import { formatDistanceToNow } from "date-fns"
+import ProfileHover from "../../components/ProfileHover"
 
 export default function SupplierDashboard({ userData }) {
 
+    const EventModal = useMemo(() => lazy(() => import("../../components/EventModal")), [])
     const analyticsRef = useRef(null);
     const { reviews: reviewed } = useFetchReviews()
     const { contracts } = useFetchContract()
@@ -35,6 +37,7 @@ export default function SupplierDashboard({ userData }) {
     const { services, isLoading: isServicesLoading } = useFetchSupplierServices()
     const { supplier, isLoading: isSupplierLoading } = useFetchSupplierById(userData.id)
     const { suppliers, isLoading: isSuppliersLoading } = useFetchSuppliers()
+    const { users } = useFetchUsers()
     const [now, setNow] = useState(new Date())
     const { userProfiles } = useFetchUserProfiles()
     const { deliveries, isLoading: isDeliveriesLoading } = useFetchDeliveries()
@@ -42,7 +45,26 @@ export default function SupplierDashboard({ userData }) {
     const { applications: userApplications, isLoading: isApplicationLoading } = useFetchAllApplication()
     const ContractModal = useMemo(() => lazy(() => import("../../components/ContractModal")), []);
     const [isContractModalOpen, setIsContractModalOpen] = useState(false);
+    const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+    const [selectedEvent, setSelectedEvent] = useState(null);
     const [selectedContract, setSelectedContract] = useState(null)
+    const [hoveredReviewerId, setHoveredReviewerId] = useState(null);
+
+    const StarRating = ({ rating }) => {
+        return (
+            <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                        key={star}
+                        className={`w-4 h-4 ${star <= rating
+                            ? 'fill-orange-400 text-orange-400'
+                            : 'text-gray-300'
+                            }`}
+                    />
+                ))}
+            </div>
+        );
+    };
 
     const applications = userApplications.filter(app => app.supplier_id === userData.id &&
         contracts.some(cont => cont.supplier_id === app.supplier_id && cont.event_id === app.event_id && (cont.status !== 'Completed' && cont.status !== 'Cancelled')))
@@ -320,6 +342,16 @@ export default function SupplierDashboard({ userData }) {
         setIsContractModalOpen(true)
     };
 
+    const openEventModal = (event) => {
+        setSelectedEvent(event);
+        setIsEventModalOpen(true);
+    };
+
+    const closeEventModal = () => {
+        setSelectedEvent(null);
+        setIsEventModalOpen(false);
+    };
+
     const closeContractModal = () => {
         setIsContractModalOpen(false)
         setSelectedContract(null)
@@ -342,6 +374,19 @@ export default function SupplierDashboard({ userData }) {
                         eventData={selectedContract.eventData}
                         supplierData={selectedContract.supplierData}
                     />
+                </Suspense>
+            )}
+
+            {isEventModalOpen && selectedEvent && (
+                <Suspense fallback={<LoadingOverlay isLoading={true} message="Pleasee waitt.." />}>
+                    <EventModal
+                        isOpen={isEventModalOpen}
+                        onClose={closeEventModal}
+                        userData={userData}
+                        eventData={selectedEvent}
+                        event_purpose={'dashboard'}
+                    />
+
                 </Suspense>
             )}
 
@@ -497,40 +542,65 @@ export default function SupplierDashboard({ userData }) {
                                 {
                                     reviews.length ? (
                                         <div className="space-y-4">
-                                            {reviews.map((rev, i) => (
-                                                <div
-                                                    key={i}
-                                                    className="p-4 rounded-xl border border-gray-100 bg-gray-50 hover:bg-gray-100 transition-all shadow-sm"
-                                                >
-                                                    <div className="flex items-start gap-3">
-                                                        {userProfiles.find((u) => u.id === rev.user_id)?.profile_pic ? (
-                                                            <img
-                                                                loading="lazy"
-                                                                src={userProfiles.find((u) => u.id === rev.user_id).profile_pic}
-                                                                alt="Reviewer"
-                                                                className="w-10 h-10 rounded-full object-cover"
-                                                            />
-                                                        ) : (
-                                                            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-violet-600 text-white font-semibold flex items-center justify-center rounded-full">
-                                                                {rev.reviewer_name?.[0]?.toUpperCase() || "A"}
+                                            {reviews.map((rev, i) => {
+
+                                                const reviewerProfile = userProfiles.find(
+                                                    profile => profile.id === reviewed.user_id
+                                                )
+                                                const reviewerDetail = users.find(user => user.id === rev.user_id)
+
+                                                return (
+                                                    < div
+                                                        key={i}
+                                                        className="p-4 rounded-xl border border-gray-100 bg-gray-50 hover:bg-gray-100 transition-all shadow-sm"
+                                                    >
+                                                        <div className="flex items-start gap-3">
+                                                            {userProfiles.find((u) => u.id === rev.user_id)?.profile_pic ? (
+                                                                <img
+                                                                    loading="lazy"
+                                                                    src={userProfiles.find((u) => u.id === rev.user_id).profile_pic}
+                                                                    alt="Reviewer"
+                                                                    className="w-10 h-10 rounded-full object-cover"
+                                                                />
+                                                            ) : (
+                                                                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-violet-600 text-white font-semibold flex items-center justify-center rounded-full">
+                                                                    {rev.reviewer_name?.[0]?.toUpperCase() || "A"}
+                                                                </div>
+                                                            )}
+                                                            <div className="flex-1">
+                                                                <div className="flex items-center justify-between">
+                                                                    <div>
+                                                                        <div
+                                                                            className="relative inline-block"
+                                                                            onMouseEnter={() => setHoveredReviewerId(rev.id)}
+                                                                            onMouseLeave={() => setHoveredReviewerId(null)}
+                                                                        >
+                                                                            <div className='flex flex-col'>
+                                                                                <div className='flex items-baseline gap-3 mb-1'>
+                                                                                    <h2 className="font-medium text-gray-900 cursor-pointer">
+                                                                                        {reviewerDetail?.first_name} {reviewerDetail?.last_name}
+                                                                                    </h2>
+                                                                                    <p className="text-xs text-gray-500">{rev?.created_at ? formatDistanceToNow(new Date(rev.created_at.seconds * 1000), { addSuffix: true }) : 'Recent'}</p>
+                                                                                </div>
+                                                                                <h2 className="font-medium text-xs text-gray-600 cursor-pointer">
+                                                                                    {reviewerDetail?.role === "Event Planner" ? 'Event' : 'Shop'}: {rev.reviewer_name}
+                                                                                </h2>
+                                                                            </div>
+                                                                            {hoveredReviewerId === rev.id && (
+                                                                                <ProfileHover hoveredReviewer={reviewerProfile} user={reviewerDetail} review={rev} />
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <StarRating rating={rev.rating} />
+                                                                </div>
+
+                                                                <p className="text-sm text-gray-900 mt-2">{rev.comment}</p>
                                                             </div>
-                                                        )}
-                                                        <div className="flex-1">
-                                                            <p className="font-semibold text-gray-800">{rev.reviewer_name}</p>
-                                                            <div className="flex items-center gap-1 mt-1">
-                                                                {[...Array(5)].map((_, j) => (
-                                                                    <Star
-                                                                        key={j}
-                                                                        className={`w-4 h-4 ${j < rev.rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300"
-                                                                            }`}
-                                                                    />
-                                                                ))}
-                                                            </div>
-                                                            <p className="text-sm text-gray-700 mt-2">{rev.comment}</p>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            ))}
+                                                )
+                                            })}
                                         </div>
                                     ) : (
                                         <p className="text-center text-gray-500 py-10">No reviews yet.</p>
@@ -554,9 +624,16 @@ export default function SupplierDashboard({ userData }) {
                                                     right: window.innerWidth < 640 ? '' : 'today'
                                                 }}
                                                 titleFormat={window.innerWidth < 640 ? { month: 'short', year: 'numeric' } : { month: 'long', year: 'numeric' }}
-                                                events={activeEventsContracts.map(e => ({ title: e.event_name, date: e.event_date?.date_value }))}
-
+                                                events={activeEventsContracts.map(e => ({
+                                                    title: e.event_name,
+                                                    date: e.event_date?.date_value,
+                                                    extendedProps: { ...e } // pass the full event data
+                                                }))}
+                                                eventClick={(info) => {
+                                                    openEventModal(info.event.extendedProps); // open your EventModal
+                                                }}
                                             />
+
                                         </div>
                                     </div>
                                 </div>
@@ -639,14 +716,6 @@ export default function SupplierDashboard({ userData }) {
                                                 >
                                                     View Contract
                                                 </button>
-
-                                                {/* <ContractModal userData={userData}
-                                                    event_id={offers.event_id}
-                                                    supplier_id={offers.supplier_id}
-                                                    supplierData={supplier}
-                                                    eventData={contractEventsforActive[index]}
-                                                    user_id={userData.id} /> */}
-
                                             </div>
                                         </div>
                                     ))}

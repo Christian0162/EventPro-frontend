@@ -46,6 +46,13 @@ export default function EmailVerificationModal({ user }) {
             return
         }
 
+        if (user.email === newEmail) {
+            setError('You cannot change to the same email address.');
+            setIsVerifying(false);
+            return;
+        }
+
+
         // Step 1: Verify password
         if (currentStep === 1) {
             const credential = EmailAuthProvider.credential(user.email, password)

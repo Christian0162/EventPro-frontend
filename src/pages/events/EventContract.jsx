@@ -88,7 +88,7 @@ export default function EventContract({ userData }) {
                             supplier_id: supplierId,
                             event_id: eventId,
                             applied_at: serverTimestamp(),
-                            status: 'Pending'
+                            status: 'Approved'
                         })
                     }
 

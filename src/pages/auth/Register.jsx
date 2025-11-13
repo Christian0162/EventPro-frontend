@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Calendar, Package, Check } from "lucide-react";
+import { Calendar, Package, Check, Eye, EyeOff } from "lucide-react";
 import PrimaryButton from "../../components/PrimaryButton";
 import { auth } from "../../firebase/firebase";
 import { Navigate } from "react-router-dom";
@@ -13,6 +13,7 @@ export default function Register({ user }) {
     const [lastName, setLastName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [pwVisible, setPwVisible] = useState(false);
     const [role, setRole] = useState('');
     const [errorPassword, setErrorPassword] = useState('')
     const [currentStep, setCurrentStep] = useState(1)
@@ -225,21 +226,30 @@ export default function Register({ user }) {
                                             )}
                                         </div>
 
-                                        {/* Password Field */}
-                                        <div>
+                                        {/* Password Field with toggle */}
+                                        <div className="relative">
                                             <label htmlFor="password" className="block font-semibold mb-2">
                                                 Password
                                             </label>
                                             <input
-                                                type="password"
+                                                type={pwVisible ? 'text' : 'password'}
                                                 id="password"
                                                 minLength={6}
-                                                className="w-full py-2 px-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+                                                className="w-full py-2 px-3 pr-10 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
                                                 placeholder="••••••••"
                                                 required
                                                 value={password}
                                                 onChange={(e) => setPassword(e.target.value)}
                                             />
+                                            <button
+                                                type="button"
+                                                onClick={() => setPwVisible(v => !v)}
+                                                aria-pressed={pwVisible}
+                                                aria-label={pwVisible ? 'Hide password' : 'Show password'}
+                                                className="absolute right-3 top-[42px] inline-flex items-center justify-center p-1"
+                                            >
+                                                {pwVisible ? <EyeOff size={18} /> : <Eye size={18} />}
+                                            </button>
 
                                             {errorPassword && (
                                                 <p className="text-red-500 text-sm mt-1">{errorPassword}</p>

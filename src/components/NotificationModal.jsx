@@ -9,13 +9,14 @@ import { useFetchUserProfiles } from '../hooks/useProfile'
 import { useFetchSuppliers } from '../hooks/useSupplier'
 import { useFetchEvents } from "../hooks/useEvents";
 import { useFetchContract } from "../hooks/useContract";
-import EventModal from "./EventModal";
 import { useFetchAllReports } from "../hooks/useReports";
 import { ReportReview } from "./ReviewModal";
 import { lazy, Suspense } from "react";
 import LoadingOverlay from "./LoadingOverlay";
 
 export default function NotificationModal({ notification, userData }) {
+
+    const EventModal = useMemo(() => lazy(() => import("./EventModal")), [])
     const [isOpen, setIsOpen] = useState(false)
     const [isHovered, setIsHovered] = useState(false)
     const { users } = useFetchUsers()
@@ -29,6 +30,8 @@ export default function NotificationModal({ notification, userData }) {
     const ContractModal = useMemo(() => lazy(() => import("./ContractModal")), []);
     const [isContractModalOpen, setIsContractModalOpen] = useState(false);
     const [selectedContract, setSelectedContract] = useState(null)
+    const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+    const [selectedEvent, setSelectedEvent] = useState(null);
 
     const selectedUser = users?.find(u => u.id === notification.sender_id)
 
@@ -92,6 +95,16 @@ export default function NotificationModal({ notification, userData }) {
         setSelectedContract(null)
     };
 
+    const openEventModal = (event) => {
+        setSelectedEvent(event);
+        setIsEventModalOpen(true);
+    };
+
+    const closeEventModal = () => {
+        setSelectedEvent(null);
+        setIsEventModalOpen(false);
+    };
+
     return (
         <>
             {isContractModalOpen && selectedContract && (
@@ -106,6 +119,19 @@ export default function NotificationModal({ notification, userData }) {
                         eventData={selectedContract.eventData}
                         supplierData={selectedContract.supplierData}
                     />
+                </Suspense>
+            )}
+
+            {isEventModalOpen && selectedEvent && (
+                <Suspense fallback={<LoadingOverlay isLoading={true} message="Pleasee waitt.." />}>
+                    <EventModal
+                        isOpen={isEventModalOpen}
+                        onClose={closeEventModal}
+                        userData={userData}
+                        eventData={selectedEvent}
+                        event_purpose={'dashboard'}
+                    />
+
                 </Suspense>
             )}
 
@@ -228,23 +254,12 @@ export default function NotificationModal({ notification, userData }) {
                                 {selectedItem && (
                                     <>
                                         {selectedItem.type === "event" ? (
-                                            <div className='flex'>
-                                                <EventModal userData={userData} eventData={selectedItem.data} event_purpose={`dashboard`} />
-
-                                                <button
-                                                    onClick={() => openModal({
-                                                        supplierData: shopItem,
-                                                        services: userServices,
-                                                        reviews: reviews.filter(
-                                                            (r) => r.reviewed_id === shopItem.id
-                                                        ),
-                                                        averageRating,
-                                                    })}
-                                                    className="py-2 rounded-lg font-semibold w-full bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                                                >
-                                                    View Details
-                                                </button>
-                                            </div>
+                                            <button
+                                                onClick={() => openEventModal(selectedItem.data, userData)}
+                                                className={`"h-9 text-white hover:bg-blue-700 transition-all duration-100 rounded-md px-4 py-2 bg-blue-600 text-sm`}
+                                            >
+                                                View Event
+                                            </button>
                                         ) : selectedItem.type === "report" ? (
                                             <ReportReview report={selectedItem?.report} userData={selectedItem.userData} />
                                         ) : (

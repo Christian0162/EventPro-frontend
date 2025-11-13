@@ -8,7 +8,6 @@ import { Dialog, DialogPanel } from "@headlessui/react";
 import { formatDistanceToNow } from "date-fns";
 import { useFetchEvents } from "../hooks/useEvents";
 import { useFetchContract } from "../hooks/useContract";
-import EventModal from "./EventModal";
 import { useFetchSuppliers } from "../hooks/useSupplier";
 import { useFetchAllReports } from "../hooks/useReports";
 import { ReportReview } from "./ReviewModal";
@@ -16,6 +15,8 @@ import { lazy, Suspense } from "react";
 import LoadingOverlay from "./LoadingOverlay";
 
 export default function UserNotification({ userData }) {
+
+    const EventModal = useMemo(() => lazy(() => import("./EventModal")), [])
     const [isOpen, setIsOpen] = useState(false)
     const [modalOpen, setModalOpen] = useState(false)
     const [selectedNotif, setSelectedNotif] = useState(null)
@@ -30,6 +31,8 @@ export default function UserNotification({ userData }) {
     const ContractModal = useMemo(() => lazy(() => import("./ContractModal")), []);
     const [isContractModalOpen, setIsContractModalOpen] = useState(false);
     const [selectedContract, setSelectedContract] = useState(null)
+    const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+    const [selectedEvent, setSelectedEvent] = useState(null);
 
     const unreadCount = notifications.filter(notification => notification.unread).length
 
@@ -70,21 +73,27 @@ export default function UserNotification({ userData }) {
         // Determine the referenced item (event or contract)
         if (notification.referenced_type === "event") {
             const matchedEvent = events.find(e => e.id === notification.referenced_id);
-            setSelectedItem({ type: 'event', data: matchedEvent });
+            if (matchedEvent) {
+                setSelectedItem({ type: 'event', data: matchedEvent });
+            }
         } else if (notification.referenced_type === "contract") {
             const matchedContract = contracts.find(c => c.id === notification.referenced_id);
-            const eventData = events.find(event => event.id === matchedContract.event_id)
-            const supplierData = suppliers.find(sup => sup.id === matchedContract.supplier_id)
-            setSelectedItem({ type: "contract", contract: matchedContract, supplier: supplierData, event: eventData });
+            if (matchedContract) {
+                const eventData = events.find(event => event.id === matchedContract?.event_id)
+                const supplierData = suppliers.find(sup => sup.id === matchedContract?.supplier_id)
+                setSelectedItem({ type: "contract", contract: matchedContract, supplier: supplierData, event: eventData });
+            }
         } else if (notification.referenced_type === "report") {
             const userReport = reports.find(r => r.id === notification.referenced_id)
             setSelectedItem({ type: "report", report: userReport, userData: userData })
+        } else if (notification.referenced_type === "verification") {
+            setSelectedItem({ type: "verification", verification: notification.referenced_id, userData: userData })
         } else {
             setSelectedItem(null);
         }
-
         setModalOpen(true);
-    };
+    }
+
 
     const openContractModal = (contract) => {
         setSelectedContract(contract)
@@ -95,6 +104,23 @@ export default function UserNotification({ userData }) {
         setIsContractModalOpen(false)
         setSelectedContract(null)
     };
+
+    const openEventModal = (event) => {
+        setSelectedEvent(event);
+        setIsEventModalOpen(true);
+    };
+
+    const closeEventModal = () => {
+        setSelectedEvent(null);
+        setIsEventModalOpen(false);
+    };
+
+    const close = () => {
+        setModalOpen(false)
+        setSelectedItem(null)
+    }
+
+    console.log('asdasdasd', selectedItem)
 
     return (
         <>
@@ -110,6 +136,19 @@ export default function UserNotification({ userData }) {
                         eventData={selectedContract.eventData}
                         supplierData={selectedContract.supplierData}
                     />
+                </Suspense>
+            )}
+
+            {isEventModalOpen && selectedEvent && (
+                <Suspense fallback={<LoadingOverlay isLoading={true} message="Pleasee waitt.." />}>
+                    <EventModal
+                        isOpen={isEventModalOpen}
+                        onClose={closeEventModal}
+                        userData={userData}
+                        eventData={selectedEvent}
+                        event_purpose={'dashboard'}
+                    />
+
                 </Suspense>
             )}
 
@@ -244,7 +283,7 @@ export default function UserNotification({ userData }) {
             </div>
 
             {/* Notification Modal */}
-            <Dialog as="div" open={modalOpen} onClose={() => setModalOpen(false)} className="relative z-[50]">
+            <Dialog as="div" open={modalOpen} onClose={() => close()} className="relative z-[50]">
                 <div className="fixed inset-0 bg-black/30" />
                 <div className="fixed inset-0 flex items-center justify-center p-4">
                     <DialogPanel
@@ -252,7 +291,7 @@ export default function UserNotification({ userData }) {
                     >
                         {/* Close button */}
                         <button
-                            onClick={() => setModalOpen(false)}
+                            onClick={() => close()}
                             className="absolute top-4 right-4 p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition"
                         >
                             <X size={18} className="text-gray-600" />
@@ -298,9 +337,16 @@ export default function UserNotification({ userData }) {
                                     {selectedItem && (
                                         <>
                                             {selectedItem.type === "event" ? (
-                                                <EventModal userData={userData} eventData={selectedItem.data} event_purpose={`dashboard`} />
+                                                <button
+                                                    onClick={() => openEventModal(selectedItem.data, userData)}
+                                                    className={`"h-9 text-white hover:bg-blue-700 transition-all duration-100 rounded-md px-4 py-2 bg-blue-600 text-sm`}
+                                                >
+                                                    View Event
+                                                </button>
                                             ) : selectedItem.type === "report" ? (
                                                 <ReportReview report={selectedItem?.report} userData={selectedItem.userData} />
+                                            ) : selectedItem.type === "verification" ? (
+                                                <a href={`/review/${selectedItem.verification}`} className="cursor-pointer transition-all duration-100 hover:bg-blue-700 self-center px-3 py-2 text-sm rounded-md bg-blue-600 text-white ">View Request</a>
                                             ) : (
 
                                                 <button
@@ -326,8 +372,7 @@ export default function UserNotification({ userData }) {
                     </DialogPanel>
                 </div>
             </Dialog>
-
-
         </>
     )
 }
+

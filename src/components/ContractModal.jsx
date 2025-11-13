@@ -746,13 +746,6 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
                                                                         {userData.role === "Supplier" &&
                                                                             !["solved", "under_review", "rejected"].includes(deliveryReports.status) && (
                                                                                 <div className="flex justify-end gap-3 mt-5 border-t border-gray-100 pt-4">
-                                                                                    {/* <button
-                                                                                        onClick={() => handleDeliveryReport(deliveryReports.id, "Reject")}
-                                                                                        className="px-4 py-2 text-sm font-medium rounded-lg text-white bg-red-500 hover:bg-red-600 transition-all shadow-sm"
-                                                                                    >
-                                                                                        Reject
-                                                                                    </button> */}
-
                                                                                     <DamagePenaltiesModal report={deliveryReports} contractData={contract} userData={userData} delivery={delivery} deliveryId={delivery.id} eventData={eventData} type={userData?.role === "Supplier" && 'supplier'} />
                                                                                     <button
                                                                                         onClick={() =>

@@ -471,7 +471,7 @@ export const ReportReview = ({ report, userData, response, eventData }) => {
 
     const id = report?.reporter_role === 'Event Planner' ? userContract?.supplier_id : userContract?.planner_id
 
-
+    const contract = contracts?.find(c => c.id === response.contract_id)
 
     const selectedUser = users.find(u => u.id === id)
 
@@ -569,49 +569,47 @@ export const ReportReview = ({ report, userData, response, eventData }) => {
                             unread: true,
                             receiver_id: report?.user_id,
                         });
-                        // const contract = contracts?.find(c => c.id === response.contract_id)
+                        const totalContractPayment = Number(contract?.service_plan.service_price)
 
-                        // const totalContractPayment = contract.service_plan.service_price
+                        const totalAmount = data.reduce((sum, t) => sum + t.amount, 0);
 
-                        const totalAmount = data.reduce((sum, t) => sum + (Number(t.amount) - Number(t.process_fee)), 0);
+                        const totalFee = contract?.service_plan.service_price * 0.03
 
-                        // const totalFee = contract?.service_plan.service_price * 0.03
-
-                        // const totalAmountPlusFee = totalAmount - totalFee
+                        const totalAmountPlusFee = totalAmount - totalFee
 
                         const supplierCredentials = users.find(u => u.id === response.user_id)
 
-                        // if (totalAmount === totalContractPayment) {
-                        //     await addDoc(collection(db, "transactions"), {
-                        //         contract_id: response?.contract_id || null,
-                        //         event_id: eventData.id,
-                        //         user_id: response.user_id,
-                        //         payment_method: null,
-                        //         event_email: supplierCredentials.email_address,
-                        //         event_contact: supplierCredentials?.contact_number || null,
-                        //         amount: totalAmountPlusFee,
-                        //         platform_fee: 0,
-                        //         process_fee: 0,
-                        //         type: "CREDIT",
-                        //         status: "COMPLETED",
-                        //         created_at: serverTimestamp()
-                        //     })
-                        // } else {
-                        await addDoc(collection(db, "transactions"), {
-                            contract_id: response?.contract_id || null,
-                            event_id: eventData.id,
-                            user_id: response.user_id,
-                            payment_method: null,
-                            event_email: supplierCredentials.email_address,
-                            event_contact: supplierCredentials?.contact_number || null,
-                            amount: totalAmount,
-                            platform_fee: 0,
-                            process_fee: 0,
-                            type: "CREDIT",
-                            status: "COMPLETED",
-                            created_at: serverTimestamp()
-                        })
-                        // }
+                        if (totalAmount === totalContractPayment) {
+                            await addDoc(collection(db, "transactions"), {
+                                contract_id: response?.contract_id || null,
+                                event_id: eventData.id,
+                                user_id: response.user_id,
+                                payment_method: null,
+                                event_email: supplierCredentials.email_address,
+                                event_contact: supplierCredentials?.contact_number || null,
+                                amount: totalAmountPlusFee,
+                                platform_fee: 0,
+                                process_fee: 0,
+                                type: "CREDIT",
+                                status: "COMPLETED",
+                                created_at: serverTimestamp()
+                            })
+                        } else {
+                            await addDoc(collection(db, "transactions"), {
+                                contract_id: response?.contract_id || null,
+                                event_id: eventData.id,
+                                user_id: response.user_id,
+                                payment_method: null,
+                                event_email: supplierCredentials.email_address,
+                                event_contact: supplierCredentials?.contact_number || null,
+                                amount: totalAmount,
+                                platform_fee: 0,
+                                process_fee: 0,
+                                type: "CREDIT",
+                                status: "COMPLETED",
+                                created_at: serverTimestamp()
+                            })
+                        }
 
                         await updateDoc(doc(db, "users", response.user_id), {
                             balance: increment(totalAmount)

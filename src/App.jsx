@@ -39,12 +39,13 @@ function App() {
     const [authChecked, setAuthChecked] = useState(false);
 
     useEffect(() => {
+        let unsubscribeUsers
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             try {
                 if (user) {
                     setUser(user);
                     setupUserPresence(user.uid)
-                    const unsubscribeUsers = onSnapshot(doc(db, "users", user.uid), async (onsnapshot) => {
+                    unsubscribeUsers = onSnapshot(doc(db, "users", user.uid), async (onsnapshot) => {
 
                         if (onsnapshot.exists()) {
                             setUserData({ id: onsnapshot.id, ...onsnapshot.data() });
@@ -72,7 +73,7 @@ function App() {
                 setAuthChecked(true);
             }
         });
-        return () => unsubscribe();
+        return () => { unsubscribe(); if (unsubscribeUsers) unsubscribeUsers() }
     }, [])
 
     if (!authChecked || isLoading) {

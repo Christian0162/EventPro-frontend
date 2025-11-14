@@ -98,7 +98,7 @@ export default function Profile({ userData }) {
                                     <p className="text-md text-gray-500">{userData.role}</p>
                                 </div>
                             </div>
-                            {(userData.verification_status === 'unverified' || userData.verification_status === 'rejected') && (
+                            {(userData.verification_status === 'unverified' || userData.verification_status === 'rejected') && userData.role === "Event Planner" && (
                                 <a href={'/verify'} className="px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-colors">
                                     Verify
                                 </a>

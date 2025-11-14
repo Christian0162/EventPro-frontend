@@ -78,7 +78,9 @@ export default function Event({ userData }) {
                 const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes());
                 const eventDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate())
                 eventDay.setHours(eventHour, eventMinute, 0, 0)
+
                 const isActive = events.status === "active"
+
                 return today < eventDay && isActive
             }
             );
@@ -300,7 +302,8 @@ export default function Event({ userData }) {
 
                                 const now = new Date();
                                 const eventDate = new Date(events?.event_date?.date_value);
-                                const eventContracts = contracts.filter(cont => cont.event_id === events.id && (cont.status !== "Cancelled" || cont.status !== "Rejected    "))
+                                const eventContracts = contracts.filter(cont => cont.event_id === events.id && (cont.status !== "Cancelled" || cont.status !== "Rejected"))
+                                const eventCompleteContracts = contracts.filter(cont => cont.event_id === events.id && cont.status === "Completed").length
 
                                 const eventEndTime = events?.event_time?.valueStartAndEnd[1] || "00:00"
                                 const [eventHour, eventMinute] = eventEndTime.split(":").map(Number)
@@ -309,12 +312,16 @@ export default function Event({ userData }) {
                                 const eventDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate())
                                 eventDay.setHours(eventHour, eventMinute, 0, 0)
 
-                                const isAllContractPaid = eventContracts.some(cont => {
-                                    const contractTransaction = transactions?.filter(t => t.contract_id === cont.id)
+                                const isAllContractPaid = eventContracts.some((cont, index) => {
+                                    const contractTransaction = transactions?.filter(t => t.contract_id === cont.id && t.status === "HOLD")
                                     const eventTransactions = contractTransaction?.reduce((sum, trans) => sum + (trans.amount - trans.process_fee), 0)
 
-                                    return cont.service_plan.service_price === eventTransactions
+                                    // console.log(index, ": ", cont.service_plan.service_price, eventTransactions)
+
+                                    return Number(cont.service_plan.service_price) === eventTransactions
                                 })
+
+                                console.log(eventContracts.length === eventCompleteContracts)
 
                                 let status = {
                                     label: '',
@@ -323,14 +330,17 @@ export default function Event({ userData }) {
 
                                 if (events.event_categories.length === 0) {
                                     status = { label: 'Planning', value: 'planning' };
-                                } else if (events.event_categories.length > 0 && eventContracts.length === 0 && now !== eventDate) {
+                                } else if (events.event_categories.length > 0 && eventContracts.length === 0 && today < eventDay) {
                                     status = { label: 'Open', value: 'open' };
-                                } else if (eventContracts.length > 0 && now <= eventDate) {
+                                } else if (eventContracts.length > 0 && today <= eventDay) {
                                     status = { label: 'In Progress', value: 'in_progress' };
-                                } else if (!isAllContractPaid) {
+                                } else if (!isAllContractPaid && eventContracts.length > 0) {
                                     status = { label: 'Payment Pending', value: 'payment_pending' };
-                                } else {
+                                } else if (eventContracts.length === eventCompleteContracts && isAllContractPaid) {
                                     status = { label: 'Completed', value: 'completed' };
+                                } else {
+                                    status = { label: 'Waiting for Completing Contract', value: 'waiting_for_completing_contract' };
+
                                 }
 
                                 return (
@@ -410,8 +420,9 @@ export default function Event({ userData }) {
                                                     {events.event_categories?.filter(c => c?.label).length > 0 ? (
                                                         events.event_categories.map((category, index) => {
                                                             const eventSuppliers = suppliers.filter(s => eventContracts.some(c => c.supplier_id === s.id))
-                                                            const isTagExistOnSupplier = eventSuppliers[index]?.supplier_type?.label === category.label
-                                                            return (
+                                                            const isTagExistOnSupplier = eventSuppliers.some(
+                                                                s => s.supplier_type?.label === category.label
+                                                            ); return (
                                                                 <span key={index} className={`px-2.5 py-1 flex gap-1 items-center ${isTagExistOnSupplier ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'} text-xs font-medium rounded-full`}>
                                                                     {category.label}
                                                                     {isTagExistOnSupplier && (<CircleCheck size={15} />)}

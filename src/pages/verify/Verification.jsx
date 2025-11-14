@@ -11,6 +11,7 @@ import { SupplierOptions, idOptions, documentOptions, exampleIds, exampleDocumen
 import Swal from "sweetalert2";
 import LoadingOverlay from "../../components/LoadingOverlay";
 import PageLoading from "../../components/PageLoading";
+import { useFetchSuppliers } from "../../hooks/useSupplier";
 
 export default function Verification({ userData }) {
 
@@ -35,6 +36,7 @@ export default function Verification({ userData }) {
     const [uploadDocs, setUploadDocs] = useState([])
     const [exampleId, setExampleId] = useState([])
     const [exampleDocument, setExampleDocument] = useState([])
+    const { suppliers } = useFetchSuppliers()
     const idSectionRef = useRef(null);
     const docSectionRef = useRef(null);
 
@@ -94,12 +96,24 @@ export default function Verification({ userData }) {
 
         try {
             const fetchVerification = async () => {
+
+                const onSnapShotShop = await getDoc(doc(db, "shops", userData.id));
+
+                if (userData?.role === "Supplier" && !onSnapShotShop.exists()) {
+                    setRedirect(true)
+                }
+
                 const q = query(doc(db, "verification", userData.id),
                     where("status", "in", ["pending", "rejected"]))
                 const onSnapShotVerification = await getDoc(q);
+
+
                 if (onSnapShotVerification.exists()) {
                     setRedirect(true)
                 }
+
+
+
             }
 
             fetchVerification()
@@ -107,7 +121,7 @@ export default function Verification({ userData }) {
         catch (e) {
             console.error(e)
         }
-    }, [userData])
+    }, [userData, suppliers])
 
     const handleSubmit = async (e) => {
         e.preventDefault()
@@ -332,6 +346,7 @@ export default function Verification({ userData }) {
                                     options={SupplierOptions}
                                     value={supplierType}
                                     isClearable
+                                    isDisabled
                                 />
                             </div>
                         )}

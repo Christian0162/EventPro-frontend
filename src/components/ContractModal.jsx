@@ -954,8 +954,19 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
                                                 </div>
                                             )}
 
-                                            {/* Submit Button for Supplier */}
-                                            {showSubmitButton && not_include_fees > 0 && (contract?.status !== "Pending" && contract?.status !== "Completed") && contractDeliveries.length === 0 && (
+                                            {/* Submit Button for Supplier for full payment*/}
+                                            {showSubmitButton && (contract?.status !== "Pending" && contract?.status !== "Completed") && contractDeliveries.length === 0 && contract?.service_plan.service_payment_notice.label === "Pay after service delivered" && (
+                                                <div className="flex justify-end mt-6">
+                                                    <SubmissionModal
+                                                        contract={contract}
+                                                        eventData={eventData}
+                                                        supplierData={supplierData}
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {/* Submit Button for Supplier for down payment*/}
+                                            {showSubmitButton && not_include_fees > 0 && (contract?.status !== "Pending" && contract?.status !== "Completed") && contractDeliveries.length === 0 && contract?.service_plan.service_payment_notice.label === "Down Payment required atleast 50 percent" && (
                                                 <div className="flex justify-end mt-6">
                                                     <SubmissionModal
                                                         contract={contract}
@@ -1256,7 +1267,30 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
                                                     </div>
                                                 )}
 
-                                                {contract?.status === "Approved" && (total_paid - total_fees) !== service_price && (
+                                                {contract?.status === "Approved" && (total_paid - total_fees) !== service_price && contract?.service_plan.service_payment_notice.label === "Pay after service delivered"
+                                                    && (
+                                                        <button
+                                                            onClick={() => handlePayment(downpayment, nextpayment, processFee)}
+                                                            disabled={(contractDeliveries.length === 0 && contract_transaction.length > 0) || isProcessing}
+                                                            className={`px-7 py-2 ${(contractDeliveries.length === 0)
+                                                                ? 'bg-blue-300 cursor-not-allowed'
+                                                                : 'bg-blue-500 hover:bg-blue-600'
+                                                                } text-white text-sm rounded flex justify-end items-end ml-auto `}
+                                                        >
+                                                            {isProcessing ? (
+                                                                <a href={invoiceUrl} target='_blank' className='flex items-center gap-3 '>
+                                                                    View Invoice Link
+                                                                    <div className='border-t-2 h-4 w-4 rounded-full animate-spin'></div>
+                                                                </a>
+                                                            ) : (contractDeliveries.length === 0) ? (
+                                                                'Must deliver before pay'
+                                                            ) : (
+                                                                'Pay Contract'
+                                                            )}
+                                                        </button>
+                                                    )}
+
+                                                {contract?.status === "Approved" && (total_paid - total_fees) !== service_price && contract?.service_plan.service_payment_notice.label === "Down Payment required atleast 50 percent." && (
                                                     <button
                                                         onClick={() => handlePayment(downpayment, nextpayment, processFee)}
                                                         disabled={(contractDeliveries.length === 0 && contract_transaction.length > 0) || isProcessing}

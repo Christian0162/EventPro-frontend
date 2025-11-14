@@ -326,7 +326,7 @@ export default function DamagePenaltiesModal({ delivery, contractData, userData,
                                                             disabled={loading}
                                                             className="mr-2 accent-blue-600"
                                                         />
-                                                        <span className="text-gray-800">Badly Damaged</span>
+                                                        <span className="text-gray-800">Badly Damaged (50%)</span>
                                                     </label>
                                                     <label className="flex items-center">
                                                         <input
@@ -343,7 +343,7 @@ export default function DamagePenaltiesModal({ delivery, contractData, userData,
                                                             disabled={loading}
                                                             className="mr-2 accent-blue-500"
                                                         />
-                                                        <span className="text-gray-800">Slight Damage</span>
+                                                        <span className="text-gray-800">Slight Damage (5%)</span>
                                                     </label>
                                                 </div>
                                             )}

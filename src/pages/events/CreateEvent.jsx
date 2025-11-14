@@ -59,13 +59,26 @@ export default function CreateEvent({ userData }) {
 
         const eventDate = event_date.date_value;
         const eventDateTime = new Date(`${eventDate}T${startTime}`);
-        const now = new Date();
 
-        if (eventDateTime < now) {
+        const today = new Date();
+        const threeDaysLater = new Date();
+        threeDaysLater.setDate(today.getDate() + 3)
+
+        if (eventDateTime < today) {
             Swal.fire({
                 icon: "warning",
                 title: "Invalid Event Date",
                 text: "The event date and time have already passed. Please select a future date and time.",
+                confirmButtonColor: "#3085d6",
+            });
+            return;
+        }
+
+        if (eventDateTime < threeDaysLater) {
+            Swal.fire({
+                icon: "warning",
+                title: "Event Too Soon",
+                text: "The event must be scheduled at least 3 days from today. Please choose a later date.",
                 confirmButtonColor: "#3085d6",
             });
             return;
@@ -101,7 +114,7 @@ export default function CreateEvent({ userData }) {
         }
     };
 
-    if (userData.verification_status !== "verified") {
+    if (userData?.verification_status !== "verified" || userData?.role === "Admin") {
         return <Navigate to={'/dashboard'} replace />
     }
 
@@ -159,7 +172,7 @@ export default function CreateEvent({ userData }) {
 
                     {/* Date and Time */}
                     <div className="gap-6 items-center grid grid-cols-1 md:grid-cols-2">
-                        <div className="flex flex-col w-full">
+                        <div className="flex flex-col w-full relative top-[12px]">
                             <label htmlFor="event_date" className="text-sm font-medium text-gray-700 mb-2">Date</label>
                             <div className="relative">
                                 <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
@@ -173,6 +186,9 @@ export default function CreateEvent({ userData }) {
                                     value={event_date.date_value || ""}
                                 />
                             </div>
+                            <span className="mt-1 text-sm text-gray-500">
+                                The event must be scheduled at least 3 days from today.
+                            </span>
                         </div>
 
                         <div className="flex flex-col w-full">

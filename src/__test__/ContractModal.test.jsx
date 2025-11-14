@@ -1,9 +1,10 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import ContractModal from '../components/ContractModal';
 
-// Mock individual hook files
+// Mock individual hook files - ADD THE MISSING MOCK
 jest.mock('../hooks/useTransaction', () => ({
     useFetchTransactionById: jest.fn(),
+    useFetchAllTransaction: jest.fn(), // ADD THIS LINE
 }));
 
 jest.mock('../hooks/useDeliveries', () => ({
@@ -109,7 +110,7 @@ jest.mock('../constants/categories', () => ({
 }));
 
 // Import mocked hooks
-import { useFetchTransactionById } from '../hooks/useTransaction';
+import { useFetchTransactionById, useFetchAllTransaction } from '../hooks/useTransaction'; // ADD useFetchAllTransaction
 import { useFetchDeliveries } from '../hooks/useDeliveries';
 import { useFetchUsers } from '../hooks/useUsers';
 import { useFetchContract } from '../hooks/useContract';
@@ -180,8 +181,9 @@ describe('ContractModal', () => {
     beforeEach(() => {
         jest.clearAllMocks();
 
-        // Enhanced mock implementations
+        // Enhanced mock implementations - ADD useFetchAllTransaction mock
         useFetchTransactionById.mockReturnValue({ transactions: [] });
+        useFetchAllTransaction.mockReturnValue({ transactions: [] }); // ADD THIS LINE
         useFetchDeliveries.mockReturnValue({ deliveries: mockDeliveries, isLoading: false });
         useFetchUsers.mockReturnValue({ users: [mockUserData] });
         useFetchContract.mockReturnValue({ contracts: [mockContract] });

@@ -108,7 +108,7 @@ export default function Review({ userData }) {
             }
         }
         catch (e) {
-            console.log(e)
+            console.error(e)
             await Swal.fire('Error', 'Something went wrong!', 'error');
             setIsLoading(false)
             setIsSubmitting(false)

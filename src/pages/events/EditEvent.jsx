@@ -222,13 +222,17 @@ export default function EditEvent({ userData }) {
     eventDay.setHours(eventHour, eventMinute, 0, 0)
 
     const eventContracts = contracts.filter(cont => cont.event_id === id)
+    const eventcompleteContracts = contracts.filter(cont => cont.event_id === id && cont.status === "Completed").length
 
-    const isAllContractPaid = eventContracts.some(cont => {
-        const contractTransaction = transactions?.filter(t => t.contract_id === cont.id)
+    const isAllContractPaid = eventContracts.some((cont, index) => {
+        const contractTransaction = transactions?.filter(t => t.contract_id === cont.id && t.status === "HOLD")
         const eventTransactions = contractTransaction?.reduce((sum, trans) => sum + (trans.amount - trans.process_fee), 0)
 
-        return cont.service_plan.service_price === eventTransactions
+        console.log(index, ": ", cont.service_plan.service_price, eventTransactions)
+
+        return Number(cont.service_plan.service_price) === eventTransactions
     })
+    console.log(isAllContractPaid)
 
     let status = {
         label: '',
@@ -237,16 +241,20 @@ export default function EditEvent({ userData }) {
 
     if (tags.length === 0) {
         status = { label: 'Planning', value: 'planning' };
-    } else if (tags.length > 0 && eventContracts.length === 0 && now <= eventDay) {
+    }
+    else if (tags.length > 0 && eventContracts.length === 0 && now <= eventDay) {
         status = { label: 'Open', value: 'open' };
     } else if (eventContracts.length > 0 && now <= eventDay) {
         status = { label: 'In Progress', value: 'in_progress' };
     } else if (!isAllContractPaid && eventContracts.length > 0) {
         status = { label: 'Payment Pending', value: 'payment_pending' };
-    } else {
+    } else if (eventContracts.length === eventcompleteContracts && isAllContractPaid) {
         status = { label: 'Completed', value: 'completed' };
+    } else {
+        status = { label: 'Waiting for Completing Contract', value: 'waiting_for_completing_contract' };
     }
 
+    const eventSuppliers = suppliers.filter(s => eventContracts.some(c => c.supplier_id === s.id))
 
     const openSupplierModal = (supplier) => {
         setSelectedShop(supplier)
@@ -537,9 +545,10 @@ export default function EditEvent({ userData }) {
                                 {tags.length > 0 && (
                                     <div className="flex flex-wrap gap-2 ">
                                         {tags.map((tag, index) => {
+                                            const isTagExistOnSupplier = eventSuppliers.some(
+                                                s => s.supplier_type?.label === tag.label
+                                            );
 
-                                            const eventSuppliers = suppliers.filter(s => eventContracts.some(c => c.supplier_id === s.id))
-                                            const isTagExistOnSupplier = eventSuppliers[index]?.supplier_type?.label === tag.label
                                             return (
                                                 <span
                                                     key={index}

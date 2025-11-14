@@ -85,6 +85,7 @@ export const eventStatusStyles = {
     open: "bg-blue-100 text-blue-700",
     payment_pending: "bg-orange-100 text-orange-700",
     completed: "bg-green-100 text-green-700",
+    waiting_for_completing_contract: "bg-yellow-100 text-yellow-700"
 };
 
 export const serviceType = [

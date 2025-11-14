@@ -264,7 +264,7 @@ export default function ChatWindow({ userData }) {
                                                     )}
 
                                                     <span
-                                                        className={`absolute bottom-0 right-0 left-6 top-7 inline-block w-4 h-4 rounded-full ${selectedUser.is_online ? "bg-green-500" : "bg-gray-400"
+                                                        className={`absolute bottom-0 right-0 left-6 top-7 inline-block w-4 h-4 rounded-full ${selectedUser?.is_online ? "bg-green-500" : "bg-gray-400"
                                                             }`}
                                                     ></span>
                                                 </div>
@@ -277,10 +277,10 @@ export default function ChatWindow({ userData }) {
                                                             {/* Online/offline dot + label */}
                                                             <div className="flex items-center gap-1">
                                                                 <span
-                                                                    className={`text-xs font-medium ${selectedUser.is_online ? "text-green-600" : "text-gray-500"
+                                                                    className={`text-xs font-medium ${selectedUser?.is_online ? "text-green-600" : "text-gray-500"
                                                                         }`}
                                                                 >
-                                                                    {selectedUser.is_online ? "Active now" : "Offline"}
+                                                                    {selectedUser?.is_online ? "Active now" : "Offline"}
                                                                 </span>
                                                             </div>
 

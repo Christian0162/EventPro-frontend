@@ -18,15 +18,15 @@ import { statusStyles } from "../../constants/categories";
 export default function AdminDashboard({ userData }) {
     const { verifications, isLoading: isVerificationLoading } = useFetchAllVerification()
     const { users, isLoading: isUsersLoading } = useFetchUsers()
-    const { suppliers } = useFetchSuppliers()
-    const { events } = useFetchEvents()
+    const { suppliers, isLoading: isSupplierLoading } = useFetchSuppliers()
+    const { events, isLoading: isEventsLoading } = useFetchEvents()
     const { transactions } = useFetchAllTransaction()
     const { contracts } = useFetchContract()
     const { reports: pendingReports } = useFetchAllReports()
 
     const reports = pendingReports.filter(r => r.status === "pending" || r.status === "under_review")
 
-    const allLoading = isUsersLoading || isVerificationLoading
+    const allLoading = isUsersLoading || isVerificationLoading || isEventsLoading || isSupplierLoading
 
     const pendingPlanner = users.filter(user => user.role === "Event Planner" && user.verification_status === "pending")
     const pendingSupplier = users.filter(user => user.role === "Supplier" && user.verification_status === "pending")
@@ -182,7 +182,7 @@ export default function AdminDashboard({ userData }) {
                         <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100">
                             <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2"><BarChart3 /> Supplier Distribution</h3>
                             <div className="flex justify-center">
-                                <div className="w-full max-w-[300px] h-[300px] mt-5"> {/* bigger container */}
+                                <div className="w-full max-w-[270px] mt-5">
                                     <PieChart
                                         className="w-full h-full" // make chart fill container
                                         labels={supplierTypeData.labels}

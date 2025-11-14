@@ -74,7 +74,7 @@ export default function SupplierShop({ userData }) {
                         )}
                         {(!userData || userData.verification_status !== "verified") && (
                             <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg shadow-sm">
-                                ⚠️ Your shop is currently <b>hidden</b> until yor shop is unverified.
+                                ⚠️ Your shop is currently <b>hidden</b> until your shop is unverified.
                             </div>
                         )}
 

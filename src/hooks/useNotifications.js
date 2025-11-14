@@ -12,7 +12,7 @@ export const useFetchNotificationsById = (id) => {
             setIsLoading(true)
             const q = query(collection(db, "notifications"),
                 where("receiver_id", "==", id),
-                orderBy('createdAt', 'desc'))
+                orderBy('created_at', 'desc'))
             const unsubscribe = onSnapshot(q, (onsnapshot) => {
                 setNotifications(onsnapshot.docs.map(notification => ({ id: notification.id, ...notification.data() })))
                 setIsLoading(false)

@@ -45,8 +45,6 @@ export default function Profile({ userData }) {
         );
     };
 
-    console.log(userProfile)
-
     useEffect(() => {
 
         setContact_number(userProfile?.contact_number)
@@ -100,7 +98,7 @@ export default function Profile({ userData }) {
                                     <p className="text-md text-gray-500">{userData.role}</p>
                                 </div>
                             </div>
-                            {(userData.verification_status === 'unverified' || userData.verification_status === 'rejected') && (
+                            {(userData.verification_status === 'unverified' || userData.verification_status === 'rejected') && userData.role === "Event Planner" && (
                                 <a href={'/verify'} className="px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-colors">
                                     Verify
                                 </a>
@@ -194,15 +192,15 @@ export default function Profile({ userData }) {
                                                 return (
                                                     < div key={review.id} >
                                                         <div className="flex items-start gap-3">
-                                                            {reviewerProfile.profile_pic ? (
+                                                            {reviewerProfile?.profile_pic ? (
                                                                 <img
-                                                                    src={reviewerProfile.profile_pic}
+                                                                    src={reviewerProfile?.profile_pic}
                                                                     alt=""
                                                                     className="h-10 w-10 rounded-full object-cover"
                                                                 />
                                                             ) : (
                                                                 <div className="text-5xl h-10 w-10 rounded-full bg-gradient-to-r from-blue-600 to-pink-600 text-white flex items-center justify-center">
-                                                                    <span>{reviewerDetail?.first_name.charAt(0).toUpperCase()}</span>
+                                                                    <span className='block text-2xl'>{reviewerDetail?.first_name.charAt(0).toUpperCase()}</span>
                                                                 </div>
                                                             )}
 
@@ -219,7 +217,7 @@ export default function Profile({ userData }) {
                                                                                     <h2 className="font-medium text-gray-900 cursor-pointer">
                                                                                         {reviewerDetail?.first_name} {reviewerDetail?.last_name}
                                                                                     </h2>
-                                                                                    <p className="text-xs text-gray-500">{review?.createdAt ? formatDistanceToNow(new Date(review.createdAt.seconds * 1000), { addSuffix: true }) : 'Recent'}</p>
+                                                                                    <p className="text-xs text-gray-500">{review?.created_at ? formatDistanceToNow(new Date(review.created_at.seconds * 1000), { addSuffix: true }) : 'Recent'}</p>
                                                                                 </div>
                                                                                 <h2 className="font-medium text-xs text-gray-600 cursor-pointer">
                                                                                     {reviewerDetail?.role === "Event Planner" ? 'Event' : 'Shop'}: {review.reviewer_name}

@@ -46,13 +46,13 @@ export default function EventBookingModal({ events = [], activeContracts = [], s
 
             <Dialog open={isOpen} as="div" className="relative z-50 focus:outline-none" onClose={close}>
                 {/* Overlay */}
-                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300" />
+                <div className="fixed inset-0 bg-black/40 transition-opacity duration-300" />
 
                 <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
                             transition
-                            className="overflow-hidden w-full max-w-4xl mt-18 rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                            className="overflow-hidden w-full max-w-4xl mt-18 rounded-2xl bg-white shadow-2xl duration-300"
                         >
                             {/* Header */}
                             <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200 bg-gray-50">

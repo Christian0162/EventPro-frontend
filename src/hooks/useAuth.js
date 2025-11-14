@@ -35,21 +35,21 @@ export const useAuthLogin = () => {
                     showConfirmButton: false
                 })
 
-                if (userData.status === "deactivated" && userData.role === "Event Planner") {
+                if (userData?.status === "deactivated" && userData?.role === "Event Planner") {
                     for (const event of userEvents) {
                         await updateDoc(doc(db, "events", event.id), { status: 'active' });
                     }
 
-                    await updateDoc(doc(db, "users", userData.id), {
+                    await updateDoc(doc(db, "users", userData?.id), {
                         status: 'active'
                     })
                 }
-                else if (userData.status === "deactivated" && userData.role === "Supplier") {
+                else if (userData?.status === "deactivated" && userData?.role === "Supplier") {
                     await updateDoc(doc(db, "shops", user.user.uid), {
                         status: 'active'
                     })
 
-                    await updateDoc(doc(db, "users", userData.id), {
+                    await updateDoc(doc(db, "users", userData?.id), {
                         status: 'active'
                     })
                 }
@@ -155,7 +155,7 @@ export const useAuthRegister = () => {
                     reported_history: null,
                     balance: userData?.role === "Supplier" ? 0 : null,
                     deactivation_history: [],
-                    createdAt: serverTimestamp()
+                    created_at: serverTimestamp()
                 })
 
                 await setDoc(doc(db, "userProfiles", user.user.uid), {
@@ -165,7 +165,7 @@ export const useAuthRegister = () => {
                     description: '',
                     profile_pic: '',
                     contact_number: '',
-                    createdAt: serverTimestamp()
+                    created_at: serverTimestamp()
                 })
             }
 

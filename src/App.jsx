@@ -10,6 +10,8 @@ import Profile from "./profile/Profile";
 import PaymentSuccess from "./components/SuccessPayment.jsx";
 import { setupUserPresence } from "./firebase/presence.js";
 
+const ForgotPassword = lazy(() => import("./pages/auth/ForgotPassword.jsx"))
+const ResetPassword = lazy(() => import("./pages/auth/ResetPassword.jsx"))
 const GuestLayout = lazy(() => import("./layouts/GuestLayout"))
 const EventContract = lazy(() => import("./pages/events/EventContract"))
 const AuthLayout = lazy(() => import("./layouts/AuthLayout"))
@@ -32,16 +34,18 @@ const Error404 = lazy(() => import("./components/Error404"));
 
 function App() {
     const [user, setUser] = useState(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
     const [userData, setUserData] = useState(null);
+    const [authChecked, setAuthChecked] = useState(false);
 
     useEffect(() => {
+        let unsubscribeUsers
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             try {
                 if (user) {
                     setUser(user);
                     setupUserPresence(user.uid)
-                    const unsubscribeUsers = onSnapshot(doc(db, "users", auth.currentUser.uid), async (onsnapshot) => {
+                    unsubscribeUsers = onSnapshot(doc(db, "users", user.uid), async (onsnapshot) => {
 
                         if (onsnapshot.exists()) {
                             setUserData({ id: onsnapshot.id, ...onsnapshot.data() });
@@ -65,12 +69,14 @@ function App() {
                 setUser(null);
                 setUserData(null);
 
+            } finally {
+                setAuthChecked(true);
             }
         });
-        return () => unsubscribe();
-    }, [user])
+        return () => { unsubscribe(); if (unsubscribeUsers) unsubscribeUsers() }
+    }, [])
 
-    if (isLoading) {
+    if (!authChecked || isLoading) {
         return <Loading />
     }
 
@@ -88,6 +94,18 @@ function App() {
                             <Route path="/register" element={
                                 <GuestLayout user={user} userData={userData}>
                                     <Register user={user} />
+                                </GuestLayout>
+                            }></Route>
+
+                            <Route path="/forgot-password" element={
+                                <GuestLayout user={user} userData={userData}>
+                                    <ForgotPassword user={user} />
+                                </GuestLayout>
+                            }></Route>
+
+                            <Route path="/reset-password" element={
+                                <GuestLayout user={user} userData={userData}>
+                                    <ResetPassword user={user} />
                                 </GuestLayout>
                             }></Route>
 

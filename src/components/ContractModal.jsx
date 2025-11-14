@@ -2,12 +2,12 @@ import { Button, Dialog, DialogPanel, } from '@headlessui/react'
 import { useEffect, useState, useRef } from 'react'
 import { X, Check, ArrowLeftRight } from 'lucide-react'
 import { FileText, MapPin, Clock, Wallet, ChevronDown, Calendar, Building, User, TriangleAlert, CreditCard, PhilippinePeso, Package } from 'lucide-react'
-import { collection, doc, getDocs, query, where, addDoc, serverTimestamp, updateDoc } from 'firebase/firestore'
+import { collection, doc, getDocs, query, where, addDoc, serverTimestamp, updateDoc, increment } from 'firebase/firestore'
 import { db, auth } from '../firebase/firebase'
 import { paymentMethods, statusStyles } from '../constants/categories'
 import { nanoid } from 'nanoid'
 import { useCreatePayment } from '../hooks/usePayment'
-import { useFetchTransactionById } from '../hooks/useTransaction'
+import { useFetchAllTransaction, useFetchTransactionById } from '../hooks/useTransaction'
 import SubmissionModal from './SubmissionModal'
 import { useFetchDeliveries } from '../hooks/useDeliveries'
 import { useNavigate } from 'react-router-dom'
@@ -28,9 +28,9 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [isProcecssing, setIsProcessing] = useState(false)
     const [isReleasing, setIsReleasing] = useState(false)
-    const { createPayment, isProcessing } = useCreatePayment()
+    const { createPayment, isProcessing, invoiceUrl } = useCreatePayment()
     const { transactions } = useFetchTransactionById(eventData?.user_id)
-    const [contract, setContract] = useState([])
+    const { transactions: allTransaction } = useFetchAllTransaction()
     const [eventUser, setEventUser] = useState([])
     const { deliveries, isLoading: isDeliveriesLoading } = useFetchDeliveries()
     const { contracts: AllContracts } = useFetchContract()
@@ -40,9 +40,11 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
     const navigate = useNavigate()
     const [now, setNow] = useState(new Date())
 
-    const contractTransaction = transactions.filter(t => t.contract_id === contract?.id && t.event_id === eventData?.id)
+    const contract = AllContracts.find(contract => contract?.event_id === eventData?.id && contract?.supplier_id === supplierData?.id)
 
-    const isAlreadyReported = reports.find(r => r.contract_id === contract?.id && r.user_id === userData?.id)
+    const contractTransaction = allTransaction.filter(t => t.contract_id === contract?.id && t.event_id === eventData?.id)
+
+    const isAlreadyReported = reports.find(r => r.contract_id === contract?.id && r.user_id === userData?.id && r.report_type !== "delivery")
 
     const contractDeliveries = deliveries.filter(del => del.contract_id === contract?.id && del.supplier_id === supplier_id)
 
@@ -93,18 +95,23 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
     };
 
     const isDownPayment = contract?.service_plan?.service_payment_notice?.label === "Down Payment required atleast 50 percent."
-    const platformFee = Number(contract?.service_plan?.service_price) > 5000 ? Number(contract?.service_plan?.service_price) * 0.10 : Number(contract?.service_plan?.service_price) * 0.05
+    const platformFee = Number(contract?.service_plan?.service_price) * 0.03
     const service_price = Number(contract?.service_plan?.service_price) || 0;
     const process_fee = payment_method?.process_fee || 0;
     const processFee = isDownPayment ? (service_price / 2) * process_fee : service_price * process_fee;
 
     const totalDeductions = computeTotalDeductions(contractDeliveries, service_price);
 
-    console.log(service_price)
+    const filteredTransactions = allTransaction.find(trans => trans.contract_id === contract?.id && trans.type === "CREDIT")
 
     const fullAmount = Number(contract?.service_plan?.service_price) + processFee
     const netAmount = Number(service_price - platformFee);
-    const finalAmount = netAmount - totalDeductions;
+
+    const releasedMoney = Number(filteredTransactions?.amount) || 0
+
+    const finalAmount = Number((netAmount - totalDeductions) - releasedMoney);
+
+    console.log(Number(netAmount - totalDeductions))
 
     const downpayment = (service_price / 2) + processFee;
     const nextpayment = (service_price / 2) + processFee;
@@ -135,16 +142,11 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
 
     useEffect(() => {
         const eventUser = users.filter(user => user.id === eventData?.user_id)
-
-        const contract = AllContracts.filter(contract => contract?.event_id === eventData?.id && contract?.supplier_id === supplierData?.id)
         setEventUser(eventUser[0])
-        setContract(contract[0])
-
-    }, [AllContracts, users, eventData, supplierData])
+    }, [users, eventData, supplierData])
 
     useEffect(() => {
         const filteredTransaction = transactions.filter(trans => trans.contract_id === contract?.id && trans.status === "HOLD")
-
         setContract_Transaction(filteredTransaction)
     }, [user_id, transactions, contract])
 
@@ -183,7 +185,7 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
                 await addDoc(collection(db, "notifications"), {
                     avatar: eventData?.event_name?.charAt(0).toUpperCase(),
                     message: `The event planner has confirmed receipt of the delivery for the event "${eventData?.event_name}" under Contract ID: "${contract?.id}".`,
-                    createdAt: serverTimestamp(),
+                    created_at: serverTimestamp(),
                     sender_id: eventData?.user_id,
                     referenced_type: 'contract',
                     referenced_id: contract?.id,
@@ -205,7 +207,6 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
     }
 
     const handleDeliveryReport = async (reportId, status, deliveryId, reportDetails) => {
-        console.log(reportId, status)
         if (status === "Accept") {
             Swal.fire({
                 title: "Are you sure?",
@@ -237,7 +238,7 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
                         await addDoc(collection(db, "notifications"), {
                             avatar: supplierData?.supplier_name.charAt(0).toUpperCase(),
                             message: `The supplier "${supplierData?.supplier_name}" has accepted the report terms on the Contract ID: ${contract?.id}.`,
-                            createdAt: serverTimestamp(),
+                            created_at: serverTimestamp(),
                             sender_id: supplierData.id,
                             referenced_type: 'contract',
                             referenced_id: contract?.id,
@@ -277,14 +278,10 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
                             "success"
                         );
 
-                        await updateDoc(doc(db, "reports", reportId), {
-                            status: "under_review"
-                        });
-
                         await addDoc(collection(db, "notifications"), {
                             avatar: supplierData?.supplier_name.charAt(0).toUpperCase(),
                             message: `The supplier "${supplierData?.supplier_name}" has rejected the delivery report for Contract ID: ${contract?.id}. The admin will now review and decide on the case.`,
-                            createdAt: serverTimestamp(),
+                            created_at: serverTimestamp(),
                             sender_id: supplierData.id,
                             referenced_type: 'contract',
                             referenced_id: contract?.id,
@@ -333,7 +330,7 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
                     await addDoc(collection(db, "notifications"), {
                         avatar: supplierData?.supplier_name.charAt(0).toUpperCase(),
                         message: `The supplier "${supplierData?.supplier_name}" has approved the contract with ID: ${contract?.id}.`,
-                        createdAt: serverTimestamp(),
+                        created_at: serverTimestamp(),
                         sender_id: supplierData.id,
                         referenced_type: 'contract',
                         referenced_id: contract?.id,
@@ -386,6 +383,7 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
                     contract_id: contract?.id || null,
                     user_id: supplier_id,
                     payment_method: null,
+                    event_id: contract.event_id,
                     event_email: eventUser.email_address,
                     event_contact: eventUser?.contact_number || null,
                     amount: finalAmount,
@@ -397,13 +395,13 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
                 })
 
                 await updateDoc(doc(db, 'users', contract.supplier_id), {
-                    balance: finalAmount
+                    balance: increment(finalAmount)
                 })
 
                 await addDoc(collection(db, "notifications"), {
                     avatar: eventData?.event_name?.charAt(0).toUpperCase(),
                     message: `The Event ${eventData?.event_name} has been completed Contract ID: "${contract?.id}". Your balance will be updated accordingly.`,
-                    createdAt: serverTimestamp(),
+                    created_at: serverTimestamp(),
                     referenced_type: 'contract',
                     sender_id: eventData.id,
                     referenced_id: contract?.id,
@@ -504,7 +502,7 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
                     avatar: targetName.slice(0, 1).toUpperCase(),
                     last_message: "",
                     isActive: false,
-                    createdAt: serverTimestamp(),
+                    created_at: serverTimestamp(),
                 });
                 navigate(`/chats/`);
             } else {
@@ -523,8 +521,6 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
     if (contract && contract?.length === 0) {
         return <div className='h-6 w-6 rounded-full animate-spin border border-t-blue-600'></div>
     }
-
-    console.log(supplierData)
 
     return (
         <>
@@ -561,7 +557,7 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
                                         <div className='flex flex-col gap-2 text-sm items-center'>
                                             <div className='flex items-center gap-2  px-12'>
                                                 <span className='block text-gray-200'>Contract status:</span>
-                                                <span className={`block text-xs text-white px-3 ${contract?.status === "Pending" ? "bg-yellow-600" : contract?.status === "Cancelled" ? "bg-red-500" : "bg-green-500"} py-1 rounded-full text-sm`}>{contract?.status}</span>
+                                                <span className={`block text-xs text-white px-3 ${contract?.status === "Pending" ? "bg-yellow-600" : (contract?.status === "Cancelled" || contract?.status === "Rejected") ? "bg-red-500" : "bg-green-500"} py-1 rounded-full text-sm`}>{contract?.status}</span>
                                             </div>
                                         </div>
 
@@ -628,7 +624,9 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
                                             {contractDeliveries.length > 0 && !isDeliveriesLoading && (
                                                 <div className="space-y-5 max-h-[350px] overflow-y-auto">
                                                     {contractDeliveries.map((delivery, index) => {
-                                                        const deliveryReports = reports.find(r => r.delivery_id === delivery.id)
+                                                        const deliveryReports = reports.find(r => r.delivery_id === delivery.id && r.reporter_role === "Event Planner")
+                                                        const deliveryResponse = reports.filter(r => r.contract_id === contract.id && r.reporter_role === "Supplier")
+                                                        const supplierResponse = deliveryResponse[0]
 
                                                         return (
                                                             <div
@@ -685,7 +683,7 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
                                                                             <div>
                                                                                 <h3 className="text-sm font-semibold text-gray-700 mb-1">Issue Applied</h3>
                                                                                 <ul className="ml-4 list-disc text-sm text-gray-800 space-y-1">
-                                                                                    {deliveryReports.penalty_applied.map((report, index) => (
+                                                                                    {deliveryReports?.penalty_applied?.map((report, index) => (
                                                                                         <li key={index}>{report}</li>
                                                                                     ))}
                                                                                 </ul>
@@ -709,18 +707,46 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
                                                                             </div>
 
 
+                                                                            {/* Reason */}
+                                                                            {supplierResponse && (
+                                                                                <>
+                                                                                    <div className="mt-6 bg-blue-50 rounded-2xl shadow-sm border border-blue-200 p-5">
+                                                                                        <h3 className="text-base font-semibold text-blue-600 mb-3">
+                                                                                            Supplier Response
+                                                                                        </h3>
+                                                                                        <div className="mb-3">
+                                                                                            <h4 className="text-sm font-medium text-gray-700 mb-1">Response Reason</h4>
+                                                                                            <p className="text-sm text-gray-800 italic border-l-4 border-blue-300 pl-3">
+                                                                                                "{supplierResponse.reason}"
+                                                                                            </p>
+                                                                                        </div>
+
+
+                                                                                        <div className="mt-3">
+                                                                                            <h4 className="text-sm font-medium text-gray-700 mb-1">Proof Provided</h4>
+                                                                                            <a
+                                                                                                href={supplierResponse.proof}
+                                                                                                target="_blank"
+                                                                                                rel="noopener noreferrer"
+                                                                                            >
+                                                                                                <img
+                                                                                                    src={supplierResponse.proof}
+                                                                                                    alt="Supplier Proof"
+                                                                                                    className="w-25 h-25 rounded-xl border border-gray-200 object-cover hover:opacity-90 transition"
+                                                                                                />
+                                                                                            </a>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </>
+                                                                            )}
+
                                                                         </div>
 
                                                                         {/* Action Buttons */}
                                                                         {userData.role === "Supplier" &&
                                                                             !["solved", "under_review", "rejected"].includes(deliveryReports.status) && (
                                                                                 <div className="flex justify-end gap-3 mt-5 border-t border-gray-100 pt-4">
-                                                                                    <button
-                                                                                        onClick={() => handleDeliveryReport(deliveryReports.id, "Reject")}
-                                                                                        className="px-4 py-2 text-sm font-medium rounded-lg text-white bg-red-500 hover:bg-red-600 transition-all shadow-sm"
-                                                                                    >
-                                                                                        Reject
-                                                                                    </button>
+                                                                                    <DamagePenaltiesModal report={deliveryReports} contractData={contract} userData={userData} delivery={delivery} deliveryId={delivery.id} eventData={eventData} type={userData?.role === "Supplier" && 'supplier'} />
                                                                                     <button
                                                                                         onClick={() =>
                                                                                             handleDeliveryReport(deliveryReports.id, "Accept", delivery.id, deliveryReports)
@@ -878,7 +904,7 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
                                                                                             ? "bg-yellow-100 text-yellow-600"
                                                                                             : delivery.status === "Confirmed" || delivery.status === "Received"
                                                                                                 ? "bg-green-100 text-green-600"
-                                                                                                : delivery.status === "Damaged"
+                                                                                                : delivery.status === "Damaged" || delivery.status === "Issued"
                                                                                                     ? "bg-red-100 text-red-600"
                                                                                                     : "bg-gray-100 text-gray-600"
                                                                                             }`}
@@ -928,8 +954,19 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
                                                 </div>
                                             )}
 
-                                            {/* Submit Button for Supplier */}
-                                            {showSubmitButton && not_include_fees > 0 && (contract?.status !== "Pending" && contract?.status !== "Completed") && contractDeliveries.length === 0 && (
+                                            {/* Submit Button for Supplier for full payment*/}
+                                            {showSubmitButton && (contract?.status !== "Pending" && contract?.status !== "Completed") && contractDeliveries.length === 0 && contract?.service_plan.service_payment_notice.label === "Pay after service delivered" && (
+                                                <div className="flex justify-end mt-6">
+                                                    <SubmissionModal
+                                                        contract={contract}
+                                                        eventData={eventData}
+                                                        supplierData={supplierData}
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {/* Submit Button for Supplier for down payment*/}
+                                            {showSubmitButton && not_include_fees > 0 && (contract?.status !== "Pending" && contract?.status !== "Completed") && contractDeliveries.length === 0 && contract?.service_plan.service_payment_notice.label === "Down Payment required atleast 50 percent" && (
                                                 <div className="flex justify-end mt-6">
                                                     <SubmissionModal
                                                         contract={contract}
@@ -1059,7 +1096,7 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
                                                                     {userData?.role === "Supplier" && (
                                                                         <>
                                                                             <div className="flex justify-between items-center">
-                                                                                <span className="text-gray-600">Platform Fee</span>
+                                                                                <span className="text-gray-600">Platform Fee (3%)</span>
                                                                                 <span className="font-semibold text-red-600"> - ₱{platformFee.toLocaleString()}</span>
                                                                             </div>
 
@@ -1208,7 +1245,7 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
                                         </div>
                                         {userData?.role != "Supplier" && contract?.status !== "Completed" && (
                                             <>
-                                                {(total_paid - total_fees) === service_price && deliveries[0]?.status === "Received" && (
+                                                {(total_paid - total_fees) === service_price && (deliveries[0]?.status === "Received" || deliveries[0]?.status === "Issued") && (
                                                     <div className='flex justify-end ml-auto gap-3 '>
                                                         {/* <button className='transition-all duration-50 text-sm items-center hover:bg-gray-700 py-2 px-5 rounded-md bg-gray-600 text-white'>Contact Supplier</button> */}
 
@@ -1230,22 +1267,43 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
                                                     </div>
                                                 )}
 
-                                                {contract?.status === "Approved" && (total_paid - total_fees) !== service_price && (
+                                                {contract?.status === "Approved" && (total_paid - total_fees) !== service_price && contract?.service_plan.service_payment_notice.label === "Pay after service delivered"
+                                                    && (
+                                                        <button
+                                                            onClick={() => handlePayment(downpayment, nextpayment, processFee)}
+                                                            disabled={(contractDeliveries.length === 0 && contract_transaction.length > 0) || isProcessing}
+                                                            className={`px-7 py-2 ${(contractDeliveries.length === 0)
+                                                                ? 'bg-blue-300 cursor-not-allowed'
+                                                                : 'bg-blue-500 hover:bg-blue-600'
+                                                                } text-white text-sm rounded flex justify-end items-end ml-auto `}
+                                                        >
+                                                            {isProcessing ? (
+                                                                <a href={invoiceUrl} target='_blank' className='flex items-center gap-3 '>
+                                                                    View Invoice Link
+                                                                    <div className='border-t-2 h-4 w-4 rounded-full animate-spin'></div>
+                                                                </a>
+                                                            ) : (contractDeliveries.length === 0) ? (
+                                                                'Must deliver before pay'
+                                                            ) : (
+                                                                'Pay Contract'
+                                                            )}
+                                                        </button>
+                                                    )}
+
+                                                {contract?.status === "Approved" && (total_paid - total_fees) !== service_price && contract?.service_plan.service_payment_notice.label === "Down Payment required atleast 50 percent." && (
                                                     <button
                                                         onClick={() => handlePayment(downpayment, nextpayment, processFee)}
                                                         disabled={(contractDeliveries.length === 0 && contract_transaction.length > 0) || isProcessing}
-                                                        className={`px-7 py-2 ${isProcessing
-                                                            ? 'bg-blue-300'
-                                                            : (contractDeliveries.length === 0 && contract_transaction.length > 0)
-                                                                ? 'bg-blue-300 cursor-not-allowed'
-                                                                : 'bg-blue-500 hover:bg-blue-600'
+                                                        className={`px-7 py-2 ${(contractDeliveries.length === 0 && contract_transaction.length > 0)
+                                                            ? 'bg-blue-300 cursor-not-allowed'
+                                                            : 'bg-blue-500 hover:bg-blue-600'
                                                             } text-white text-sm rounded flex justify-end items-end ml-auto `}
                                                     >
                                                         {isProcessing ? (
-                                                            <div className='flex items-center gap-3 '>
-                                                                Processing..
+                                                            <a href={invoiceUrl} target='_blank' className='flex items-center gap-3 '>
+                                                                View Invoice Link
                                                                 <div className='border-t-2 h-4 w-4 rounded-full animate-spin'></div>
-                                                            </div>
+                                                            </a>
                                                         ) : (contractDeliveries.length === 0 && contract_transaction.length > 0) ? (
                                                             'Must deliver before pay'
                                                         ) : (
@@ -1264,7 +1322,7 @@ export default function ContractModal({ isOpen, onClose, userData, event_id, sup
 
                                         {supplier_id === user_id && contract?.status === "Pending" && (
                                             <div className='flex p-2 gap-2 justify-end items-end ml-auto '>
-                                                <RejectReview contract={contract} supplier={supplierData} event_id={eventData.id} supplier_id={supplierData.id} className={`transition duration-50 py-1 px-5 border rounded-md hover:bg-red-600 hover:text-white`} />
+                                                <RejectReview contract={contract} supplier={supplierData} event_id={eventData.id} event_name={eventData.event_name} supplier_id={supplierData.id} className={`transition duration-50 py-1 px-5 border rounded-md hover:bg-red-600 hover:text-white`} />
                                                 <button onClick={() => handleApprove(contract?.id)} disabled={isSubmitting} className={`transition-all duration-50 px-7 py-2 ${isSubmitting ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'} text-white text-sm rounded`}>{isSubmitting ?
                                                     <>
                                                         <div className='h-5 w-5 border-t-2 rounded-full animate-spin border-white'></div>

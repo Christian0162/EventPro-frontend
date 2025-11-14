@@ -1,6 +1,6 @@
 import { Dialog, DialogPanel, Button } from '@headlessui/react'
 import { useState, useEffect, useRef } from 'react'
-import { X, MapPin, MapPinOff, Truck } from 'lucide-react'
+import { X, MapPin, MapPinOff, Truck, Phone } from 'lucide-react'
 import UploadWidget from './UploadWidgen'
 import Select from 'react-select'
 import { addDoc, collection, doc, serverTimestamp, setDoc } from 'firebase/firestore'
@@ -16,6 +16,7 @@ export default function SubmissionModal({ contract, supplierData, eventData }) {
     const [picture, setPicture] = useState([])
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [note, setNote] = useState("")
+    const [phoneNumber, setPhoneNumber] = useState('')
     const [deliveryType, setDeliveryType] = useState({
         value: "lalamove", label: "Lalamove"
     })
@@ -33,6 +34,8 @@ export default function SubmissionModal({ contract, supplierData, eventData }) {
     const [isQuotationLoading, setIsQuotationLoading] = useState(false)
     const timeoutRef = useRef()
     const { userProfiles } = useFetchUserProfiles()
+    const [phoneError, setPhoneError] = useState("");
+
     const eventUser = userProfiles?.find(u => u.id === eventData.user_id)
 
     const deliveryOptions = [
@@ -43,18 +46,20 @@ export default function SubmissionModal({ contract, supplierData, eventData }) {
     console.log("+63" + supplierData.supplier_number.slice(1))
 
     function open() { setIsOpen(true) }
+
     function close() {
-        setIsOpen(false)
         setIsOpen(false)
         setNote('')
         setPicture([])
-        setPickup('')
-        setDropoff('')
+        setPickup({ coordinates: { lat: null, lng: null }, address: "" })
+        setDropoff({ coordinates: { lat: null, lng: null }, address: "" })
         setQuotation(null)
         setDeliveryType({
-            value: "lalamove", label: "Lalamove"
+            value: "lalamove",
+            label: "Lalamove"
         })
     }
+
 
     const handleSubmit = async () => {
         if (!picture.length) return
@@ -81,7 +86,7 @@ export default function SubmissionModal({ contract, supplierData, eventData }) {
             await addDoc(collection(db, "notifications"), {
                 avatar: supplierData.supplier_name.charAt(0).toUpperCase(),
                 message: `The supplier "${supplierData.supplier_name}" submitted a delivery for contract ID: ${contract?.id}.`,
-                createdAt: serverTimestamp(),
+                created_at: serverTimestamp(),
                 sender_id: supplierData.id,
                 referenced_type: 'contract',
                 referenced_id: contract?.id,
@@ -109,6 +114,13 @@ export default function SubmissionModal({ contract, supplierData, eventData }) {
 
     const handleBookDelivery = async () => {
         setIsDeliveryBookingLoading(true)
+
+        if (phoneNumber.length < 11) {
+            setPhoneError('Contact number must be exactly 11 digits.')
+            setIsDeliveryBookingLoading(false)
+            return
+        }
+
         try {
             const res = await fetch("https://eventpro-backend-nodejs.onrender.com/create-delivery", {
                 method: "POST",
@@ -120,7 +132,7 @@ export default function SubmissionModal({ contract, supplierData, eventData }) {
                     },
                     recipients: {
                         name: eventData.event_name,
-                        phone: "+63" + eventUser?.contact_number.slice(1)
+                        phone: "+63" + phoneNumber?.slice(1)
                     },
                     stops: quotation.stops,
                     quotationId: quotation.quotationId,
@@ -157,7 +169,7 @@ export default function SubmissionModal({ contract, supplierData, eventData }) {
                         dropoff,
                         recipients: {
                             name: eventData.event_name,
-                            phone: "+63" + eventUser?.contact_number.slice(1)
+                            phone: "+63" + phoneNumber?.slice(1)
                         },
                     },
                     courier: null,
@@ -175,13 +187,13 @@ export default function SubmissionModal({ contract, supplierData, eventData }) {
             }
         }
         catch (e) {
+            setIsSubmitting(false)
             console.error(e)
             Swal.fire({
                 icon: 'error',
                 title: 'Delivery Booking Failed',
                 text: 'Something went wrong. Please try again.'
             });
-            setIsSubmitting(false)
         }
     }
 
@@ -358,6 +370,26 @@ export default function SubmissionModal({ contract, supplierData, eventData }) {
                                                 />
                                             </div>
 
+                                            <div>
+                                                <div className="flex gap-1 items-center mb-2">
+                                                    <Phone className="text-gray-500" size={20} />
+                                                    <span className="text-gray-900 font-semibold">Contact Number</span>
+                                                </div>
+                                                <input placeholder="Enter your contact number (e.g., 09123456789)"
+                                                    value={phoneNumber || ""}
+                                                    type="text"
+                                                    onChange={(e) => {
+                                                        const value = e.target.value.replace(/\D/g, "");
+                                                        setPhoneNumber(value);
+                                                    }}
+                                                    inputMode="numeric"
+                                                    maxLength={11}
+                                                    pattern="[0-9]*"
+                                                    className='w-full py-3 px-4 border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-blue-500 focus:outline-none' />
+                                                {phoneError && (
+                                                    <span className='ml-1 mt-1 block text-sm text-red-600'>{phoneError}</span>
+                                                )}
+                                            </div>
                                             {/* Quotation */}
                                             <div className="font-medium text-gray-700">
                                                 Estimated Cost:{" "}

@@ -5,12 +5,13 @@ import AddressAutocomplete from "../../components/AddressAutoComplete";
 import { FileText, IdCard } from "lucide-react";
 import VerificationCheckbox from "../../components/VerificationCheckBox";
 import { auth, db } from "../../firebase/firebase";
-import { setDoc, doc, getDoc, updateDoc, query, where, serverTimestamp } from "firebase/firestore";
+import { setDoc, doc, getDoc, updateDoc, query, where, serverTimestamp, addDoc, collection } from "firebase/firestore";
 import UploadWidget from "../../components/UploadWidgen";
 import { SupplierOptions, idOptions, documentOptions, exampleIds, exampleDocuments } from "../../constants/categories";
 import Swal from "sweetalert2";
 import LoadingOverlay from "../../components/LoadingOverlay";
 import PageLoading from "../../components/PageLoading";
+import { useFetchSuppliers } from "../../hooks/useSupplier";
 
 export default function Verification({ userData }) {
 
@@ -24,6 +25,7 @@ export default function Verification({ userData }) {
     const [business_name, setBusiness_name] = useState('')
     const [contact_number, setContact_number] = useState('')
     const [additional_information, setAdditional_information] = useState('')
+    const [coords, setCoords] = useState([])
     const [first_name, setFirst_Name] = useState('')
     const [last_name, setLast_Name] = useState('')
     const [email_address, setEmail_Address] = useState('')
@@ -34,6 +36,7 @@ export default function Verification({ userData }) {
     const [uploadDocs, setUploadDocs] = useState([])
     const [exampleId, setExampleId] = useState([])
     const [exampleDocument, setExampleDocument] = useState([])
+    const { suppliers } = useFetchSuppliers()
     const idSectionRef = useRef(null);
     const docSectionRef = useRef(null);
 
@@ -78,7 +81,7 @@ export default function Verification({ userData }) {
                 }
             }
             catch (e) {
-                console.log(e)
+                console.error(e)
             }
 
             finally {
@@ -93,12 +96,24 @@ export default function Verification({ userData }) {
 
         try {
             const fetchVerification = async () => {
+
+                const onSnapShotShop = await getDoc(doc(db, "shops", userData.id));
+
+                if (userData?.role === "Supplier" && !onSnapShotShop.exists()) {
+                    setRedirect(true)
+                }
+
                 const q = query(doc(db, "verification", userData.id),
                     where("status", "in", ["pending", "rejected"]))
                 const onSnapShotVerification = await getDoc(q);
+
+
                 if (onSnapShotVerification.exists()) {
                     setRedirect(true)
                 }
+
+
+
             }
 
             fetchVerification()
@@ -106,9 +121,7 @@ export default function Verification({ userData }) {
         catch (e) {
             console.error(e)
         }
-    }, [userData])
-
-    console.log({ validId, documents })
+    }, [userData, suppliers])
 
     const handleSubmit = async (e) => {
         e.preventDefault()
@@ -138,7 +151,7 @@ export default function Verification({ userData }) {
             })
 
             if (userData.role === 'Supplier') {
-                await setDoc(doc(db, "verification", auth.currentUser.uid), {
+                const verification = await setDoc(doc(db, "verification", auth.currentUser.uid), {
                     supplier_name: business_name,
                     supplier_number: contact_number,
                     supplier_location: location,
@@ -148,8 +161,19 @@ export default function Verification({ userData }) {
                     documents_information: uploadDocs,
                     additional_information: additional_information,
                     is_verified: false,
-                    createdAt: serverTimestamp(),
+                    created_at: serverTimestamp(),
                 })
+
+                await addDoc(collection(db, "notifications"), {
+                    avatar: "A",
+                    message: `Supplier has sent a verification request for his shop.`,
+                    created_at: serverTimestamp(),
+                    title: "Verification Request",
+                    referenced_type: 'verification',
+                    referenced_id: userData.id,
+                    unread: true,
+                    receiver_id: "hgV2ZGqRWOOdgKqnSBPWkaZPlss1",
+                });
             }
 
             else {
@@ -162,9 +186,21 @@ export default function Verification({ userData }) {
                     valid_id: validId,
                     documents_information: uploadDocs,
                     additional_information: additional_information,
-                    createdAt: serverTimestamp(),
+                    created_at: serverTimestamp(),
                     is_verified: false
                 })
+
+                await addDoc(collection(db, "notifications"), {
+                    avatar: "A",
+                    message: `The Event Planner has sent a verification request for his account.`,
+                    created_at: serverTimestamp(),
+                    title: "Verification Request",
+                    referenced_type: 'verification',
+                    referenced_id: userData.id,
+                    unread: true,
+                    receiver_id: "hgV2ZGqRWOOdgKqnSBPWkaZPlss1",
+                });
+
             }
 
             Swal.fire({
@@ -178,7 +214,7 @@ export default function Verification({ userData }) {
             setRedirect(true)
         }
         catch (e) {
-            console.log(e)
+            console.error(e)
         }
         finally {
             setIsSubmitting(false)
@@ -188,8 +224,6 @@ export default function Verification({ userData }) {
     if (redirect) {
         return <Navigate to={'/dashboard'} />
     }
-
-    console.log(redirect)
 
     return (
         <>
@@ -284,6 +318,7 @@ export default function Verification({ userData }) {
                                 className="w-full rounded-lg border border-gray-300 px-3 py-2 
                                             focus:outline-none focus:ring-2 focus:ring-blue-500 
                                             focus:border-blue-500 shadow-sm"
+                                setCoords={setCoords}
                             />
                         </div>
 
@@ -311,6 +346,7 @@ export default function Verification({ userData }) {
                                     options={SupplierOptions}
                                     value={supplierType}
                                     isClearable
+                                    isDisabled
                                 />
                             </div>
                         )}

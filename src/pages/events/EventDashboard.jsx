@@ -1,4 +1,4 @@
-import { CalendarDays, Star, PhilippinePeso, ShieldCheck, Calendar, ReceiptText, BarChart3, ChartNoAxesCombined } from "lucide-react"
+import { CalendarDays, Star, PhilippinePeso, ShieldCheck, Calendar, ReceiptText, BarChart3, ChartNoAxesCombined, CircleAlert } from "lucide-react"
 import { TabGroup, TabPanel, TabPanels, TabList, Tab } from "@headlessui/react"
 import { PieChart, BarChart } from "../../components/Charts"
 import { Title } from "react-head"
@@ -11,7 +11,6 @@ import PageLoading from "../../components/PageLoading"
 import { useFetchReviews } from "../../hooks/useReviews"
 import dayGridPlugin from "@fullcalendar/daygrid";
 import FullCalendar from "@fullcalendar/react"
-import EventModal from "../../components/EventModal"
 import GenerateReport from "../../components/GeneraeReport"
 import { lazy, Suspense } from "react";
 import LoadingOverlay from "../../components/LoadingOverlay"
@@ -22,6 +21,7 @@ import { Review } from "../../components/ReviewModal"
 
 export default function EventDashboard({ userData }) {
 
+    const EventModal = useMemo(() => lazy(() => import("../../components/EventModal")), [])
     const ContractModal = useMemo(() => lazy(() => import("../../components/ContractModal")), []);
     const [isContractModalOpen, setIsContractModalOpen] = useState(false);
     const [selectedContract, setSelectedContract] = useState(null)
@@ -30,6 +30,8 @@ export default function EventDashboard({ userData }) {
     const { suppliers, isLoading: isSuppliersLoading } = useFetchSuppliers()
     const { transactions, isLoading: isTransactionsLoading } = useFetchTransactionById(userData?.id)
     const { reviews, isLoading: isReviewsLoading } = useFetchReviews()
+    const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+    const [selectedEvent, setSelectedEvent] = useState(null);
     const [barEventData, setBarEventData] = useState({
         labels: [],
         planned: [],
@@ -60,12 +62,6 @@ export default function EventDashboard({ userData }) {
 
     const createdEvents = useMemo(() => events.filter(e => e.user_id === userData.id), [events, userData])
     const contractHistory = useMemo(() => contracts.filter(contract => (contract?.status === "Completed" || contract?.status === "Cancelled") && contract.planner_id === userData.id), [contracts, userData.id])
-
-    const contractHistoryEvents = useMemo(() =>
-        contractHistory.map(contract =>
-            events.find(event => event.id === contract.event_id)
-        ).filter(Boolean),
-        [contractHistory, events]);
 
     useEffect(() => {
         const sendEventNotif = async () => {
@@ -104,7 +100,7 @@ export default function EventDashboard({ userData }) {
                         await addDoc(collection(db, "notifications"), {
                             avatar: 'A',
                             message: `The event "${event.event_name}" is no longer visible to the supplier because the scheduled day and time have already passed.`,
-                            createdAt: serverTimestamp(),
+                            created_at: serverTimestamp(),
                             title: "Event Visibility Notice",
                             referenced_type: 'event',
                             referenced_id: event.id,
@@ -129,15 +125,25 @@ export default function EventDashboard({ userData }) {
         const eventDate = new Date(event.event_date?.date_value);
         const eventDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
 
-        if (now < eventDate) {
-            status.label = 'Upcoming';
-            status.value = 'upcoming';
-        } else if (now.getDate() === eventDate.getDate()) {
-            status.label = 'In Progress';
-            status.value = 'in_progress';
+        const eventContracts = contracts.filter(cont => cont.event_id === event.id && (cont.status !== "Cancelled" || cont.status !== "Rejected    "))
+
+        const isAllContractPaid = eventContracts.some(cont => {
+            const contractTransaction = transactions?.filter(t => t.contract_id === cont.id)
+            const eventTransactions = contractTransaction?.reduce((sum, trans) => sum + (trans.amount - trans.process_fee), 0)
+
+            return cont.service_plan.service_price === eventTransactions
+        })
+
+        if (event.event_categories.length === 0) {
+            status = { label: 'Planning', value: 'planning' };
+        } else if (event.event_categories.length > 0 && eventContracts.length === 0 && now !== eventDate) {
+            status = { label: 'Open', value: 'open' };
+        } else if (eventContracts.length > 0 && now <= eventDate) {
+            status = { label: 'In Progress', value: 'in_progress' };
+        } else if (!isAllContractPaid) {
+            status = { label: 'Payment Pending', value: 'payment_pending' };
         } else {
-            status.label = 'Completed';
-            status.value = 'completed';
+            status = { label: 'Completed', value: 'completed' };
         }
         return eventDay >= today;
     }).length;
@@ -268,6 +274,16 @@ export default function EventDashboard({ userData }) {
         return colors[status]
     }
 
+    const openEventModal = (event) => {
+        setSelectedEvent(event);
+        setIsEventModalOpen(true);
+    };
+
+    const closeEventModal = () => {
+        setSelectedEvent(null);
+        setIsEventModalOpen(false);
+    };
+
     const openContractModal = (contract) => {
         setSelectedContract(contract)
         setIsContractModalOpen(true)
@@ -277,25 +293,6 @@ export default function EventDashboard({ userData }) {
         setIsContractModalOpen(false)
         setSelectedContract(null)
     };
-
-    async function testDelivery() {
-        const response = await fetch("http://localhost:5000/create-delivery", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                serviceType: "MOTORCYCLE",
-                stops: [
-                    { lat: 14.5995, lng: 120.9842, address: "Intramuros, Manila" },
-                    { lat: 14.5547, lng: 121.0244, address: "Makati City" }
-                ],
-                remarks: "Test delivery in sandbox"
-            })
-        });
-
-        const result = await response.json();
-        console.log(result);
-    }
-
 
     return (
         <>
@@ -317,6 +314,19 @@ export default function EventDashboard({ userData }) {
                         eventData={selectedContract.eventData}
                         supplierData={selectedContract.supplierData}
                     />
+                </Suspense>
+            )}
+
+            {isEventModalOpen && selectedEvent && (
+                <Suspense fallback={<LoadingOverlay isLoading={true} message="Pleasee waitt.." />}>
+                    <EventModal
+                        isOpen={isEventModalOpen}
+                        onClose={closeEventModal}
+                        userData={userData}
+                        eventData={selectedEvent}
+                        event_purpose={'dashboard'}
+                    />
+
                 </Suspense>
             )}
 
@@ -347,7 +357,7 @@ export default function EventDashboard({ userData }) {
                         </div>
 
                         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto mb-5">
-                            {userData.role !== 'Supplier' && userData.verification_status === 'unverified' && (
+                            {userData.role !== 'Supplier' && (userData.verification_status === 'unverified' || userData.verification_status === 'rejected') && (
                                 <a href='/verify' className="px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-colors text-center">
                                     Verify Account
                                 </a>
@@ -487,7 +497,12 @@ export default function EventDashboard({ userData }) {
                                                     </p>
                                                 </div>
 
-                                                <EventModal eventData={event} userData={userData} event_purpose={'dashboard'} />
+                                                <button
+                                                    onClick={() => openEventModal(event)}
+                                                    className={`"h-9 text-white hover:bg-blue-700 transition-all duration-100 rounded-md px-4 py-2 bg-blue-600 text-sm`}
+                                                >
+                                                    View Event
+                                                </button>
                                             </div>
                                         ))}
                                     </div>
@@ -557,8 +572,14 @@ export default function EventDashboard({ userData }) {
                                                     right: window.innerWidth < 640 ? '' : 'today'
                                                 }}
                                                 titleFormat={window.innerWidth < 640 ? { month: 'short', year: 'numeric' } : { month: 'long', year: 'numeric' }}
-                                                events={events.map(e => ({ title: e.event_name, date: e.event_date?.date_value }))}
-
+                                                events={events.map(e => ({
+                                                    title: e.event_name,
+                                                    date: e.event_date?.date_value,
+                                                    extendedProps: { ...e } // pass the full event data
+                                                }))}
+                                                eventClick={(info) => {
+                                                    openEventModal(info.event.extendedProps); // open your EventModal
+                                                }}
                                             />
                                         </div>
                                     </div>
@@ -575,6 +596,7 @@ export default function EventDashboard({ userData }) {
                             <div className="space-y-3 overflow-y-auto max-h-[400px] pr-2">
                                 {contractHistory.slice(0, 5).map((contract, index) => {
                                     const supplier = suppliers.find(s => s.id === contract.supplier_id)
+                                    const event = events.find(e => e.id === contract.event_id)
 
                                     return (
                                         <div
@@ -601,7 +623,7 @@ export default function EventDashboard({ userData }) {
                                                 <button
                                                     onClick={() => openContractModal({
                                                         supplierData: supplier,
-                                                        eventData: contractHistoryEvents[index],
+                                                        eventData: event,
                                                         supplier_id: contract.supplier_id,
                                                         user_id: userData.id,
                                                         userData: userData,

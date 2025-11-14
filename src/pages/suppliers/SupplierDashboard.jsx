@@ -23,9 +23,13 @@ import GenerateReport from "../../components/GeneraeReport"
 import { lazy, Suspense } from "react";
 import LoadingOverlay from "../../components/LoadingOverlay"
 import { statusStyles } from "../../constants/categories"
+import { useFetchUsers } from "../../hooks/useUsers"
+import { formatDistanceToNow } from "date-fns"
+import ProfileHover from "../../components/ProfileHover"
 
 export default function SupplierDashboard({ userData }) {
 
+    const EventModal = useMemo(() => lazy(() => import("../../components/EventModal")), [])
     const analyticsRef = useRef(null);
     const { reviews: reviewed } = useFetchReviews()
     const { contracts } = useFetchContract()
@@ -33,6 +37,7 @@ export default function SupplierDashboard({ userData }) {
     const { services, isLoading: isServicesLoading } = useFetchSupplierServices()
     const { supplier, isLoading: isSupplierLoading } = useFetchSupplierById(userData.id)
     const { suppliers, isLoading: isSuppliersLoading } = useFetchSuppliers()
+    const { users } = useFetchUsers()
     const [now, setNow] = useState(new Date())
     const { userProfiles } = useFetchUserProfiles()
     const { deliveries, isLoading: isDeliveriesLoading } = useFetchDeliveries()
@@ -40,7 +45,26 @@ export default function SupplierDashboard({ userData }) {
     const { applications: userApplications, isLoading: isApplicationLoading } = useFetchAllApplication()
     const ContractModal = useMemo(() => lazy(() => import("../../components/ContractModal")), []);
     const [isContractModalOpen, setIsContractModalOpen] = useState(false);
+    const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+    const [selectedEvent, setSelectedEvent] = useState(null);
     const [selectedContract, setSelectedContract] = useState(null)
+    const [hoveredReviewerId, setHoveredReviewerId] = useState(null);
+
+    const StarRating = ({ rating }) => {
+        return (
+            <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                        key={star}
+                        className={`w-4 h-4 ${star <= rating
+                            ? 'fill-orange-400 text-orange-400'
+                            : 'text-gray-300'
+                            }`}
+                    />
+                ))}
+            </div>
+        );
+    };
 
     const applications = userApplications.filter(app => app.supplier_id === userData.id &&
         contracts.some(cont => cont.supplier_id === app.supplier_id && cont.event_id === app.event_id && (cont.status !== 'Completed' && cont.status !== 'Cancelled')))
@@ -51,14 +75,16 @@ export default function SupplierDashboard({ userData }) {
 
 
     // price competitive 
-    const suppleirsWithSameType = suppliers.filter(sup => sup.supplier_type?.value === supplier.supplier_type?.value && sup.id != userData.id)
-    const supplierSameTypeServices = services.filter(serv => suppleirsWithSameType.some(supp => serv.supplier_id === supp.id))
+    const suppliersWithSameType = suppliers.filter(sup => sup.supplier_type?.value === supplier.supplier_type?.value && sup.id != userData.id)
+    const supplierSameTypeServices = services.filter(serv => suppliersWithSameType.some(supp => serv.supplier_id === supp.id))
     const avgPrice = supplierSameTypeServices.length
         ? supplierSameTypeServices.reduce((sum, s) => sum + parseFloat(s.service_price || 0), 0) /
         supplierSameTypeServices.length
         : 0;
 
     const price = parseFloat(supplier?.service_price || 0);
+
+    console.log("price:", price)
     const competitiveness = avgPrice
         ? ((avgPrice - price) / avgPrice) * 100
         : 0;
@@ -79,16 +105,65 @@ export default function SupplierDashboard({ userData }) {
     const totalDeliveries = userDeliveries.length;
     const onTimeRate = totalDeliveries ? (onTimeDeliveries / totalDeliveries) * 100 : 0;
 
+    // Group competitor services by plan
+    const competitorServicesByPlan = suppliersWithSameType.flatMap(sup =>
+        supplierSameTypeServices.filter(serv => serv.supplier_id === sup.id)
+    ).reduce((acc, service) => {
+        const plan = service.service_plan?.value || 'unknown';
+        if (!acc[plan]) acc[plan] = [];
+        acc[plan].push(parseFloat(service.service_price || 0));
+        return acc;
+    }, {});
+
+    console.log("compiasd:", competitorServicesByPlan)
+
+
+    // Assuming your supplier has multiple plans
+    const supplierPlans = services.filter(s => s.supplier_id === userData.id) || []; // e.g., [{ label: "Basic", value: "basic", price: 2500 }, { label: "Premium", value: "premium", price: 5000 }]
+
+    const competitivenessPerPlan = supplierPlans.map(plan => {
+        const competitorPrices = competitorServicesByPlan[plan.service_plan?.value] || [];
+        const avgCompetitorPrice = competitorPrices.length
+            ? competitorPrices.reduce((sum, price) => sum + price, 0) / competitorPrices.length
+            : 0;
+
+        const competitiveness = avgCompetitorPrice
+            ? ((avgCompetitorPrice - plan.service_price) / avgCompetitorPrice) * 100
+            : 0;
+
+
+        return {
+            plan: plan.service_plan.label,
+            myPrice: plan.service_price,
+            avgCompetitorPrice,
+            competitiveness: competitiveness.toFixed(1) // as percentage
+        };
+    });
+
+    console.log("peste", competitivenessPerPlan)
+
+    const labels = [
+        ...competitivenessPerPlan.map(p => `${p.plan} Competitiveness`), // "Basic Price Competitiveness", "Premium Price Competitiveness"
+        "On-Time Delivery"
+    ];
+
     // barchar data
-    const labels = ["Price Competitiveness", "On-Time Delivery"];
     const datasets = [
         {
             label: "Performance (%)",
-            data: [competitiveness, onTimeRate],
-            backgroundColor: ["#60a5fa", "#34d399"],
-            borderRadius: [10, 10],
-        },
+            data: [
+                ...competitivenessPerPlan.map(p => parseFloat(p.competitiveness)), // competitiveness per plan
+                onTimeRate // append on-time delivery rate
+            ],
+            backgroundColor: [
+                "#60a5fa", // Basic plan
+                "#3b82f6", // Premium plan (different blue shade)
+                "#34d399"  // On-time delivery
+            ],
+            borderRadius: Array(labels.length).fill(10)
+        }
     ];
+
 
     const totalAppliedEvents = applications.filter(app => app.status === 'Pending').length
 
@@ -114,12 +189,6 @@ export default function SupplierDashboard({ userData }) {
 
     console.log(contractHistory)
 
-    const contractHistoryEvents = useMemo(() =>
-        contractHistory.map(contract =>
-            events.find(event => event.id === contract.event_id)
-        ).filter(Boolean),
-        [contractHistory, events]);
-
     const contractEventsforPending = useMemo(() =>
         pendingContracts.map(contract =>
             events.find(event => event.id === contract.event_id)
@@ -140,14 +209,16 @@ export default function SupplierDashboard({ userData }) {
 
     const monthlyRatings = Array(12).fill(null).map((_, i) => {
         const monthlyReviews = reviews?.filter(rev => {
-            const date = rev.createdAt?.toDate ? rev.createdAt.toDate() : null;
+            const date = rev.created_at?.toDate ? rev.created_at.toDate() : null;
             return date && date.getMonth() === i;
         });
 
-        if (monthlyReviews.length === 0) return null;
+        if (monthlyReviews.length === 0) return 0;
         const avg = monthlyReviews.reduce((sum, rev) => sum + rev.rating, 0) / monthlyReviews.length;
         return avg;
     });
+
+    console.log(monthlyRatings)
 
 
 
@@ -196,7 +267,7 @@ export default function SupplierDashboard({ userData }) {
                         await addDoc(collection(db, "notifications"), {
                             avatar: supplier.supplier_name.charAt(0).toUpperCase(),
                             message: `Reminder: Delivery for contract ID: ${contract.id} ("${eventData.event_name}") is due in 2 days.`,
-                            createdAt: serverTimestamp(),
+                            created_at: serverTimestamp(),
                             title: "2-Day Delivery Reminder",
                             referenced_type: 'contract',
                             referenced_id: contract.id,
@@ -237,7 +308,7 @@ export default function SupplierDashboard({ userData }) {
                         await addDoc(collection(db, "notifications"), {
                             avatar: supplier.supplier_name.charAt(0).toUpperCase(),
                             message: `Today is the delivery day for contract ID: ${contract.id} with supplier "${eventData.event_name}".`,
-                            createdAt: serverTimestamp(),
+                            created_at: serverTimestamp(),
                             title: "Delivery Day Reminder",
                             referenced_type: 'contract',
                             referenced_id: contract.id,
@@ -271,6 +342,16 @@ export default function SupplierDashboard({ userData }) {
         setIsContractModalOpen(true)
     };
 
+    const openEventModal = (event) => {
+        setSelectedEvent(event);
+        setIsEventModalOpen(true);
+    };
+
+    const closeEventModal = () => {
+        setSelectedEvent(null);
+        setIsEventModalOpen(false);
+    };
+
     const closeContractModal = () => {
         setIsContractModalOpen(false)
         setSelectedContract(null)
@@ -296,12 +377,24 @@ export default function SupplierDashboard({ userData }) {
                 </Suspense>
             )}
 
+            {isEventModalOpen && selectedEvent && (
+                <Suspense fallback={<LoadingOverlay isLoading={true} message="Pleasee waitt.." />}>
+                    <EventModal
+                        isOpen={isEventModalOpen}
+                        onClose={closeEventModal}
+                        userData={userData}
+                        eventData={selectedEvent}
+                        event_purpose={'dashboard'}
+                    />
+
+                </Suspense>
+            )}
+
             {isAllLoading ? (
                 <PageLoading />
             ) : (
                 <div className="bg-gradient-to-br ">
                     {/* Header */}
-
                     <div className="flex justify-between items-baseline">
                         <div className="flex flex-col lg:flex-row justify-between items-start gap-4 mb-10">
                             <div>
@@ -340,9 +433,12 @@ export default function SupplierDashboard({ userData }) {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                         {[
                             { title: "On-Time Delivery", value: onTimeRate.toFixed(0) + "%", icon: Package, color: "from-blue-500 to-blue-600" },
-                            {
-                                title: "Price Competitiveness", value: competitiveness >= 0 ? competitiveness.toFixed(1) + "%" : competitiveness.toFixed(1) + "%", icon: ChartNoAxesCombined, color: "from-yellow-500 to-yellow-600"
-                            },
+                            ...competitivenessPerPlan.map(p => ({
+                                title: `${p.plan} Price Competitiveness`,
+                                value: p.competitiveness >= 0 ? p.competitiveness + "%" : p.competitiveness + "%",
+                                icon: ChartNoAxesCombined,
+                                color: "from-yellow-500 to-yellow-600"
+                            })),
                             { title: "Total Earnings", value: `₱${totalEarning}`, icon: PhilippinePeso, color: "from-green-500 to-green-600" },
                             { title: "Applied Events", value: totalAppliedEvents, icon: CalendarPlus, color: "from-violet-500 to-violet-600" },
                         ].map(({ title, value, icon: Icon, color }, i) => (
@@ -415,7 +511,7 @@ export default function SupplierDashboard({ userData }) {
                                                         </p>
                                                         <p className="text-gray-500 text-xs">
                                                             Applied:{" "}
-                                                            {app.AppliedAt?.toDate().toLocaleDateString("en-US", {
+                                                            {app.applied_at?.toDate().toLocaleDateString("en-US", {
                                                                 month: "long",
                                                                 day: "numeric",
                                                                 year: "numeric",
@@ -446,40 +542,65 @@ export default function SupplierDashboard({ userData }) {
                                 {
                                     reviews.length ? (
                                         <div className="space-y-4">
-                                            {reviews.map((rev, i) => (
-                                                <div
-                                                    key={i}
-                                                    className="p-4 rounded-xl border border-gray-100 bg-gray-50 hover:bg-gray-100 transition-all shadow-sm"
-                                                >
-                                                    <div className="flex items-start gap-3">
-                                                        {userProfiles.find((u) => u.id === rev.user_id)?.profile_pic ? (
-                                                            <img
-                                                                loading="lazy"
-                                                                src={userProfiles.find((u) => u.id === rev.user_id).profile_pic}
-                                                                alt="Reviewer"
-                                                                className="w-10 h-10 rounded-full object-cover"
-                                                            />
-                                                        ) : (
-                                                            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-violet-600 text-white font-semibold flex items-center justify-center rounded-full">
-                                                                {rev.reviewer_name?.[0]?.toUpperCase() || "A"}
+                                            {reviews.map((rev, i) => {
+
+                                                const reviewerProfile = userProfiles.find(
+                                                    profile => profile.id === reviewed.user_id
+                                                )
+                                                const reviewerDetail = users.find(user => user.id === rev.user_id)
+
+                                                return (
+                                                    < div
+                                                        key={i}
+                                                        className="p-4 rounded-xl border border-gray-100 bg-gray-50 hover:bg-gray-100 transition-all shadow-sm"
+                                                    >
+                                                        <div className="flex items-start gap-3">
+                                                            {userProfiles.find((u) => u.id === rev.user_id)?.profile_pic ? (
+                                                                <img
+                                                                    loading="lazy"
+                                                                    src={userProfiles.find((u) => u.id === rev.user_id).profile_pic}
+                                                                    alt="Reviewer"
+                                                                    className="w-10 h-10 rounded-full object-cover"
+                                                                />
+                                                            ) : (
+                                                                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-violet-600 text-white font-semibold flex items-center justify-center rounded-full">
+                                                                    {rev.reviewer_name?.[0]?.toUpperCase() || "A"}
+                                                                </div>
+                                                            )}
+                                                            <div className="flex-1">
+                                                                <div className="flex items-center justify-between">
+                                                                    <div>
+                                                                        <div
+                                                                            className="relative inline-block"
+                                                                            onMouseEnter={() => setHoveredReviewerId(rev.id)}
+                                                                            onMouseLeave={() => setHoveredReviewerId(null)}
+                                                                        >
+                                                                            <div className='flex flex-col'>
+                                                                                <div className='flex items-baseline gap-3 mb-1'>
+                                                                                    <h2 className="font-medium text-gray-900 cursor-pointer">
+                                                                                        {reviewerDetail?.first_name} {reviewerDetail?.last_name}
+                                                                                    </h2>
+                                                                                    <p className="text-xs text-gray-500">{rev?.created_at ? formatDistanceToNow(new Date(rev.created_at.seconds * 1000), { addSuffix: true }) : 'Recent'}</p>
+                                                                                </div>
+                                                                                <h2 className="font-medium text-xs text-gray-600 cursor-pointer">
+                                                                                    {reviewerDetail?.role === "Event Planner" ? 'Event' : 'Shop'}: {rev.reviewer_name}
+                                                                                </h2>
+                                                                            </div>
+                                                                            {hoveredReviewerId === rev.id && (
+                                                                                <ProfileHover hoveredReviewer={reviewerProfile} user={reviewerDetail} review={rev} />
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <StarRating rating={rev.rating} />
+                                                                </div>
+
+                                                                <p className="text-sm text-gray-900 mt-2">{rev.comment}</p>
                                                             </div>
-                                                        )}
-                                                        <div className="flex-1">
-                                                            <p className="font-semibold text-gray-800">{rev.reviewer_name}</p>
-                                                            <div className="flex items-center gap-1 mt-1">
-                                                                {[...Array(5)].map((_, j) => (
-                                                                    <Star
-                                                                        key={j}
-                                                                        className={`w-4 h-4 ${j < rev.rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300"
-                                                                            }`}
-                                                                    />
-                                                                ))}
-                                                            </div>
-                                                            <p className="text-sm text-gray-700 mt-2">{rev.comment}</p>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            ))}
+                                                )
+                                            })}
                                         </div>
                                     ) : (
                                         <p className="text-center text-gray-500 py-10">No reviews yet.</p>
@@ -503,9 +624,16 @@ export default function SupplierDashboard({ userData }) {
                                                     right: window.innerWidth < 640 ? '' : 'today'
                                                 }}
                                                 titleFormat={window.innerWidth < 640 ? { month: 'short', year: 'numeric' } : { month: 'long', year: 'numeric' }}
-                                                events={activeEventsContracts.map(e => ({ title: e.event_name, date: e.event_date?.date_value }))}
-
+                                                events={activeEventsContracts.map(e => ({
+                                                    title: e.event_name,
+                                                    date: e.event_date?.date_value,
+                                                    extendedProps: { ...e } // pass the full event data
+                                                }))}
+                                                eventClick={(info) => {
+                                                    openEventModal(info.event.extendedProps); // open your EventModal
+                                                }}
                                             />
+
                                         </div>
                                     </div>
                                 </div>
@@ -588,14 +716,6 @@ export default function SupplierDashboard({ userData }) {
                                                 >
                                                     View Contract
                                                 </button>
-
-                                                {/* <ContractModal userData={userData}
-                                                    event_id={offers.event_id}
-                                                    supplier_id={offers.supplier_id}
-                                                    supplierData={supplier}
-                                                    eventData={contractEventsforActive[index]}
-                                                    user_id={userData.id} /> */}
-
                                             </div>
                                         </div>
                                     ))}
@@ -618,7 +738,9 @@ export default function SupplierDashboard({ userData }) {
 
                             <div className="space-y-3 overflow-y-auto max-h-[400px] pr-2">
                                 {contractHistory.slice(0, 5).map((contract, index) => {
-                                    const event = contractHistoryEvents.find(e => e.id === contract.event_id)
+                                    const event = events.find(e => e.id === contract.event_id)
+
+                                    console.log(contractHistory)
                                     return (
                                         <div
                                             key={contract.id}
@@ -644,7 +766,7 @@ export default function SupplierDashboard({ userData }) {
                                                 <button
                                                     onClick={() => openContractModal({
                                                         supplierData: supplier,
-                                                        eventData: contractHistoryEvents[index],
+                                                        eventData: event,
                                                         supplier_id: contract.supplier_id,
                                                         user_id: userData.id,
                                                         userData: userData,

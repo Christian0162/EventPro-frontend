@@ -475,7 +475,7 @@ export default function SupplierPanels({ userData, shop, reviews, services, aver
                                                                             <h2 className="font-medium text-gray-900 cursor-pointer">
                                                                                 {reviewerDetail?.first_name} {reviewerDetail?.last_name}
                                                                             </h2>
-                                                                            <p className="text-xs text-gray-500">{review?.createdAt ? formatDistanceToNow(new Date(review.createdAt.seconds * 1000), { addSuffix: true }) : 'Recent'}</p>
+                                                                            <p className="text-xs text-gray-500">{review?.created_at ? formatDistanceToNow(new Date(review.created_at.seconds * 1000), { addSuffix: true }) : 'Recent'}</p>
                                                                         </div>
                                                                         <h2 className="font-medium text-xs text-gray-600 cursor-pointer">
                                                                             {reviewerDetail?.role === "Event Planner" ? 'Event' : 'Shop'}: {review.reviewer_name}
@@ -494,7 +494,7 @@ export default function SupplierPanels({ userData, shop, reviews, services, aver
                                                                         />
                                                                     ))}
                                                                 </div>
-                                                                <span className="text-sm text-gray-500">{review?.createdAt ? formatDistanceToNow(new Date(review.createdAt.seconds * 1000), { addSuffix: true }) : 'Recent'}</span>
+                                                                <span className="text-sm text-gray-500">{review?.created_at ? formatDistanceToNow(new Date(review.created_at.seconds * 1000), { addSuffix: true }) : 'Recent'}</span>
                                                             </div>
                                                             <p className="text-gray-700">{review.comment || 'Great service!'}</p>
                                                         </div>

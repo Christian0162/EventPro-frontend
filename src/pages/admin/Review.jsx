@@ -1,12 +1,11 @@
 import { db } from "../../firebase/firebase";
-import { doc, updateDoc, collection, addDoc, serverTimestamp, deleteDoc } from "firebase/firestore";
+import { doc, updateDoc, collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { Navigate, useParams } from "react-router-dom";
 import { useState } from "react"
 import { IdCard } from "lucide-react";
 import AddressAutocomplete from "../../components/AddressAutoComplete";
 import Select from 'react-select'
 import { FileText } from "lucide-react";
-import Loading from "../../components/Loading";
 import Swal from "sweetalert2";
 import { RejectReview } from "../../components/ReviewModal";
 import LoadingOverlay from "../../components/LoadingOverlay";
@@ -56,13 +55,13 @@ export default function Review({ userData }) {
                     })
 
                     await addDoc(collection(db, "notifications"), {
-                        user_id: id,
+                        receiver_id: id,
                         avatar: 'A',
                         title: 'Verification Approved!',
                         referenced_type: 'application',
                         referenced_id: id,
                         message: "Congratulations! Your account is now verified. You can now post events and showcase your plans to suppliers!",
-                        createdAt: serverTimestamp(),
+                        created_at: serverTimestamp(),
                         unread: true
                     });
 
@@ -88,11 +87,13 @@ export default function Review({ userData }) {
                         referenced_type: 'application',
                         referenced_id: id,
                         message: "You're verified! Your business is now publicly visible to planners in the Suppliers directory!",
-                        createdAt: serverTimestamp(),
+                        created_at: serverTimestamp(),
                         unread: true
                     })
 
                 }
+
+                setIsSubmitted(true)
 
                 await Swal.fire({
                     title: 'Success',
@@ -107,7 +108,7 @@ export default function Review({ userData }) {
             }
         }
         catch (e) {
-            console.log(e)
+            console.error(e)
             await Swal.fire('Error', 'Something went wrong!', 'error');
             setIsLoading(false)
             setIsSubmitting(false)
@@ -117,7 +118,6 @@ export default function Review({ userData }) {
         finally {
             setIsLoading(false)
             setIsSubmitting(false)
-            setIsSubmitted(true)
         }
     }
 
@@ -126,8 +126,6 @@ export default function Review({ userData }) {
         return <Navigate to={'/dashboard'} />
     }
 
-
-    console.log(isSumitted)
     return (
         <>
             {isAllLoading && (
@@ -258,12 +256,14 @@ export default function Review({ userData }) {
                             <div className="grid grid-cols-2 gap-4">
                                 {verification?.valid_id?.length ? (
                                     verification.valid_id.map((id, idx) => (
-                                        <img
-                                            key={idx}
-                                            src={id}
-                                            alt={`ID ${idx + 1}`}
-                                            className="rounded-lg border shadow-sm object-contain h-64 w-full"
-                                        />
+                                        <a href={id}>
+                                            <img
+                                                key={idx}
+                                                src={id}
+                                                alt={`ID ${idx + 1}`}
+                                                className="rounded-lg border shadow-sm object-contain h-64 w-full"
+                                            />
+                                        </a>
                                     ))
                                 ) : (
                                     <p className="text-gray-400 text-sm col-span-2">
@@ -281,11 +281,13 @@ export default function Review({ userData }) {
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 {verification?.documents_information ? (
-                                    <img
-                                        src={verification?.documents_information}
-                                        alt="Business Document"
-                                        className="rounded-lg border shadow-sm object-contain h-64 w-full"
-                                    />
+                                    <a href={verification?.documents_information}>
+                                        <img
+                                            src={verification?.documents_information}
+                                            alt="Business Document"
+                                            className="rounded-lg border shadow-sm object-contain h-64 w-full"
+                                        />
+                                    </a>
                                 ) : (
                                     <p className="text-gray-400 text-sm col-span-2">
                                         No documents uploaded by the user.

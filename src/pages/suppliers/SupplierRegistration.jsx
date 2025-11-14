@@ -15,6 +15,7 @@ export default function SupplierRegistration() {
 
     const [supplier_type, setSupplier_type] = useState(null)
     const [expertise, setExpertise] = useState([]);
+    const [coords, setCoords] = useState([])
     const [supplier_name, setSupplier_name] = useState('')
     const [location, setLocation] = useState('')
     const [supplier_description, setSupplier_description] = useState('')
@@ -27,8 +28,6 @@ export default function SupplierRegistration() {
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [expertiseOptions, setExpertiseOptions] = useState([])
-
-    console.log(expertiseOptions)
 
     useEffect(() => {
         if (supplier_type && supplier_type.value) {
@@ -115,9 +114,6 @@ export default function SupplierRegistration() {
         }
     };
 
-    console.log(supplier_availability.length)
-
-    console.log(location)
     return (
         <>
             <LoadingOverlay isLoading={isLoading} message='Processing...' />
@@ -132,7 +128,7 @@ export default function SupplierRegistration() {
                     {/* Header */}
                     <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-8 text-white">
                         <h1 className="text-3xl font-bold mb-2">Supplier Registration</h1>
-                        <p className="text-pink-100">Join our network of trusted floral suppliers</p>
+                        <p className="text-pink-100">Join our network of trusted suppliers</p>
                     </div>
 
                     <form onSubmit={handleSubmit}>
@@ -161,7 +157,7 @@ export default function SupplierRegistration() {
                                             <MapPin className="inline w-4 h-4 mr-1" />
                                             Location *
                                         </label>
-                                        <AddressAutocomplete className={'py-3 rounded-md ring-1 ring-black'} setLocation={setLocation} />
+                                        <AddressAutocomplete className={'w-full px-3 py-3 rounded-md ring-1 ring-black'} setLocation={setLocation} setCoords={setCoords} />
                                     </div>
                                 </div>
 

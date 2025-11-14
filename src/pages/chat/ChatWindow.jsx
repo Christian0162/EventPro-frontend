@@ -48,6 +48,7 @@ export default function ChatWindow({ userData }) {
     }
 
 
+    // console.log(selectedContact)
     useEffect(() => {
         if (!selectedContact) return;
 
@@ -56,6 +57,9 @@ export default function ChatWindow({ userData }) {
                 const userDoc = await getDoc(doc(db, "users", selectedContact.contact_id));
                 if (userDoc.exists()) {
                     setContactUserStatus({ id: userDoc.id, ...userDoc.data() }); // or whatever field indicates status
+                    await updateDoc(doc(db, "contacts", selectedContact.id), {
+                        unread: false
+                    })
                 }
             } catch (error) {
                 console.error("Error fetching contact status:", error);
@@ -125,7 +129,7 @@ export default function ChatWindow({ userData }) {
                 (msg.sender_id === selectedContact.contact_id && msg.recipient_id === userData.id))
 
             setMessages(filterMsgs)
-            setTimeout(() => setIsMessagesLoading(false), 800);
+            setIsMessagesLoading(false)
         }, (error) => {
             console.error("Error fetching messages:", error);
             setIsMessagesLoading(false);
@@ -161,18 +165,23 @@ export default function ChatWindow({ userData }) {
         const snapshot = await getDocs(q);
 
         if (snapshot.empty) {
-            await setDoc(doc(contactsRef), {
+            const contact = await setDoc(doc(contactsRef), {
                 user_id: selectedContact.contact_id,
                 contact_id: userData.id,
                 name: userData?.role === "Event Planner" ? userData.first_name : shop.supplier_name,
                 last_message: message,
+                unread: true,
                 created_at: serverTimestamp()
             });
+
         };
 
-        await updateDoc(doc(db, "contacts", bothContacts?.id), {
-            last_message: message,
-        });
+        if (bothContacts?.id) {
+            await updateDoc(doc(db, "contacts", bothContacts.id), {
+                last_message: message,
+                unread: true
+            });
+        }
 
         await addDoc(collection(db, "messages"), {
             sender_id: userData.id,
@@ -194,7 +203,7 @@ export default function ChatWindow({ userData }) {
 
             {!isAllLoading && (
                 <>
-                <Title>Chats</Title>
+                    <Title>Chats</Title>
                     <h1 className="mb-5 text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Chat</h1>
                     <div className="flex h-[90vh] shadow-xl bg-white border border-gray-200 rounded-2xl overflow-hidden">
 
@@ -222,7 +231,6 @@ export default function ChatWindow({ userData }) {
                                     </div>
                                 ) : (
                                     filteredContacts.map((contact) => {
-
                                         const selectedUser = users?.find(u => u.id === contact.contact_id)
 
                                         let contactData = []
@@ -256,7 +264,7 @@ export default function ChatWindow({ userData }) {
                                                     )}
 
                                                     <span
-                                                        className={`absolute bottom-0 right-0 left-6 top-7 inline-block w-4 h-4 rounded-full ${selectedUser.is_online ? "bg-green-500" : "bg-gray-400"
+                                                        className={`absolute bottom-0 right-0 left-6 top-7 inline-block w-4 h-4 rounded-full ${selectedUser?.is_online ? "bg-green-500" : "bg-gray-400"
                                                             }`}
                                                     ></span>
                                                 </div>
@@ -269,10 +277,10 @@ export default function ChatWindow({ userData }) {
                                                             {/* Online/offline dot + label */}
                                                             <div className="flex items-center gap-1">
                                                                 <span
-                                                                    className={`text-xs font-medium ${selectedUser.is_online ? "text-green-600" : "text-gray-500"
+                                                                    className={`text-xs font-medium ${selectedUser?.is_online ? "text-green-600" : "text-gray-500"
                                                                         }`}
                                                                 >
-                                                                    {selectedUser.is_online ? "Active now" : "Offline"}
+                                                                    {selectedUser?.is_online ? "Active now" : "Offline"}
                                                                 </span>
                                                             </div>
 
@@ -286,7 +294,7 @@ export default function ChatWindow({ userData }) {
                                                     </div>
 
                                                     {/* Last message */}
-                                                    <div className="text-sm text-gray-500 truncate">
+                                                    <div className={`text-sm  ${contact.unread ? 'font-semibold' : 'text-gray-500'} truncate`}>
                                                         {contact?.last_message || "No message yet"}
                                                     </div>
                                                 </div>
@@ -296,9 +304,6 @@ export default function ChatWindow({ userData }) {
                                     })
                                 )}
 
-                                {contacts.length === 0 && (
-                                    <div className="text-gray-500 flex justify-center mt-56">No contacts</div>
-                                )}
                             </div>
                         </div>
 

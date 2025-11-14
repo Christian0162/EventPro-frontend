@@ -221,16 +221,18 @@ export default function EditEvent({ userData }) {
     const eventDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate())
     eventDay.setHours(eventHour, eventMinute, 0, 0)
 
-    console.log(eventDay <= today)
+    const eventContracts = contracts.filter(cont => cont.event_id === id)
+    const eventcompleteContracts = contracts.filter(cont => cont.event_id === id && cont.status === "Completed").length
 
-    const eventContracts = contracts.filter(cont => cont.event_id === id && cont.status === "Approved")
-
-    const isAllContractPaid = eventContracts.some(cont => {
-        const contractTransaction = transactions?.filter(t => t.contract_id === cont.id)
+    const isAllContractPaid = eventContracts.some((cont, index) => {
+        const contractTransaction = transactions?.filter(t => t.contract_id === cont.id && t.status === "HOLD")
         const eventTransactions = contractTransaction?.reduce((sum, trans) => sum + (trans.amount - trans.process_fee), 0)
 
-        return cont.service_plan.service_price === eventTransactions
+        console.log(index, ": ", cont.service_plan.service_price, eventTransactions)
+
+        return Number(cont.service_plan.service_price) === eventTransactions
     })
+    console.log(isAllContractPaid)
 
     let status = {
         label: '',
@@ -239,16 +241,20 @@ export default function EditEvent({ userData }) {
 
     if (tags.length === 0) {
         status = { label: 'Planning', value: 'planning' };
-    } else if (tags.length > 0 && eventContracts.length === 0 && now <= eventDay) {
+    }
+    else if (tags.length > 0 && eventContracts.length === 0 && now <= eventDay) {
         status = { label: 'Open', value: 'open' };
     } else if (eventContracts.length > 0 && now <= eventDay) {
         status = { label: 'In Progress', value: 'in_progress' };
     } else if (!isAllContractPaid && eventContracts.length > 0) {
         status = { label: 'Payment Pending', value: 'payment_pending' };
-    } else {
+    } else if (eventContracts.length === eventcompleteContracts && isAllContractPaid) {
         status = { label: 'Completed', value: 'completed' };
+    } else {
+        status = { label: 'Waiting for Completing Contract', value: 'waiting_for_completing_contract' };
     }
 
+    const eventSuppliers = suppliers.filter(s => eventContracts.some(c => c.supplier_id === s.id))
 
     const openSupplierModal = (supplier) => {
         setSelectedShop(supplier)
@@ -270,7 +276,7 @@ export default function EditEvent({ userData }) {
         setSelectedContract(null)
     };
 
-    if (userData?.role === "Supplier") {
+    if (userData?.role === "Supplier" || !id) {
         return navigate('/')
     }
 
@@ -317,6 +323,13 @@ export default function EditEvent({ userData }) {
                     {eventDay < today && (
                         <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg shadow-sm">
                             ⚠️ This event is <b>no longer visible to the public</b> because its date and time has already passed.
+                        </div>
+                    )}
+
+                    {eventDay < today && !eventContracts && (
+                        <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg shadow-sm">
+                            ⚠️ This event is <b>no longer visible to the public</b> because its scheduled date and time have already passed.
+                            Since there are no assigned suppliers, the event will be <b>automatically deleted within 24 hours</b>.
                         </div>
                     )}
 
@@ -378,6 +391,7 @@ export default function EditEvent({ userData }) {
                                         name="event_name"
                                         className="px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                                         required
+                                        disabled={eventContracts}
                                         placeholder="Enter event name"
                                         onChange={(e) => setEvent_name(e.target.value)}
                                         value={event_name || ""}
@@ -390,6 +404,7 @@ export default function EditEvent({ userData }) {
                                     <AddressAutoComplete
                                         setLocation={setEvent_location}
                                         setCoords={setCoords}
+                                        disabled={eventContracts}
                                         default_location={event_location || ""}
                                         className={'w-full px-3 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'}
                                     />
@@ -409,6 +424,7 @@ export default function EditEvent({ userData }) {
                                             name="event_date"
                                             className="pl-10 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                                             required
+                                            disabled={eventContracts}
                                             onChange={handleDate}
                                             value={event_date.date_value || ""}
                                         />
@@ -432,6 +448,7 @@ export default function EditEvent({ userData }) {
                                                 name="start_time"
                                                 className="pl-12 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                                                 required
+                                                disabled={eventContracts}
                                                 onChange={(e) => setStartTime(e.target.value)}
                                                 value={startTime || ""}
                                             />
@@ -446,6 +463,7 @@ export default function EditEvent({ userData }) {
                                                 type="time"
                                                 id="end_time"
                                                 name="end_time"
+                                                disabled={eventContracts}
                                                 className="pl-10 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                                                 required
                                                 onChange={(e) => setEndTime(e.target.value)}
@@ -467,6 +485,7 @@ export default function EditEvent({ userData }) {
                                         options={EventTypeOptions}
                                         value={event_type || ""}
                                         onChange={setEvent_type}
+                                        isDisabled={eventContracts}
                                         placeholder="Select event type"
                                         styles={{
                                             control: (base) => ({
@@ -526,9 +545,10 @@ export default function EditEvent({ userData }) {
                                 {tags.length > 0 && (
                                     <div className="flex flex-wrap gap-2 ">
                                         {tags.map((tag, index) => {
+                                            const isTagExistOnSupplier = eventSuppliers.some(
+                                                s => s.supplier_type?.label === tag.label
+                                            );
 
-                                            const eventSuppliers = suppliers.filter(s => eventContracts.some(c => c.supplier_id === s.id))
-                                            const isTagExistOnSupplier = eventSuppliers[index]?.supplier_type?.label === tag.label
                                             return (
                                                 <span
                                                     key={index}
@@ -600,12 +620,10 @@ export default function EditEvent({ userData }) {
                             )}
 
                             <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
-                                {eventContracts.length === 0 && (
-                                    <PrimaryButton className="w-full flex items-center justify-center">
-                                        <Send size={18} className="mr-2" />
-                                        Update Event
-                                    </PrimaryButton>
-                                )}
+                                <PrimaryButton className="w-full flex items-center justify-center">
+                                    <Send size={18} className="mr-2" />
+                                    Update Event
+                                </PrimaryButton>
                                 <Link
                                     to={'/events'}
                                     className="flex items-center justify-center py-3 w-full text-center border border-gray-300 rounded-lg hover:border-blue-500 hover:text-blue-600 transition-colors font-medium"
@@ -726,8 +744,6 @@ export default function EditEvent({ userData }) {
                                         )
 
                                         const isCancelled = contracts.find(c => c.supplier_id === supplier.id && c.event_id === id)
-
-                                        console.log('asdasd', isCancelled)
                                         const userDetail = users.find(user => user.id === supplier.id)
                                         const userServices = services.filter(serv => serv.supplier_id === supplier.id)
 

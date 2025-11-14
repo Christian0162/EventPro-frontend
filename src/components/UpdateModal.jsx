@@ -87,7 +87,7 @@ export const AboutOurBusiessEdit = ({ supplierData }) => {
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
                             transition
-                            className="w-full max-w-3xl rounded-2xl bg-white shadow-2xl mt-18 duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                            className="w-full max-w-3xl rounded-2xl bg-white shadow-2xl mt-18 duration-300"
                         >
                             <div className='relative px-10 py-5 bg-gray-100 rounded-t-xl'>
                                 <button
@@ -191,6 +191,7 @@ export const SupplierDetails = ({ supplierData }) => {
     const [supplier_type, setSupplier_type] = useState(null)
     const [store_name, setStore_name] = useState('')
     const [supplier_location, setSupplier_location] = useState('')
+    const [coords, setCoords] = useState([])
 
     useEffect(() => {
         setSupplier_location(supplierData?.supplier_location)
@@ -244,7 +245,7 @@ export const SupplierDetails = ({ supplierData }) => {
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
                             transition
-                            className="w-full max-w-3xl mt-15 rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                            className="w-full max-w-3xl mt-15 rounded-2xl bg-white shadow-2xl duration-300 "
                         >
                             <div className='relative px-10 py-5 bg-gray-100 rounded-t-xl'>
                                 <button
@@ -280,7 +281,7 @@ export const SupplierDetails = ({ supplierData }) => {
                                             <MapPin size={20} className='text-blue-600' />
                                             <label htmlFor="">Location</label>
                                         </div>
-                                        <AddressAutocomplete setLocation={setSupplier_location} default_location={supplier_location} className={'px-3 py-2 mt-3 rounded-md border border-gray-400'} />
+                                        <AddressAutocomplete setCoords={setCoords} setLocation={setSupplier_location} default_location={supplier_location} className={'w-full px-3 py-2 mt-3 rounded-md border border-gray-400'} />
                                     </div>
 
                                     <div className='relative flex flex-col'>
@@ -463,7 +464,7 @@ export const ServiceEdit = ({ supplierData, service_id, services }) => {
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
                             transition
-                            className="w-full max-w-3xl mt-17 rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                            className="w-full max-w-3xl mt-17 rounded-2xl bg-white shadow-2xl duration-300"
                         >
                             <div className='relative px-10 py-7 bg-gray-100 rounded-t-xl'>
                                 <button
@@ -611,7 +612,7 @@ export const UpdateProfile = ({ userData }) => {
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
                             transition
-                            className="w-full max-w-xl mt-18 rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                            className="w-full max-w-xl mt-18 rounded-2xl bg-white shadow-2xl duration-300"
                         >
                             <div className='relative px-8 py-4 bg-gray-100 rounded-t-xl'>
                                 <button
@@ -695,7 +696,7 @@ export const UpdateEventBackground = ({ id, className }) => {
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
                             transition
-                            className="w-full max-w-xl mt-18 rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                            className="w-full max-w-xl mt-18 rounded-2xl bg-white shadow-2xl duration-300"
                         >
                             <div className='relative px-8 py-4 bg-gray-100 rounded-t-xl'>
                                 <button

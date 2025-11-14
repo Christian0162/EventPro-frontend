@@ -5,11 +5,13 @@ import { Navigate } from "react-router-dom";
 import { useAuthLogin } from "../../hooks/useAuth";
 import { Title } from "react-head";
 import LoadingOverlay from "../../components/LoadingOverlay";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function Login({ user }) {
     const [password, setPassword] = useState('');
     const [email, setEmail] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [pwVisible, setPwVisible] = useState(false);
 
     const { login, error: errorLogin, isLoading: isLoginLoading } = useAuthLogin()
 
@@ -59,17 +61,42 @@ export default function Login({ user }) {
                         </div>
 
                         {/* password */}
-                        <div className="flex flex-col mt-3">
+                        <div className="flex flex-col mt-3 relative">
                             <label htmlFor="password" className="font-bold mb-3">Password</label>
-                            <input type="password" name="password" id="password" className="py-2 border border-gray-500 rounded-md px-3 focus:ring-blue-600 focus:ring-1 focus:outline-none" placeholder="******"
+
+                            <input
+                                type={pwVisible ? 'text' : 'password'}
+                                name="password"
+                                id="password"
+                                className="py-2 border border-gray-500 rounded-md px-3 pr-10 focus:ring-blue-600 focus:ring-1 focus:outline-none"
+                                placeholder="******"
                                 required
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                             />
+
+                            {/* show/hide button */}
+                            <button
+                                type="button"
+                                onClick={() => setPwVisible(v => !v)}
+                                aria-pressed={pwVisible}
+                                aria-label={pwVisible ? 'Hide password' : 'Show password'}
+                                className="absolute right-3 top-[42px] inline-flex items-center justify-center p-1"
+                            >
+                                {pwVisible ? <EyeOff size={22} /> : <Eye size={22} />}
+                            </button>
+
                             <span className={`mt-1 ml-1 ${errorLogin ? 'block text-red-500' : 'hidden'}`}>{errorLogin}</span>
+
+                            {/* Forgot password link */}
+                            <div className="mt-2 text-right">
+                                <Link to="/forgot-password" className="text-blue-500 hover:text-blue-700 text-sm">
+                                    Forgot Password?
+                                </Link>
+                            </div>
                         </div>
 
-                        <button className={`w-full py-2 rounded-md text-white text-md mt-4 ${isLoading ? 'bg-blue-300' : 'bg-blue-600'}`} disabled={isLoading}>{isLoading ? 'Logging in..' : 'Login'}</button>
+                        <button className={`w-full py-2 rounded-md text-white text-md mt-4 ${isLoginLoading ? 'bg-blue-300' : 'bg-blue-600'}`} disabled={isLoginLoading}>{isLoginLoading ? 'Logging in..' : 'Login'}</button>
 
                         <div className="text-center mt-8">
                             <span>Don't have an account? <Link to={'/register'} className="text-blue-500 hover:text-blue-700">Register</Link></span>

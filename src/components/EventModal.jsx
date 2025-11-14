@@ -11,8 +11,7 @@ import { useFetchContract } from '../hooks/useContract';
 import { useFetchAllTransaction } from '../hooks/useTransaction';
 import PageLoading from './PageLoading';
 
-export default function EventModal({ eventData, event_purpose, userData }) {
-    const [isOpen, setIsOpen] = useState(false);
+export default function EventModal({ isOpen, onClose, eventData, event_purpose, userData }) {
     const [hoveredReviewerId, setHoveredReviewerId] = useState(null)
     const { userProfiles, isLoading: isProfileLoading } = useFetchUserProfiles()
     const { reviews, isLoading: isReviewLoading } = useFetchReviews()
@@ -22,17 +21,13 @@ export default function EventModal({ eventData, event_purpose, userData }) {
 
     const isAllLoading = isProfileLoading || isReviewLoading || isUserLoading
 
-    const userProfile = userProfiles.find(user => user.id === eventData.user_id)
+    const userProfile = userProfiles.find(user => user.id === eventData?.user_id)
 
-    const userReviews = reviews.filter(rev => rev.reviewed_id === eventData.user_id)
-    console.log(eventData)
-
-    const open = () => setIsOpen(true);
-    const close = () => setIsOpen(false);
+    const userReviews = reviews.filter(rev => rev.reviewed_id === eventData?.user_id)
 
     const now = new Date();
     const eventDate = new Date(eventData?.event_date?.date_value);
-    const eventContracts = contracts.filter(cont => cont.event_id === eventData.id && cont.status === "Approved")
+    const eventContracts = contracts.filter(cont => cont.event_id === eventData?.id && cont.status === "Approved")
 
     const isAllContractPaid = eventContracts.some(cont => {
         const contractTransaction = transactions?.filter(t => t.contract_id === cont.id)
@@ -46,9 +41,9 @@ export default function EventModal({ eventData, event_purpose, userData }) {
         value: ''
     };
 
-    if (eventData.event_categories.length === 0) {
+    if (eventData?.event_categories.length === 0) {
         status = { label: 'Planning', value: 'planning' };
-    } else if (eventData.event_categories.length > 0 && eventContracts.length === 0) {
+    } else if (eventData?.event_categories.length > 0 && eventContracts.length === 0) {
         status = { label: 'Open', value: 'open' };
     } else if (eventContracts.length > 0 && now.getDate() <= eventDate.getDate()) {
         status = { label: 'In Progress', value: 'in_progress' };
@@ -63,27 +58,14 @@ export default function EventModal({ eventData, event_purpose, userData }) {
 
     return (
         <>
-            <Button
-                onClick={open}
-                className={`${event_purpose === "dashboard"
-                    ? "h-9 text-white hover:bg-blue-700 transition-all duration-100 rounded-md px-4 bg-blue-600 text-sm"
-                    : ""}`}
-            >
-                {event_purpose === "dashboard" ? (
-                    "View Event"
-                ) : (
-                    <CircleAlert size={24} className='transition-all duration-200 text-gray-400 hover:text-blue-600' />
-                )}
-            </Button>
-
-
-            <Dialog open={isOpen} as="div" className="relative z-100 focus:outline-none" onClose={close}>
-                <div className="fixed inset-0 bg-black/25 backdrop-blur-sm" />
+        
+            <Dialog open={isOpen} as="div" className="relative z-100 focus:outline-none" onClose={onClose}>
+                <div className="fixed inset-0 bg-black/25" />
                 <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
                             transition
-                            className="w-full max-w-4xl mt-18 rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                            className="w-full max-w-4xl mt-18 rounded-2xl bg-white shadow-2xl duration-300"
                         >
                             {isAllLoading && (
                                 <PageLoading />
@@ -109,7 +91,7 @@ export default function EventModal({ eventData, event_purpose, userData }) {
 
                                         {/* Close Button */}
                                         <button
-                                            onClick={close}
+                                            onClick={onClose}
                                             className="absolute top-4 right-4 z-50 p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors duration-200"
                                         >
                                             <X size={20} className="text-white" />
@@ -216,11 +198,11 @@ export default function EventModal({ eventData, event_purpose, userData }) {
                                                 <div className="text-sm text-gray-600">
                                                     <div className="flex items-center gap-2">
                                                         <CalendarDays size={16} className="text-blue-500" />
-                                                        <span>{eventData.event_date.date_preview?.join(", ")}</span>
+                                                        <span>{eventData?.event_date.date_preview?.join(", ")}</span>
                                                     </div>
-                                                    {eventData.event_time && (
+                                                    {eventData?.event_time && (
                                                         <div className="ml-6 text-gray-500">
-                                                            {eventData.event_time.previewStartAndEnd}
+                                                            {eventData?.event_time.previewStartAndEnd}
                                                         </div>
                                                     )}
                                                 </div>
@@ -279,7 +261,7 @@ export default function EventModal({ eventData, event_purpose, userData }) {
                                                                                     <h2 className="font-medium text-gray-900 cursor-pointer">
                                                                                         {reviewerDetail?.first_name} {reviewerDetail?.last_name}
                                                                                     </h2>
-                                                                                    <p className="text-xs text-gray-500">{review?.createdAt ? formatDistanceToNow(new Date(review.createdAt.seconds * 1000), { addSuffix: true }) : 'Recent'}</p>
+                                                                                    <p className="text-xs text-gray-500">{review?.created_at ? formatDistanceToNow(new Date(review.created_at.seconds * 1000), { addSuffix: true }) : 'Recent'}</p>
                                                                                 </div>
                                                                                 <h2 className="font-medium text-xs text-gray-600 cursor-pointer">
                                                                                     {reviewerDetail?.role === "Event Planner" ? 'Event' : 'Shop'}: {review.reviewer_name}
@@ -305,13 +287,13 @@ export default function EventModal({ eventData, event_purpose, userData }) {
                                         {/* Footer Button */}
                                         <div className="pt-1 flex gap-2">
                                             <button
-                                                onClick={close}
+                                                onClick={onClose}
                                                 className="w-full bg-gray-300 hover:bg-gray-600 hover:opacity-90 text-white font-medium py-3 rounded-lg transition-all duration-200"
                                             >
                                                 Close
                                             </button>
-                                            {userData?.role === "Event Planner" && eventData.user_id === userData?.id && (
-                                                <a href={`/events/edit/${eventData.id}`}
+                                            {userData?.role === "Event Planner" && eventData?.user_id === userData?.id && (
+                                                <a href={`/events/edit/${eventData?.id}`}
                                                     className="w-full bg-blue-600 text-center hover:bg-blue-800 hover:opacity-90 text-white font-medium py-3 rounded-lg transition-all duration-200"
                                                 >
                                                     Manage Event

@@ -129,7 +129,7 @@ export default function ReportModal({ contractData, userData, eventData, supplie
                             message: `A planner has reported issues with a delivery for the event "${eventData?.event_name}". Please review the report and the penalties applied.`,
                             feedback: feedback || reason,
                             sender_id: eventData.user_id,
-                            createdAt: serverTimestamp(),
+                            created_at: serverTimestamp(),
                             referenced_type: "report",
                             referenced_id: contractData?.id,
                             unread: true,
@@ -141,7 +141,7 @@ export default function ReportModal({ contractData, userData, eventData, supplie
                             title: "Contract Payment Issue",
                             message: `The Supplier has reported that event not completed payment for the contract associated with the event "${eventData?.event_name}". Please review and take appropriate action.`,
                             feedback: feedback || reason || "",
-                            createdAt: serverTimestamp(),
+                            created_at: serverTimestamp(),
                             sender_id: contractData.supplier_id,
                             referenced_type: "report",
                             referenced_id: contractData?.id,
@@ -184,12 +184,12 @@ export default function ReportModal({ contractData, userData, eventData, supplie
             </Button>
 
             <Dialog open={isOpen} as="div" className="relative z-1000 focus:outline-none" onClose={close}>
-                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300" />
+                <div className="fixed inset-0 bg-black/40 transition-opacity duration-300" />
                 <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
                             transition
-                            className="overflow-hidden w-full max-w-2xl rounded-2xl bg-white shadow-2xl duration-300 ease-out data-closed:transform-[scale(95%)] data-closed:opacity-0"
+                            className="overflow-hidden w-full max-w-2xl rounded-2xl bg-white shadow-2xl duration-300"
                         >
                             <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200 bg-gray-50">
                                 <h2 className="text-lg font-semibold text-gray-800">Report Issues</h2>

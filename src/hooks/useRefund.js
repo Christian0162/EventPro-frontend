@@ -11,7 +11,7 @@ export const useCreateRefund = () => {
     const createRefund = async (transaction, contract_id) => {
         setIsLoading(true);
         try {
-            const response = await fetch("https://eventpro-backend.onrender.com/api/v1/refund", {
+            const response = await fetch("https://eventpro-backend-python.onrender.com/api/v1/refund", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ refund: transaction }),
@@ -37,7 +37,7 @@ export const useCreateRefund = () => {
             const checkStatus = setInterval(async () => {
                 console.log("Checking refund status...");
                 try {
-                    const res = await fetch("https://eventpro-backend.onrender.com/api/v1/refund/status", {
+                    const res = await fetch("https://eventpro-backend-python.onrender.com/api/v1/refund/status", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ refund_ids }),

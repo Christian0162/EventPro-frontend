@@ -50,8 +50,6 @@ export default function Settings({ userData, user }) {
         setContactNumber(userProfile?.contact_number ?? '');
     }, [userData, userProfile])
 
-    console.log(userProfile)
-
     const [credentials, setCredentials] = useState({
         user_id: userData?.id,
         amount: '',
@@ -71,8 +69,6 @@ export default function Settings({ userData, user }) {
 
     const earnings = transactions.filter(transaction => transaction.type === "CREDIT")
 
-    console.log(contactNumber)
-
     const payoutPaymentMethod = paymentMethods.filter(payment => payment.name !== "Credit Card")
 
     const now = new Date()
@@ -81,7 +77,7 @@ export default function Settings({ userData, user }) {
 
     const monthlyEarnings = earnings.filter(earning => {
         if (!earning.created_at) return false
-        const date = earning.created_at.toDate ? earning.created_at.toDate() : new Date(earning.createdAt)
+        const date = earning.created_at.toDate ? earning.created_at.toDate() : new Date(earning.created_at)
         return date.getMonth() === currentMonth && date.getFullYear() === currentYear
     })
 
@@ -239,6 +235,13 @@ export default function Settings({ userData, user }) {
                 return;
             }
 
+            // 🧾 Check withdrawal amount
+            if (credentials.amount > 10000) {
+                setBalanceError("You can withdraw only amounts below 10,000.");
+                return;
+            }
+
+
             // 🧾 Check if withdrawal exceeds balance
             if (credentials.amount > userData?.balance) {
                 setBalanceError("Withdrawal amount cannot exceed your available balance.");
@@ -275,6 +278,16 @@ export default function Settings({ userData, user }) {
 
         } catch (e) {
             console.error(e);
+        } finally {
+            setSelectedPayment([])
+            setCredentials({
+                user_id: userData?.id,
+                amount: '',
+                account_holder_name: '',
+                account_number: '',
+                channel_code: '',
+                user_email: emailAddress
+            })
         }
     };
 
@@ -289,8 +302,6 @@ export default function Settings({ userData, user }) {
             setSelectedPayment([])
         }
     }
-
-    console.log(credentials)
     return (
         <>
             <Title>Settings</Title>
@@ -627,7 +638,7 @@ export default function Settings({ userData, user }) {
                                     <div className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-2xl p-6 mb-6">
                                         <div className="text-center">
                                             <p className="text-black/70 mb-2">Available Balance</p>
-                                            <p className="text-4xl font-bold text-gray-800">₱{userData.balance}</p>
+                                            <p className="text-4xl font-bold text-gray-800">₱{userData.balance.toFixed(2)}</p>
                                             <p className="text-gray-700 text-sm mt-2">+₱{totalEarningsThisMonth} this month</p>
                                         </div>
                                     </div>

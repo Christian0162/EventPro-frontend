@@ -96,7 +96,7 @@ export default function SupplierModal({ isOpen, onClose, supplierData, applicati
                     user_id: auth.currentUser.uid,
                     supplier_id: supplierData.id,
                     isActive: true,
-                    createdAt: serverTimestamp(),
+                    created_at: serverTimestamp(),
                 })
                 setIsLiked(true)
             }
@@ -127,8 +127,9 @@ export default function SupplierModal({ isOpen, onClose, supplierData, applicati
                     name: supplierData.supplier_name,
                     avatar: supplierData.supplier_name.slice(0, 1).toUpperCase(),
                     last_message: "",
+                    unread: false,
                     isActive: false,
-                    createdAt: serverTimestamp()
+                    created_at: serverTimestamp()
 
                 })
                 navigate(`/chats/`)
@@ -199,7 +200,7 @@ export default function SupplierModal({ isOpen, onClose, supplierData, applicati
     return (
         <>
             <Dialog open={isOpen} as="div" className="relative z-50 focus:outline-none" onClose={onClose}>
-                <div className="fixed inset-0 bg-black/25 backdrop-blur-sm" />
+                <div className="fixed inset-0 bg-black/25" />
                 <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
                     <div className="flex min-h-full items-center justify-center p-4">
                         <DialogPanel
@@ -271,9 +272,11 @@ export default function SupplierModal({ isOpen, onClose, supplierData, applicati
                                         </div>
 
                                         <div className="relative space-x-2">
-                                            <button onClick={handleChat} className='group'>
-                                                <MessageCircleMore className="trasition-all duration-200 text-gray-400 group-hover:text-blue-600" size={21} />
-                                            </button>
+                                            {supplierData.id !== userData.id && (
+                                                <button onClick={handleChat} className='group'>
+                                                    <MessageCircleMore className="trasition-all duration-200 text-gray-400 group-hover:text-blue-600" size={21} />
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -598,7 +601,7 @@ export default function SupplierModal({ isOpen, onClose, supplierData, applicati
                                                                                                 <h2 className="font-medium text-gray-900 cursor-pointer">
                                                                                                     {reviewerDetail?.first_name} {reviewerDetail?.last_name}
                                                                                                 </h2>
-                                                                                                <p className="text-xs text-gray-500">{review?.createdAt ? formatDistanceToNow(new Date(review.createdAt.seconds * 1000), { addSuffix: true }) : 'Recent'}</p>
+                                                                                                <p className="text-xs text-gray-500">{review?.created_at ? formatDistanceToNow(new Date(review.created_at.seconds * 1000), { addSuffix: true }) : 'Recent'}</p>
                                                                                             </div>
                                                                                             <h2 className="font-medium text-xs text-gray-600 cursor-pointer">
                                                                                                 {reviewerDetail?.role === "Event Planner" ? 'Event' : 'Shop'}: {review.reviewer_name}
@@ -616,7 +619,7 @@ export default function SupplierModal({ isOpen, onClose, supplierData, applicati
                                                                                             />
                                                                                         ))}
                                                                                     </div>
-                                                                                    <span className="text-   text-gray-500">{review?.createdAt ? formatDistanceToNow(new Date(review.createdAt.seconds * 1000), { addSuffix: true }) : 'Recent'}</span>
+                                                                                    <span className="text-   text-gray-500">{review?.created_at ? formatDistanceToNow(new Date(review.created_at.seconds * 1000), { addSuffix: true }) : 'Recent'}</span>
                                                                                 </div>
                                                                                 <p className="text-gray-700">{review.comment || 'Great service!'}</p>
                                                                             </div>

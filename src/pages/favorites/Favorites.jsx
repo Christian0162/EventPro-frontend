@@ -1,39 +1,47 @@
 import { Title } from "react-head";
 import Cards from "../../components/Cards";
-import { MapPin, Clock, Star, DollarSign, MessageCircleMore, Heart, Trash, CalendarDays, CircleDollarSign, Users } from "lucide-react";
+import { MapPin, Clock, Star, DollarSign, MessageCircleMore, Heart, Trash, CalendarDays, CircleDollarSign, Users, CircleAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useFetchFavorites } from "../../hooks/useFavorites";
 import { useFetchSuppliers } from "../../hooks/useSupplier";
 import { useFetchSupplierServices } from "../../hooks/useSupplier";
 import { useFetchReviews } from "../../hooks/useReviews";
+import { useFetchContract } from "../../hooks/useContract";
+import { useFetchAllTransaction } from "../../hooks/useTransaction";
 import { addDoc, collection, deleteDoc, doc, getDocs, onSnapshot, query, serverTimestamp, where } from "firebase/firestore";
 import { db } from "../../firebase/firebase";
 import LoadingOverlay from "../../components/LoadingOverlay";
 import { useFetchEvents } from "../../hooks/useEvents";
 import Swal from "sweetalert2";
 import { useFetchSupplierById } from "../../hooks/useSupplier";
-import EventModal from "../../components/EventModal";
 import ClipLoader from "react-spinners/ClipLoader";
 import PageLoading from "../../components/PageLoading";
 import { lazy, Suspense } from "react";
+import { eventStatusStyles } from "../../constants/categories";
+import { useMemo } from "react";
 
 export default function Favorites({ userData }) {
 
+    const EventModal = useMemo(() => lazy(() => import("../../components/EventModal")), [])
     const SupplierModal = lazy(() => import("../../components/SupplierModal"));
     const { favorites, isLoading: isFavoritesLoading } = useFetchFavorites()
     const { suppliers } = useFetchSuppliers()
     const { services } = useFetchSupplierServices()
+    const { contracts } = useFetchContract()
     const [applications, setApplications] = useState([])
     const [isApplying, setIsApplying] = useState(false)
     const [applyingEventId, setApplyingEventId] = useState(null)
     const { reviews, isLoading: isReviewLoading } = useFetchReviews()
+    const { transactions } = useFetchAllTransaction()
     const { events } = useFetchEvents()
     const { supplier, isLoading: isSupplierLoading } = useFetchSupplierById(userData.id)
     const [isCreatingFavorites, setIsCreatingFavorites] = useState(false)
     const [isCreatingContact, setIsCreatingContact] = useState(false)
     const [likedEvents, setLikedEvents] = useState({});
     const [isModalOpen, setIsModalOpen] = useState(false)
+    const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+    const [selectedEvent, setSelectedEvent] = useState(null);
     const [selectedShop, setSelectedShop] = useState(null)
     const navigate = useNavigate()
 
@@ -42,6 +50,8 @@ export default function Favorites({ userData }) {
     const favoritesEvents = events.filter(event =>
         favorites.some(fav => event.id === fav.event_id)
     )
+
+    const userShop = suppliers.find(s => s.id === userData.id)
 
     const userFavorites = favorites.filter(favorite => favorite.user_id === userData.id)
     const activeSuppliers = suppliers.filter(supplier => supplier.is_verified && supplier.status === "active" && services.some(serv => serv.supplier_id === supplier.id))
@@ -87,14 +97,14 @@ export default function Favorites({ userData }) {
                     await addDoc(collection(db, "applications"), {
                         supplier_id: userData.id,
                         event_id: event_id,
-                        AppliedAt: serverTimestamp(),
+                        applied_at: serverTimestamp(),
                         status: 'Pending'
                     })
 
                     await addDoc(collection(db, "notifications"), {
                         avatar: userData.id.charAt(0).toUpperCase(),
                         message: `The supplier "${supplier.supplier_name}" applied to your event.`,
-                        createdAt: serverTimestamp(),
+                        created_at: serverTimestamp(),
                         sender_id: supplier.id,
                         referenced_type: 'event',
                         referenced_id: event_id,
@@ -141,7 +151,7 @@ export default function Favorites({ userData }) {
                     user_id: userData.id,
                     event_id: event.id,
                     isActive: true,
-                    createdAt: serverTimestamp(),
+                    created_at: serverTimestamp(),
                 });
 
                 setLikedEvents(prev => ({ ...prev, [event.id]: true }));
@@ -181,7 +191,8 @@ export default function Favorites({ userData }) {
                     avatar: event_name.slice(0, 1).toUpperCase(),
                     last_message: "",
                     isActive: false,
-                    createdAt: serverTimestamp()
+                    unread: false,
+                    created_at: serverTimestamp()
                 })
                 navigate(`/chats/${supplier.id}`)
             } else {
@@ -224,13 +235,6 @@ export default function Favorites({ userData }) {
         return shopReviews.length;
     };
 
-    // Helper function to check application status
-    const getApplicationStatus = (eventId) => {
-        const application = applications.find(app =>
-            app.event_id === eventId && app.supplier_id === userData.id
-        );
-        return application ? application.status : null;
-    };
 
     const openModal = (supplier) => {
         setSelectedShop(supplier)
@@ -239,7 +243,16 @@ export default function Favorites({ userData }) {
 
     const closeModal = () => {
         setIsModalOpen(false)
+    };
 
+    const openEventModal = (event) => {
+        setSelectedEvent(event);
+        setIsEventModalOpen(true);
+    };
+
+    const closeEventModal = () => {
+        setSelectedEvent(null);
+        setIsEventModalOpen(false);
     };
 
     return (
@@ -251,6 +264,19 @@ export default function Favorites({ userData }) {
 
             {(isCreatingContact || isCreatingFavorites) && (
                 <LoadingOverlay isLoading={isCreatingContact || isCreatingFavorites} message="Processing..." />
+            )}
+
+            {isEventModalOpen && selectedEvent && (
+                <Suspense fallback={<LoadingOverlay isLoading={true} message="Pleasee waitt.." />}>
+                    <EventModal
+                        isOpen={isEventModalOpen}
+                        onClose={closeEventModal}
+                        userData={userData}
+                        eventData={selectedEvent}
+                        event_purpose={'dashboard'}
+                    />
+
+                </Suspense>
             )}
 
             {!isAllLoading && (
@@ -390,147 +416,183 @@ export default function Favorites({ userData }) {
                             )}
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                            {favoritesEvents.map((event, index) => {
-                                const applicationStatus = getApplicationStatus(event.id);
-                                const isApplied = applicationStatus !== null;
+                        <>
+                            {events?.length > 0 && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-5">
+                                    {favoritesEvents.map((events, index) => {
 
-                                return (
-                                    <div key={index} className="group flex flex-col justify-between transition-all duration-200 h-full w-full border border-gray-200 bg-white hover:shadow-2xl hover:-translate-y-3 p-6 rounded-lg">
-                                        <div className="flex flex-col justify-between flex-1">
-                                            <div className="relative">
+                                        const now = new Date();
+                                        const eventDate = new Date(events?.event_date?.date_value);
+                                        const eventContracts = contracts.filter(cont => cont.event_id === events.id && cont.status === "Approved")
 
-                                                <div className="flex justify-between items-start mb-3">
-                                                    <div className="flex items-center gap-2">
-                                                        <EventModal eventData={event} />
-                                                        <button
-                                                            onClick={(e) => handleChat(e, event.user_id, event.event_name)}
-                                                            className='group hover:text-blue-600 transition-colors'
-                                                        >
-                                                            <MessageCircleMore className="text-gray-400 group-hover:text-blue-600" size={21} />
-                                                        </button>
-                                                        <button
-                                                            onClick={(e) => handleFavorites(e, event)}
-                                                            className='group hover:text-red-600 transition-colors'
-                                                        >
-                                                            <Heart
-                                                                className={`transition-all duration-200 ${likedEvents[event.id]
-                                                                    ? 'fill-red-600 text-red-600'
-                                                                    : 'text-gray-400 group-hover:text-red-600'
-                                                                    }`}
-                                                                size={21}
-                                                            />
-                                                        </button>
-                                                    </div>
-                                                    <button
-                                                        onClick={() => {
-                                                            const favorite = favorites.find(fav => fav.event_id === event.id);
-                                                            if (favorite) handleDelete(favorite.id);
-                                                        }}
-                                                        className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-gray-400 hover:text-red-600"
-                                                    >
-                                                        <Trash width={20} height={20} />
-                                                    </button>
-                                                </div>
+                                        const eventEndTime = events?.event_time?.valueStartAndEnd[1] || "00:00"
+                                        const [eventHour, eventMinute] = eventEndTime.split(":").map(Number)
 
-                                                {/* Event name and status */}
-                                                <div className="flex flex-col sm:flex-row justify-between items-start gap-3 mb-6">
-                                                    <span className="text-2xl font-bold text-gray-900 break-words">
-                                                        {event.event_name}
-                                                    </span>
-                                                    <span className={`${event.event_status?.value === "upcoming" ? "bg-purple-600" :
-                                                        event.event_status?.value === "planning" ? "bg-sky-500" :
-                                                            "bg-green-500"
-                                                        } rounded-full shadow-lg py-1 px-4 text-white text-sm whitespace-nowrap`}>
-                                                        {event.event_status?.label || 'Unknown'}
-                                                    </span>
-                                                </div>
+                                        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes());
+                                        const eventDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate())
+                                        eventDay.setHours(eventHour, eventMinute, 0, 0)
 
-                                                {/* Event details */}
-                                                <div className="space-y-4 mb-6">
-                                                    <div className="flex items-center gap-3">
-                                                        <span className="rounded-xl bg-blue-200 h-10 w-10 flex items-center justify-center text-blue-600 shrink-0">
-                                                            <CalendarDays size={20} />
+                                        const isAllContractPaid = eventContracts.some(cont => {
+                                            const contractTransaction = transactions?.filter(t => t.contract_id === cont.id)
+                                            const eventTransactions = contractTransaction?.reduce((sum, trans) => sum + (trans.amount - trans.process_fee), 0)
+
+                                            return cont.service_plan.service_price === eventTransactions
+                                        })
+
+                                        let status = {
+                                            label: '',
+                                            value: ''
+                                        };
+
+                                        if (events.event_categories.length === 0) {
+                                            status = { label: 'Planning', value: 'planning' };
+                                        } else if (events.event_categories.length > 0 && eventContracts.length === 0 && now !== eventDate) {
+                                            status = { label: 'Open', value: 'open' };
+                                        } else if (eventContracts.length > 0 && now <= eventDate) {
+                                            status = { label: 'In Progress', value: 'in_progress' };
+                                        } else if (!isAllContractPaid) {
+                                            status = { label: 'Payment Pending', value: 'payment_pending' };
+                                        } else {
+                                            status = { label: 'Completed', value: 'completed' };
+                                        }
+
+                                        console.log(status.value)
+
+                                        return (
+                                            <div key={index} className="group bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col h-full overflow-hidden">
+                                                <div className="p-6 flex-grow">
+                                                    <div className="flex justify-between items-start mb-4">
+                                                        <span className={`inline-block px-3 py-1 text-sm rounded-full ${eventStatusStyles[status.value]}`}>
+                                                            {status.label}
                                                         </span>
-                                                        <span className="text-gray-900">
-                                                            {event?.event_date?.date_preview?.join(", ")}<br />
-                                                            {event?.event_time?.previewStartAndEnd}
-                                                        </span>
+                                                        <div className="flex items-center gap-2 -mr-2">
+                                                            {userData.role === "Supplier" && (
+                                                                <>
+                                                                    <button
+                                                                        onClick={() => openEventModal(events)}
+                                                                    >
+                                                                        <CircleAlert size={24} className='transition-all duration-200 text-gray-400 hover:text-blue-600' />
+                                                                    </button>
+                                                                    <button onClick={(e) => handleChat(e, events.user_id, events.event_name)} className='p-2 rounded-full hover:bg-slate-100 text-slate-500 hover:text-blue-600 transition-colors'>
+                                                                        <MessageCircleMore size={20} />
+                                                                    </button>
+                                                                    <button onClick={(e) => handleFavorites(e, events)} className='p-2 rounded-full hover:bg-slate-100 transition-colors'>
+                                                                        <Heart
+                                                                            className={`transition-all duration-200 ${likedEvents[events.id] ? 'fill-red-500 text-red-500' : 'text-slate-500 group-hover:text-red-500'}`}
+                                                                            size={20}
+                                                                        />
+                                                                    </button>
+                                                                </>
+                                                            )}
+
+                                                            {userData.role === "Event Planner" && eventContracts.length === 0 && (
+                                                                <button onClick={() => handleDelete(events.id)} className="p-2 rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all duration-200 opacity-0 group-hover:opacity-100">
+                                                                    <Trash size={18} />
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     </div>
 
-                                                    <div className="flex items-center gap-3">
-                                                        <span className="rounded-xl bg-green-200 h-10 w-10 flex items-center justify-center text-green-600 shrink-0">
-                                                            <MapPin size={20} />
-                                                        </span>
-                                                        <span className="text-gray-700 break-words">{event.event_location}</span>
+                                                    <h3 className="text-2xl font-bold text-slate-800 truncate mb-4" title={events.event_name}>{events.event_name}</h3>
+
+                                                    <div className="space-y-4 mb-5 text-sm">
+                                                        <div className="flex items-center gap-3">
+                                                            <span className="flex-shrink-0 bg-blue-100 text-blue-600 h-8 w-8 rounded-lg flex items-center justify-center"><CalendarDays size={18} /></span>
+                                                            <span className="text-slate-700 font-medium">{events?.event_date?.date_preview?.join(", ")} at {events?.event_time?.previewStartAndEnd}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-3">
+                                                            <span className="flex-shrink-0 bg-green-100 text-green-600 h-8 w-8 rounded-lg flex items-center justify-center"><MapPin size={18} /></span>
+                                                            <span className="text-slate-600">{events.event_location}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-3">
+                                                            <span className="flex-shrink-0 bg-yellow-100 text-yellow-600 h-8 w-8 rounded-lg flex items-center justify-center"><CircleDollarSign size={18} /></span>
+                                                            <span className="text-slate-800 font-bold">₱ {Number(events.event_budget).toLocaleString()}</span>
+                                                        </div>
                                                     </div>
 
-                                                    <div className="flex items-center gap-3">
-                                                        <span className="rounded-xl bg-yellow-200 h-10 w-10 flex items-center justify-center text-yellow-600 shrink-0">
-                                                            <CircleDollarSign size={20} />
-                                                        </span>
-                                                        <span className="font-bold text-gray-900">₱ {event.event_budget}</span>
-                                                    </div>
+                                                    <p className="text-slate-600 text-sm break-words line-clamp-3 mb-5">{events.event_description || "No description provided."}</p>
 
                                                     <div>
                                                         <div className="flex gap-2 items-center mb-3">
-                                                            <Users className="text-gray-600 h-5 w-5" />
-                                                            <span className="text-md text-gray-800">Looking for supplier:</span>
+                                                            <Users className="text-slate-500 h-4 w-4" />
+                                                            <span className="text-sm font-semibold text-slate-700">Looking for suppliers:</span>
                                                         </div>
                                                         <div className="flex flex-wrap gap-2">
-                                                            {event.event_categories?.map((category, index) => (
-                                                                <span key={index} className="px-3 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full border border-blue-100">
-                                                                    {category.label}
-                                                                </span>
-                                                            ))}
+                                                            {events.event_categories?.filter(c => c?.label).length > 0 ? (
+                                                                events.event_categories.map((category, index) => {
+                                                                    const eventSuppliers = suppliers.filter(s => eventContracts.some(c => c.supplier_id === s.id))
+                                                                    const isTagExistOnSupplier = eventSuppliers[index]?.supplier_type?.label === category.label
+                                                                    return (
+                                                                        <span key={index} className={`px-2.5 py-1 flex gap-1 items-center ${isTagExistOnSupplier ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'} text-xs font-medium rounded-full`}>
+                                                                            {category.label}
+                                                                            {isTagExistOnSupplier && (<CircleCheck size={15} />)}
+                                                                        </span>
+                                                                    )
+                                                                })
+                                                            ) : (
+                                                                <span className="text-slate-500 text-xs italic">No specific supplier categories listed.</span>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </div>
-                                            </div>
 
-                                            <div className="mt-auto">
-                                                <span className="block px-2 mb-1 text-gray-600 font-bold">Description:</span>
-                                                <p className="text-gray-600 break-words rounded-lg px-2 mb-5 min-h-[60px]">
-                                                    {event.event_description?.length > 1 ? event.event_description : "No description provided"}
-                                                </p>
-
-                                                {userData.role === "Supplier" && (
-                                                    <button
-                                                        onClick={() => handleApply(event.id, event.user_id)}
-                                                        disabled={
-                                                            isApplied ||
-                                                            (isApplying && applyingEventId === event.id) ||
-                                                            !supplier?.is_verified
-                                                        }
-                                                        className={`flex items-center justify-center gap-2 text-center py-3 w-full ${isApplied
-                                                            ? 'bg-blue-300 cursor-not-allowed'
-                                                            : (isApplying && applyingEventId === event.id)
-                                                                ? 'bg-blue-400 cursor-not-allowed'
-                                                                : !supplier?.is_verified
-                                                                    ? 'bg-blue-400 cursor-not-allowed'
-                                                                    : 'bg-blue-600 hover:bg-blue-700'
-                                                            } text-white font-bold rounded-lg transition-colors duration-200`}
-                                                    >
-                                                        {isApplying && applyingEventId === event.id ? (
-                                                            <>
-                                                                <ClipLoader size={16} color="#ffffff" />
-                                                                Applying...
-                                                            </>
-                                                        ) : isApplied ? (
-                                                            applicationStatus
-                                                        ) : !supplier?.is_verified ? (
-                                                            'Account not verified'
+                                                <div className="p-4 bg-slate-50 border-t border-slate-200 mt-auto">
+                                                    {userData.role === "Event Planner" && (
+                                                        <a href={`/events/edit/${events.id}`} className="block text-center w-full bg-blue-600 text-white font-semibold rounded-lg py-2.5 hover:bg-blue-700 transition-colors">
+                                                            Manage Event
+                                                        </a>
+                                                    )}
+                                                    {userData.role === "Supplier" && (
+                                                        !isSupplierLoading ? (
+                                                            userShop?.supplier_name && userShop.length !== 0 ? (
+                                                                <button
+                                                                    onClick={() => handleApply(events.id, events.user_id)}
+                                                                    disabled={
+                                                                        applications.find(app => app.event_id === events.id)?.status === "Pending" ||
+                                                                        applications.find(app => app.event_id === events.id)?.status === "Approved" ||
+                                                                        (isApplying && applyingEventId === events.id) ||
+                                                                        !userShop?.is_verified || !events.event_categories.some(cat => cat.label === userShop?.supplier_type.label)
+                                                                    }
+                                                                    className={`flex items-center justify-center gap-2 text-center py-2 w-full ${applications.find(app => app.event_id === events.id)?.status === "Pending" ||
+                                                                        applications.find(app => app.event_id === events.id)?.status === "Approved"
+                                                                        ? 'bg-blue-300 cursor-not-allowed'
+                                                                        : (isApplying && applyingEventId === events.id)
+                                                                            ? 'bg-blue-400 cursor-not-allowed'
+                                                                            : !userShop?.is_verified
+                                                                                ? 'bg-blue-400 cursor-not-allowed'
+                                                                                : !events.event_categories.some(cat => cat.label === userShop?.supplier_type.label) ? 'bg-blue-400 cursor-not-allowed' :
+                                                                                    'bg-blue-600 hover:bg-blue-700'
+                                                                        } text-white font-bold rounded-lg`}
+                                                                >
+                                                                    {isApplying && applyingEventId === events.id ?
+                                                                        <>
+                                                                            <ClipLoader size={16} color="#ffffff" />
+                                                                            Applying...
+                                                                        </> :
+                                                                        applications.find(app => app.event_id === events.id)?.status === "Pending" ? 'Pending' :
+                                                                            applications.find(app => app.event_id === events.id)?.status === "Approved" ? 'Approved' :
+                                                                                !userShop?.is_verified ? 'Account not verified' : !events.event_categories.some(cat => cat.label === userShop?.supplier_type.label) ? 'Your shop isn’t eligible for this event.' : 'Apply'}
+                                                                </button>
+                                                            ) : (
+                                                                <Link to="/shop" className="w-full block py-2 mt-2 text-center bg-gray-200 hover:bg-blue-600 hover:text-white rounded-lg transition">{userShop?.supplier_name.length === 0 ? 'Need shop to apply' : 'Services required to apply'} </Link>
+                                                            )
                                                         ) : (
-                                                            'Apply'
-                                                        )}
-                                                    </button>
-                                                )}
+                                                            <div className="flex items-center justify-center w-full py-2 mt-2 bg-blue-400 rounded-lg">
+                                                                <div className="h-6 w-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                                <span className="ml-2 text-white font-medium">Processing...</span>
+                                                            </div>
+                                                        )
+                                                    )}
+                                                </div>
                                             </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
+                                        )
+
+                                    })
+                                    }
+                                </div>
+
+                            )}
+                        </>
                     )}
                 </>
             )}

@@ -1,15 +1,14 @@
 import { Link } from "react-router-dom";
 import { Title } from "react-head";
-import { CalendarDays, MapPin, CircleDollarSign, Trash, Users, MessageCircleMore, Heart, CircleCheck, AlertTriangle } from "lucide-react";
+import { CalendarDays, MapPin, CircleDollarSign, Trash, Users, MessageCircleMore, Heart, CircleCheck, AlertTriangle, CircleAlert } from "lucide-react";
 import { db } from "../../firebase/firebase";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { collection, onSnapshot, serverTimestamp, addDoc, query, where, doc, getDocs, deleteDoc } from "firebase/firestore";
 import { ClipLoader } from "react-spinners";
 import Swal from "sweetalert2";
 import { useFetchEvents } from "../../hooks/useEvents";
 import { useDeleteEvent } from "../../hooks/useEvents";
 import { useNavigate } from "react-router-dom";
-import EventModal from "../../components/EventModal";
 import LoadingOverlay from "../../components/LoadingOverlay";
 import { useFetchAllApplication } from "../../hooks/useApplication";
 import PageLoading from "../../components/PageLoading";
@@ -18,8 +17,9 @@ import { useFetchContract } from "../../hooks/useContract";
 import { useFetchAllTransaction } from "../../hooks/useTransaction";
 import { useFetchSuppliers, useFetchSupplierServices } from "../../hooks/useSupplier";
 
-export default function Event({ userData }) {
 
+export default function Event({ userData }) {
+    const EventModal = useMemo(() => lazy(() => import("../../components/EventModal")), [])
     const [isCreatingFavorites, setIsCreatingFavorites] = useState(false)
     const [isCreatingContact, setIsCreatingContact] = useState(false)
     const [likedEvents, setLikedEvents] = useState({});
@@ -36,6 +36,8 @@ export default function Event({ userData }) {
     const { services } = useFetchSupplierServices()
     const { suppliers, isLoading: isSupplierLoading } = useFetchSuppliers()
     const [showCautionMessage, setShowCautionMessage] = useState(false)
+    const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+    const [selectedEvent, setSelectedEvent] = useState(null);
     const navigate = useNavigate()
 
     const applications = supplierApplications.filter(app => app.supplier_id === userData.id)
@@ -76,7 +78,9 @@ export default function Event({ userData }) {
                 const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes());
                 const eventDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate())
                 eventDay.setHours(eventHour, eventMinute, 0, 0)
+
                 const isActive = events.status === "active"
+
                 return today < eventDay && isActive
             }
             );
@@ -127,7 +131,7 @@ export default function Event({ userData }) {
                     user_id: userData.id,
                     event_id: events.id,
                     isActive: true,
-                    createdAt: serverTimestamp(),
+                    created_at: serverTimestamp(),
                 });
 
                 setLikedEvents(prev => ({ ...prev, [events.id]: true }));
@@ -158,7 +162,7 @@ export default function Event({ userData }) {
                     await addDoc(collection(db, "applications"), {
                         supplier_id: userData.id,
                         event_id: event_id,
-                        AppliedAt: serverTimestamp(),
+                        applied_at: serverTimestamp(),
                         status: 'Pending'
                     })
 
@@ -168,7 +172,7 @@ export default function Event({ userData }) {
                         sender_id: supplierData.id,
                         referenced_type: 'event',
                         referenced_id: event_id,
-                        createdAt: serverTimestamp(),
+                        created_at: serverTimestamp(),
                         title: 'You have a new application for your events.',
                         unread: true,
                         receiver_id: user_id
@@ -208,7 +212,8 @@ export default function Event({ userData }) {
                     avatar: event_name.slice(0, 1).toUpperCase(),
                     last_message: "",
                     isActive: false,
-                    createdAt: serverTimestamp()
+                    unread: false,
+                    created_at: serverTimestamp()
                 })
                 navigate(`/chats/${supplierData?.id}`)
             } else {
@@ -224,6 +229,16 @@ export default function Event({ userData }) {
         }
     }
 
+    const openEventModal = (event) => {
+        setSelectedEvent(event);
+        setIsEventModalOpen(true);
+    };
+
+    const closeEventModal = () => {
+        setSelectedEvent(null);
+        setIsEventModalOpen(false);
+    };
+
     return (
         <>
             <Title>Events</Title>
@@ -234,6 +249,19 @@ export default function Event({ userData }) {
 
             {(isCreatingContact || isCreatingFavorites) && (
                 <LoadingOverlay isLoading={isCreatingContact || isCreatingFavorites} message="Processing..." />
+            )}
+
+            {isEventModalOpen && selectedEvent && (
+                <Suspense fallback={<LoadingOverlay isLoading={true} message="Pleasee waitt.." />}>
+                    <EventModal
+                        isOpen={isEventModalOpen}
+                        onClose={closeEventModal}
+                        userData={userData}
+                        eventData={selectedEvent}
+                        event_purpose={'dashboard'}
+                    />
+
+                </Suspense>
             )}
 
             {!isAllLoading && (
@@ -274,7 +302,8 @@ export default function Event({ userData }) {
 
                                 const now = new Date();
                                 const eventDate = new Date(events?.event_date?.date_value);
-                                const eventContracts = contracts.filter(cont => cont.event_id === events.id && cont.status === "Approved")
+                                const eventContracts = contracts.filter(cont => cont.event_id === events.id && (cont.status !== "Cancelled" || cont.status !== "Rejected"))
+                                const eventCompleteContracts = contracts.filter(cont => cont.event_id === events.id && cont.status === "Completed").length
 
                                 const eventEndTime = events?.event_time?.valueStartAndEnd[1] || "00:00"
                                 const [eventHour, eventMinute] = eventEndTime.split(":").map(Number)
@@ -283,12 +312,16 @@ export default function Event({ userData }) {
                                 const eventDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate())
                                 eventDay.setHours(eventHour, eventMinute, 0, 0)
 
-                                const isAllContractPaid = eventContracts.some(cont => {
-                                    const contractTransaction = transactions?.filter(t => t.contract_id === cont.id)
+                                const isAllContractPaid = eventContracts.some((cont, index) => {
+                                    const contractTransaction = transactions?.filter(t => t.contract_id === cont.id && t.status === "HOLD")
                                     const eventTransactions = contractTransaction?.reduce((sum, trans) => sum + (trans.amount - trans.process_fee), 0)
 
-                                    return cont.service_plan.service_price === eventTransactions
+                                    // console.log(index, ": ", cont.service_plan.service_price, eventTransactions)
+
+                                    return Number(cont.service_plan.service_price) === eventTransactions
                                 })
+
+                                console.log(eventContracts.length === eventCompleteContracts)
 
                                 let status = {
                                     label: '',
@@ -297,17 +330,18 @@ export default function Event({ userData }) {
 
                                 if (events.event_categories.length === 0) {
                                     status = { label: 'Planning', value: 'planning' };
-                                } else if (events.event_categories.length > 0 && eventContracts.length === 0 && now !== eventDate) {
+                                } else if (events.event_categories.length > 0 && eventContracts.length === 0 && today < eventDay) {
                                     status = { label: 'Open', value: 'open' };
-                                } else if (eventContracts.length > 0 && now <= eventDate) {
+                                } else if (eventContracts.length > 0 && today <= eventDay) {
                                     status = { label: 'In Progress', value: 'in_progress' };
-                                } else if (!isAllContractPaid) {
+                                } else if (!isAllContractPaid && eventContracts.length > 0) {
                                     status = { label: 'Payment Pending', value: 'payment_pending' };
-                                } else {
+                                } else if (eventContracts.length === eventCompleteContracts && isAllContractPaid) {
                                     status = { label: 'Completed', value: 'completed' };
-                                }
+                                } else {
+                                    status = { label: 'Waiting for Completing Contract', value: 'waiting_for_completing_contract' };
 
-                                console.log(status.value)
+                                }
 
                                 return (
                                     <div key={index} className="group bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col h-full overflow-hidden">
@@ -319,11 +353,15 @@ export default function Event({ userData }) {
                                                 <div className="flex items-center gap-2 -mr-2">
                                                     {userData.role === "Supplier" && (
                                                         <>
-                                                            <EventModal eventData={events} />
+                                                            <button
+                                                                onClick={() => openEventModal(events)}
+                                                            >
+                                                                <CircleAlert size={24} className='transition-all duration-200 text-gray-400 hover:text-blue-600' />
+                                                            </button>
                                                             <button onClick={(e) => handleChat(e, events.user_id, events.event_name)} className='p-2 rounded-full hover:bg-slate-100 text-slate-500 hover:text-blue-600 transition-colors'>
                                                                 <MessageCircleMore size={20} />
                                                             </button>
-                                                            <button onClick={(e) => handleFavorites(e, events)} className='p-2 rounded-full hover:bg-slate-100 transition-colors'>
+                                                            <button onClick={(e) => handleFavorites(e, events)} className=' rounded-full hover:bg-slate-100 transition-colors'>
                                                                 <Heart
                                                                     className={`transition-all duration-200 ${likedEvents[events.id] ? 'fill-red-500 text-red-500' : 'text-slate-500 group-hover:text-red-500'}`}
                                                                     size={20}
@@ -382,8 +420,9 @@ export default function Event({ userData }) {
                                                     {events.event_categories?.filter(c => c?.label).length > 0 ? (
                                                         events.event_categories.map((category, index) => {
                                                             const eventSuppliers = suppliers.filter(s => eventContracts.some(c => c.supplier_id === s.id))
-                                                            const isTagExistOnSupplier = eventSuppliers[index]?.supplier_type?.label === category.label
-                                                            return (
+                                                            const isTagExistOnSupplier = eventSuppliers.some(
+                                                                s => s.supplier_type?.label === category.label
+                                                            ); return (
                                                                 <span key={index} className={`px-2.5 py-1 flex gap-1 items-center ${isTagExistOnSupplier ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'} text-xs font-medium rounded-full`}>
                                                                     {category.label}
                                                                     {isTagExistOnSupplier && (<CircleCheck size={15} />)}
@@ -457,7 +496,7 @@ export default function Event({ userData }) {
                     {!isAllLoading && filteredEvents?.length === 0 && (
                         <div className="flex flex-col items-center justify-center py-[12rem] text-gray-500">
                             <span className="text-2xl mb-4">No events found.</span>
-                            {userData.verification_status === "unverified" && userData.role !== "Supplier" && (
+                            {(userData.verification_status === 'unverified' || userData.verification_status === 'rejected') && userData.role !== "Supplier" && (
                                 <a href="/verify"
                                     className="px-6 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-md transition-colors duration-200"
                                 >

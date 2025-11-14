@@ -66,7 +66,7 @@ export const useAddEvent = () => {
     const addEvent = async (id, data) => {
         setIsLoading(true);
         try {
-            await addDoc(collection(db, "events"), {
+            const event = await addDoc(collection(db, "events"), {
                 user_id: id,
                 event_name: data.event_name,
                 event_location: data.event_location,
@@ -78,8 +78,9 @@ export const useAddEvent = () => {
                 event_categories: data.event_categories,
                 event_background: data.event_background || "",
                 status: "active",
-                createdAt: serverTimestamp(),
+                created_at: serverTimestamp(),
             });
+
             Swal.fire({
                 icon: "success",
                 title: "Added",
@@ -116,7 +117,7 @@ export const useUpdateEvent = () => {
                 event_budget: data.event_budget,
                 event_description: data.event_description,
                 event_categories: data.event_categories,
-                updatedAt: serverTimestamp()
+                updated_at: serverTimestamp()
 
             })
             Swal.fire({

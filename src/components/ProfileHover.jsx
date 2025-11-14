@@ -36,7 +36,7 @@ export default function ProfileHover({ hoveredReviewer, user, review }) {
                     avatar: user.first_name.slice(0, 1).toUpperCase(),
                     last_message: "",
                     isActive: false,
-                    createdAt: serverTimestamp()
+                    created_at: serverTimestamp()
                 })
                 navigate(`/chats/${review.user_id}`)
             } else {

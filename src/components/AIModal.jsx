@@ -6,33 +6,28 @@ import { db } from '../firebase/firebase'
 import { useFetchReviews } from '../hooks/useReviews'
 import nlp from 'compromise';
 import Fuse from 'fuse.js'
+import { useFetchSupplierServices } from '../hooks/useSupplier'
 
 export default function AIModal({ ai_response, ai_shops }) {
     const [isOpen, setIsOpen] = useState(false)
     const [prompt, setPrompt] = useState('')
+    const [budget, setBudget] = useState('') // New budget input
     const [recommendations, setRecommendations] = useState('')
     const [error, setError] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
     const { reviews } = useFetchReviews()
+    const { services } = useFetchSupplierServices()
 
-    function open() {
-        setIsOpen(true)
-    }
-
-    function close() {
-        setError('')
-        setIsOpen(false)
-    }
+    function open() { setIsOpen(true) }
+    function close() { setError(''); setIsOpen(false) }
 
     function normalizeText(text) {
         return text
             ?.toLowerCase()
-            .replace(/[^a-z0-9\s]/g, ' ') // replace punctuation with space (not remove)
-            .replace(/\s+/g, ' ')         // collapse extra spaces
+            .replace(/[^a-z0-9\s]/g, ' ')
+            .replace(/\s+/g, ' ')
             .trim();
     }
-
-
 
     const handleAiSearch = async (e) => {
         e.preventDefault();
@@ -47,7 +42,6 @@ export default function AIModal({ ai_response, ai_shops }) {
         }
 
         try {
-            // Get all shops (no category filter)
             const q = query(collection(db, "shops"));
             const snapShop = await getDocs(q);
 
@@ -55,14 +49,12 @@ export default function AIModal({ ai_response, ai_shops }) {
                 const data = doc.data();
                 const shopId = doc.id;
 
-                const userReviews = reviews.filter(rev => rev.reviewed_id === shopId)
-                let sum = 0;
-                userReviews.forEach((rev) => {
-                    sum += parseFloat(rev.rating || 0);
-                });
+                const supplierService = services.filter(s => s.supplier_id === shopId)
+                const selectedService = supplierService[0]
 
+                const userReviews = reviews.filter(rev => rev.reviewed_id === shopId)
                 const avgRating = userReviews.length > 0 ?
-                    (sum / userReviews.length).toFixed(1) : 0;
+                    (userReviews.reduce((sum, rev) => sum + parseFloat(rev.rating || 0), 0) / userReviews.length).toFixed(1) : 0;
 
                 const latestReviewQuery = query(
                     collection(db, "reviews"),
@@ -72,12 +64,9 @@ export default function AIModal({ ai_response, ai_shops }) {
                 );
 
                 const latestReviewSnapshot = await getDocs(latestReviewQuery);
-
-                let latestReviewText = '';
-
-                if (!latestReviewSnapshot.empty) {
-                    latestReviewText = latestReviewSnapshot.docs[0].data().comment;
-                }
+                const latestReviewText = !latestReviewSnapshot.empty
+                    ? latestReviewSnapshot.docs[0].data().comment
+                    : '';
 
                 return {
                     id: shopId,
@@ -86,6 +75,7 @@ export default function AIModal({ ai_response, ai_shops }) {
                     expertise: data.supplier_expertise || [],
                     avg_rating: parseFloat(avgRating),
                     reviews: latestReviewText,
+                    budget: selectedService?.service_price,
                     ...data
                 };
             }));
@@ -96,11 +86,7 @@ export default function AIModal({ ai_response, ai_shops }) {
                 return;
             }
 
-
-            // Filter shops based on prompt keywords
             const promptLower = prompt.toLowerCase();
-
-            // Extract rating threshold from prompt
             const doc = nlp(promptLower);
             const ratingMatch = doc.numbers().out('array');
             let ratingThreshold = null;
@@ -118,7 +104,8 @@ export default function AIModal({ ai_response, ai_shops }) {
                 keys: [
                     'supplier_name',
                     'supplier_type.label',
-                    'supplier_expertise'
+                    'supplier_expertise',
+                    'budget'
                 ]
             }
 
@@ -126,13 +113,11 @@ export default function AIModal({ ai_response, ai_shops }) {
             const keywords = normalizedPrompt.split(/\s+/);
             const fuse = new Fuse(shopData, options);
 
-            // Run searches for each word
             const allResults = keywords.flatMap(word => fuse.search(word));
             const uniqueResults = Array.from(
                 new Map(allResults.map(r => [r.item.id, r.item])).values()
             );
 
-            // Rating logic
             const isBelow = normalizedPrompt.includes('below') ||
                 normalizedPrompt.includes('less') ||
                 normalizedPrompt.includes('under');
@@ -142,15 +127,11 @@ export default function AIModal({ ai_response, ai_shops }) {
 
             const filteredShops = uniqueResults.filter(shop => {
                 if (!shouldFilterByRating || isNaN(ratingThreshold)) return true;
-
                 const rating = Number(shop.avg_rating);
                 if (isBelow) return rating <= ratingThreshold;
                 if (isAbove) return rating >= ratingThreshold;
-
                 return rating >= ratingThreshold;
             });
-
-
 
             if (filteredShops.length === 0) {
                 setError("No suppliers match your search criteria.");
@@ -158,11 +139,19 @@ export default function AIModal({ ai_response, ai_shops }) {
                 return;
             }
 
-            // Sort shops by rating in descending order (highest first)
-            const sortedShops = [...filteredShops].sort((a, b) => b.avg_rating - a.avg_rating);
+            // Budget filtering
+            let budgetFilteredShops = filteredShops;
+            const numericBudget = parseFloat(budget);
+            if (!isNaN(numericBudget)) {
+                budgetFilteredShops = filteredShops.filter(shop => (shop.budget || 0) <= numericBudget);
+            }
 
-            // Send data to AI recommendation endpoint
-            const response = await fetch("https://eventpro-backend-python.onrender.com/api/v1/recommend", {
+            const sortedShops = [...budgetFilteredShops].sort((a, b) => {
+                if (a.budget !== b.budget) return a.budget - b.budget; // cheapest first
+                return b.avg_rating - a.avg_rating; // tie-break by rating
+            });
+
+            const response = await fetch("http://127.0.0.1:8000/api/v1/recommend", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -172,15 +161,10 @@ export default function AIModal({ ai_response, ai_shops }) {
             });
 
             const data = await response.json();
-
-            console.log(data)
-
             if (data) {
-                // Update state with results
                 setRecommendations(data.recommendations);
                 ai_response(data.recommendations);
 
-                // Map back to full shop objects for display
                 const recommendedShops = sortedShops.filter(shop =>
                     data.recommendations.includes(shop.name)
                 );
@@ -233,7 +217,7 @@ export default function AIModal({ ai_response, ai_shops }) {
 
                             <form onSubmit={handleAiSearch}>
                                 <div className='flex flex-col px-10 py-5'>
-                                    <div className='relative flex flex-col'>
+                                    <div className='relative flex flex-col mb-4'>
                                         <label htmlFor="search" className='text-sm mb-2 text-gray-800 font-bold'>What are you looking for?</label>
                                         <input
                                             onChange={(e) => setPrompt(e.target.value)}
@@ -244,6 +228,17 @@ export default function AIModal({ ai_response, ai_shops }) {
                                         <p className="text-xs text-gray-500 mt-1">
                                             Describe your needs (e.g., "wedding florist", "corporate event planner", "5 star caterers")
                                         </p>
+                                    </div>
+
+                                    {/* Budget input */}
+                                    <div className='relative flex flex-col mb-4'>
+                                        <label htmlFor="budget" className='text-sm mb-2 text-gray-800 font-bold'>Maximum Budget (₱)</label>
+                                        <input
+                                            onChange={(e) => setBudget(e.target.value)}
+                                            type="number"
+                                            placeholder="e.g., 20000"
+                                            className='rounded-lg focus:outline-none border border-gray-300 shadow-lg py-2 px-4'
+                                        />
                                     </div>
 
                                     {error && (
@@ -265,3 +260,4 @@ export default function AIModal({ ai_response, ai_shops }) {
         </>
     )
 }
+    

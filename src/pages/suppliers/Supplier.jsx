@@ -32,6 +32,28 @@ export default function Supplier({ userData }) {
 
     const isAllLoading = isSupplierLoading || isEventsLoading || isApplicationLoading || isServicesLoading || isReviewsLoading
 
+    const dynamicExpertiseOptions = useMemo(() => {
+        const set = new Set()
+
+        // From suppliers (dynamic)
+        suppliers.forEach(supplier => {
+            supplier?.supplier_expertise?.forEach(expertise => {
+                set.add(expertise)
+            })
+        })
+
+        // From your static options
+        SupplierOptions.forEach(option => {
+            set.add(option.label)
+        })
+
+        return Array.from(set).map(item => ({
+            value: item.toLowerCase().replace(/\s+/g, "_"),
+            label: item
+        }))
+    }, [suppliers])
+
+
     useEffect(() => {
         const filteredSupplier = suppliers.filter(supplier =>
             supplier.is_verified &&
@@ -58,7 +80,9 @@ export default function Supplier({ userData }) {
         }
         if (category) {
             filtered = filtered.filter(shopItem =>
-                shopItem.supplier_type.value?.toLowerCase().includes(category.value.toLowerCase()
+                shopItem.supplier_type.value?.toLowerCase().includes(category?.value?.toLowerCase()) ||
+                shopItem.supplier_expertise?.some(expertise =>
+                    expertise.toLowerCase().includes(category?.label?.toLowerCase())
                 )
             );
         }
@@ -97,6 +121,8 @@ export default function Supplier({ userData }) {
 
     };
 
+    console.log(category)
+
     if (isAllLoading) return <PageLoading />;
     return (
         <>
@@ -134,20 +160,25 @@ export default function Supplier({ userData }) {
                                     value={searchTerm}
                                     onChange={handleSearchChange}
                                     className="w-full pl-12 pr-4 py-2 bg-gray-50 border shadow-lg border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:bg-white outline-none transition-all duration-200"
-                                    placeholder="Search suppliers by name or service..."
+                                    placeholder="Search suppliers by name or expertise..."
                                 />
                             </div>
                         </div>
                     </div>
+
                     {/* Category Filter */}
                     <div className="w-full md:w-72 mt-3">
                         <Select
                             onChange={setCategory}
                             value={category}
-                            options={SupplierOptions}
+                            options={dynamicExpertiseOptions}
                             placeholder="Category"
                             isClearable
+                            isSearchable
+                            // onInputChange={(search) => setCategory({ label: search })}   // 🔥 This is the key!
                         />
+
+
                     </div>
                 </div>
             </div>
@@ -266,7 +297,7 @@ export default function Supplier({ userData }) {
 
                                                 <div className="flex items-center space-x-1">
                                                     <PhilippinePeso className="text-green-600" size={18} />
-                                                    <span className="text-lg font-bold text-gray-900">{userServices[0]?.service_price}</span>
+                                                    <span className="text-lg font-bold text-gray-900">{Number(userServices[0]?.service_price).toFixed(2)}</span>
                                                     <span className="text-sm text-gray-500">/service</span>
                                                 </div>
 

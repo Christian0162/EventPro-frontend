@@ -114,7 +114,7 @@ export default function CreateEvent({ userData }) {
         }
     };
 
-    if (userData?.verification_status !== "verified" || userData?.role === "Admin") {
+    if (userData?.verification_status !== "verified" || userData?.role === "Admin" || userData?.role === "Supplier") {
         return <Navigate to={'/dashboard'} replace />
     }
 

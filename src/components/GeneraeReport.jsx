@@ -1,17 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-/**
- * Reusable GenerateReport component
- * 
- * Props:
- * - title: string — report title (e.g., "Supplier Performance Report")
- * - userData: object — data of the user (e.g., name, email)
- * - fields: array — [{ label: "Total Earnings", value: "₱50,000" }]
- * - sections: array — optional sections like tables [{ title, head, body }]
- * - filename: string — PDF file name
- */
-
 export default function GenerateReport({
     title = "Performance Report",
     userData = {},
@@ -21,39 +10,98 @@ export default function GenerateReport({
 }) {
     const generateReport = () => {
         const doc = new jsPDF();
+        const img = new Image();
 
-        // Header
-        doc.setFontSize(16);
-        doc.text(title, 14, 20);
-        doc.setFontSize(12);
-        if (userData.first_name || userData.last_name)
-            doc.text(`User: ${userData.first_name || ""} ${userData.last_name || ""}`, 14, 30);
-        if (userData.email) doc.text(`Email: ${userData.email}`, 14, 37);
-        doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 44);
+        img.src = "/eventpro-icon.png";
 
-        // Summary table
-        if (fields.length > 0) {
-            autoTable(doc, {
-                startY: 50,
-                head: [["Field", "Value"]],
-                body: fields.map((f) => [f.label, f.value]),
+        img.onload = () => {
+            /* ----------------------------- HEADER ----------------------------- */
+            doc.addImage(img, "PNG", 14, 10, 18, 18);
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(18);
+            doc.text("EventPro", 33, 21);
+
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(14);
+            doc.text(title, 14, 40);
+
+            doc.setLineWidth(0.5);
+            doc.line(14, 45, 195, 45); // Divider line
+
+            /* ----------------------------- USER INFO ----------------------------- */
+            doc.setFontSize(11);
+            let cursorY = 55;
+
+            if (userData.first_name || userData.last_name) {
+                doc.text(`User: ${userData.first_name || ""} ${userData.last_name || ""}`, 14, cursorY);
+                cursorY += 7;
+            }
+
+            if (userData.email) {
+                doc.text(`Email: ${userData.email}`, 14, cursorY);
+                cursorY += 7;
+            }
+
+            doc.text(`Date Generated: ${new Date().toLocaleDateString()}`, 14, cursorY);
+            cursorY += 10;
+
+            /* ----------------------------- SUMMARY TABLE ----------------------------- */
+            if (fields.length > 0) {
+                doc.setFont("helvetica", "bold");
+                doc.text("Summary", 14, cursorY);
+
+                doc.setFont("helvetica", "normal");
+                cursorY += 3;
+
+                autoTable(doc, {
+                    startY: cursorY + 2,
+                    head: [["Field", "Value"]],
+                    body: fields.map((f) => [f.label, f.value]),
+                    styles: { fontSize: 10, cellPadding: 3 },
+                    headStyles: { fillColor: [41, 128, 185] }, // Blue header
+                });
+            }
+
+            /* ----------------------------- SECTIONS / TABLES ----------------------------- */
+            let nextY = doc.lastAutoTable?.finalY || cursorY + 10;
+
+            sections.forEach((section, index) => {
+                const startY = index === 0 ? nextY + 12 : doc.lastAutoTable.finalY + 12;
+
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(13);
+                doc.text(section.title, 14, startY);
+
+                doc.setFont("helvetica", "normal");
+
+                autoTable(doc, {
+                    startY: startY + 5,
+                    head: [section.head],
+                    body: section.body,
+                    styles: { fontSize: 10, cellPadding: 3 },
+                    headStyles: { fillColor: [52, 73, 94] }, // Gray header
+                });
             });
-        }
 
-        // Sections (tables, details, etc.)
-        let nextY = doc.lastAutoTable?.finalY || 60;
-        sections.forEach((section, index) => {
-            const startY = index === 0 ? nextY + 10 : doc.lastAutoTable.finalY + 10;
-            doc.text(section.title, 14, startY);
-            autoTable(doc, {
-                startY: startY + 5,
-                head: [section.head],
-                body: section.body,
-            });
-        });
+            /* ----------------------------- FOOTER ----------------------------- */
+            const pageCount = doc.getNumberOfPages();
 
-        // Save the file
-        doc.save(`${filename}.pdf`);
+            doc.setFontSize(10);
+
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.text(
+                    `Page ${i} of ${pageCount}`,
+                    105,
+                    290, // bottom center
+                    { align: "center" }
+                );
+            }
+
+            /* ----------------------------- SAVE ----------------------------- */
+            doc.save(`${filename}.pdf`);
+        };
     };
 
     return (

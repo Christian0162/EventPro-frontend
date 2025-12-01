@@ -75,12 +75,12 @@ export default function AIModal({ ai_response, ai_shops }) {
                     expertise: data.supplier_expertise || [],
                     avg_rating: parseFloat(avgRating),
                     reviews: latestReviewText,
-                    budget: selectedService?.service_price,
+                    budget: Number(selectedService?.service_price),
                     ...data
                 };
             }));
 
-            if (shopData.length === 0) {
+            if (shopData.length === 0 && shopData.budget > budget) {
                 setError("No suppliers found.");
                 setIsSubmitting(false);
                 return;
@@ -140,10 +140,25 @@ export default function AIModal({ ai_response, ai_shops }) {
             }
 
             // Budget filtering
+            // Budget filtering
+
+            console.log(filteredShops)
             let budgetFilteredShops = filteredShops;
             const numericBudget = parseFloat(budget);
+
             if (!isNaN(numericBudget)) {
-                budgetFilteredShops = filteredShops.filter(shop => (shop.budget || 0) <= numericBudget);
+
+                // Filter using the budget
+                budgetFilteredShops = filteredShops.filter(shop => {
+                    // shops with no budget should NOT be included
+                    return shop.budget !== undefined && shop.budget !== null && shop.budget <= numericBudget;
+                });
+
+                if (filteredShops.length > 0 && budgetFilteredShops.length === 0) {
+                    setError("No suppliers match your budget.");
+                    setIsSubmitting(false);
+                    return;
+                }
             }
 
             const sortedShops = [...budgetFilteredShops].sort((a, b) => {
@@ -151,7 +166,9 @@ export default function AIModal({ ai_response, ai_shops }) {
                 return b.avg_rating - a.avg_rating; // tie-break by rating
             });
 
-            const response = await fetch("http://127.0.0.1:8000/api/v1/recommend", {
+            console.log(sortedShops)
+
+            const response = await fetch("https://eventpro-backend-python.onrender.com/api/v1/recommend", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -232,7 +249,7 @@ export default function AIModal({ ai_response, ai_shops }) {
 
                                     {/* Budget input */}
                                     <div className='relative flex flex-col mb-4'>
-                                        <label htmlFor="budget" className='text-sm mb-2 text-gray-800 font-bold'>Maximum Budget (₱)</label>
+                                        <label htmlFor="budget" className='text-sm mb-2 text-gray-800 font-bold'>Budget (₱)</label>
                                         <input
                                             onChange={(e) => setBudget(e.target.value)}
                                             type="number"
@@ -260,4 +277,3 @@ export default function AIModal({ ai_response, ai_shops }) {
         </>
     )
 }
-    

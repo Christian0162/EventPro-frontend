@@ -18,7 +18,10 @@ export default function AIModal({ ai_response, ai_shops }) {
     const { reviews } = useFetchReviews()
     const { services } = useFetchSupplierServices()
 
-    function open() { setIsOpen(true) }
+    function open() { 
+        setIsOpen(true) 
+        setBudget('')
+    }
     function close() { setError(''); setIsOpen(false) }
 
     function normalizeText(text) {

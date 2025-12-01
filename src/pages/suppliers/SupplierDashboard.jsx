@@ -412,10 +412,10 @@ export default function SupplierDashboard({ userData }) {
                             filename={`${userData.first_name}_Supplier_Report`}
                             userData={userData}
                             fields={[
-                                { label: "Total Earnings", value: `PHP ${totalEarning.toLocaleString()}` },
-                                { label: "On-Time Delivery Rate", value: `${onTimeRate.toFixed(0)}%` },
-                                { label: "Price Competitiveness", value: `${competitiveness.toFixed(1)}%` },
-                                { label: "Total Applied Events", value: totalAppliedEvents },
+                                 { label: "Total Earnings", value: `${totalEarning.toFixed(2)}` },
+                                { label: "On-Time Delivery Rate", value: `${onTimeRate.toFixed(2)}%` },
+                                { label: "Price Competitiveness", value: `${competitiveness.toFixed(2)}%` },
+                                { label: "Total Applied Events", value: totalAppliedEvents.toFixed(2) },
                             ]}
                             sections={[
                                 {

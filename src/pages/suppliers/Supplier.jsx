@@ -1,7 +1,7 @@
 import { Search, MapPin, PhilippinePeso, Clock, Star, Bot } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import Cards from "../../components/Cards";
-import Select from 'react-select';
+import CreatableSelect from 'react-select/creatable';
 import { SupplierOptions } from "../../constants/categories";
 import { lazy, Suspense } from "react";
 import AIModal from "../../components/AIModal";
@@ -29,29 +29,71 @@ export default function Supplier({ userData }) {
     const { events, isLoading: isEventsLoading } = useFetchEventsById(userData.id)
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [selectedShop, setSelectedShop] = useState(null)
+    const [customCategories, setCustomCategories] = useState(() => {
+        const saved = localStorage.getItem("customCategories");
+        return saved ? JSON.parse(saved) : [];
+    });
+
+    useEffect(() => {
+        localStorage.setItem("customCategories", JSON.stringify(customCategories));
+    }, [customCategories]);
+
+
 
     const isAllLoading = isSupplierLoading || isEventsLoading || isApplicationLoading || isServicesLoading || isReviewsLoading
 
     const dynamicExpertiseOptions = useMemo(() => {
-        const set = new Set()
+        const set = new Set();
 
-        // From suppliers (dynamic)
+        // From suppliers
         suppliers.forEach(supplier => {
             supplier?.supplier_expertise?.forEach(expertise => {
-                set.add(expertise)
-            })
-        })
+                set.add(expertise);
+            });
+        });
 
-        // From your static options
+        // From static options
         SupplierOptions.forEach(option => {
-            set.add(option.label)
-        })
+            set.add(option.label);
+        });
+
+        // From user-added categories
+        customCategories.forEach(cat => {
+            set.add(cat.label);
+        });
 
         return Array.from(set).map(item => ({
             value: item.toLowerCase().replace(/\s+/g, "_"),
             label: item
-        }))
-    }, [suppliers])
+        }));
+    }, [suppliers, customCategories]);
+
+    const handleCreateCategory = (inputValue) => {
+
+        const formattedValue = inputValue.trim();
+
+        // Prevent duplicates
+        const exists = dynamicExpertiseOptions.some(
+            cat => cat.label.toLowerCase() === formattedValue.toLowerCase()
+        );
+
+        if (exists) {
+            setCategory(
+                dynamicExpertiseOptions.find(
+                    cat => cat.label.toLowerCase() === formattedValue.toLowerCase()
+                )
+            );
+            return;
+        }
+
+        const newOption = {
+            label: formattedValue,
+            value: formattedValue.toLowerCase().replace(/\s+/g, "_")
+        };
+
+        setCustomCategories(prev => [...prev, newOption]);
+        setCategory(newOption);
+    };
 
 
     useEffect(() => {
@@ -168,15 +210,17 @@ export default function Supplier({ userData }) {
 
                     {/* Category Filter */}
                     <div className="w-full md:w-72 mt-3">
-                        <Select
+                        <CreatableSelect
                             onChange={setCategory}
+                            onCreateOption={handleCreateCategory}
                             value={category}
                             options={dynamicExpertiseOptions}
-                            placeholder="Category"
+                            placeholder="Select or type a category"
                             isClearable
                             isSearchable
-                            // onInputChange={(search) => setCategory({ label: search })}   // 🔥 This is the key!
+                            formatCreateLabel={(inputValue) => `+ Add "${inputValue}"`}
                         />
+
 
 
                     </div>

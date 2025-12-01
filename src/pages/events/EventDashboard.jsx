@@ -51,7 +51,7 @@ export default function EventDashboard({ userData }) {
     const fields = [
         { label: "Total Events Organized".toUpperCase(), value: totalEvents },
         { label: "Approved Contracts".toUpperCase(), value: approvedContracts.length },
-        { label: "Total Budget Spent".toUpperCase(), value: `PHP ${totalSpent.toLocaleString()}` },
+        { label: "Total Budget Spent".toUpperCase(), value: `${totalSpent.toFixed(2)}` },
         { label: "Average Supplier Rating".toUpperCase(), value: avgRating },
     ];
 

@@ -49,10 +49,10 @@ export default function EventDashboard({ userData }) {
             : "N/A";
 
     const fields = [
-        { label: "Total Events Organized".toUpperCase(), value: totalEvents },
-        { label: "Approved Contracts".toUpperCase(), value: approvedContracts.length },
+        { label: "Total Events Organized".toUpperCase(), value: totalEvents.toFixed(2) },
+        { label: "Approved Contracts".toUpperCase(), value: approvedContracts.length.toFixed(2) },
         { label: "Total Budget Spent".toUpperCase(), value: `${totalSpent.toFixed(2)}` },
-        { label: "Average Supplier Rating".toUpperCase(), value: avgRating },
+        { label: "Average Supplier Rating".toUpperCase(), value: Number(avgRating).toFixed(2) },
     ];
 
     let status = {
